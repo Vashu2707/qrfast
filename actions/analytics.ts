@@ -1,0 +1,129 @@
+"use server";
+
+import prisma from "@/lib/prisma";
+import { getCurrentUser } from "./auth";
+import { OrderStatus, PaymentStatus } from "@prisma/client";
+
+export async function getDashboardStats() {
+  const user = await getCurrentUser();
+  if (!user?.restaurantId) throw new Error("Unauthorized");
+
+  const restaurantId = user.restaurantId;
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  const [
+    todayOrders,
+    pendingOrders,
+    completedToday,
+    todayRevenue,
+    totalTables,
+    occupiedTables,
+    allOrders,
+  ] = await Promise.all([
+    prisma.order.count({
+      where: { restaurantId, createdAt: { gte: todayStart } },
+    }),
+    prisma.order.count({
+      where: {
+        restaurantId,
+        status: { in: [OrderStatus.PLACED, OrderStatus.CONFIRMED, OrderStatus.PREPARING, OrderStatus.READY] },
+      },
+    }),
+    prisma.order.count({
+      where: { restaurantId, status: OrderStatus.COMPLETED, createdAt: { gte: todayStart } },
+    }),
+    prisma.order.aggregate({
+      where: {
+        restaurantId,
+        paymentStatus: PaymentStatus.SUCCESS,
+        createdAt: { gte: todayStart },
+      },
+      _sum: { totalAmount: true },
+    }),
+    prisma.table.count({ where: { restaurantId } }),
+    prisma.table.count({ where: { restaurantId, status: "OCCUPIED" } }),
+    prisma.order.findMany({
+      where: { restaurantId, createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } },
+      select: { totalAmount: true, createdAt: true, paymentStatus: true },
+    }),
+  ]);
+
+  const popularItems = await prisma.orderItem.groupBy({
+    by: ["menuItemId"],
+    where: { order: { restaurantId } },
+    _sum: { quantity: true },
+    orderBy: { _sum: { quantity: "desc" } },
+    take: 5,
+  });
+
+  const menuItemIds = popularItems.map((p) => p.menuItemId);
+  const menuItems = menuItemIds.length
+    ? await prisma.menuItem.findMany({ where: { id: { in: menuItemIds } } })
+    : [];
+
+  const topItems = popularItems.map((p) => ({
+    item: menuItems.find((m) => m.id === p.menuItemId),
+    quantity: p._sum.quantity || 0,
+  }));
+
+  const salesByDay: Record<string, number> = {};
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    salesByDay[d.toISOString().split("T")[0]] = 0;
+  }
+  allOrders
+    .filter((o) => o.paymentStatus === PaymentStatus.SUCCESS)
+    .forEach((o) => {
+      const key = o.createdAt.toISOString().split("T")[0];
+      if (salesByDay[key] !== undefined) {
+        salesByDay[key] += o.totalAmount;
+      }
+    });
+
+  const chartData = Object.entries(salesByDay).map(([date, revenue]) => ({
+    date: new Date(date).toLocaleDateString("en-IN", { weekday: "short" }),
+    revenue,
+  }));
+
+  const totalRevenue = allOrders
+    .filter((o) => o.paymentStatus === PaymentStatus.SUCCESS)
+    .reduce((s, o) => s + o.totalAmount, 0);
+
+  const avgOrderValue = todayOrders > 0 ? (todayRevenue._sum.totalAmount || 0) / todayOrders : 0;
+
+  return {
+    todayOrders,
+    pendingOrders,
+    completedToday,
+    todayRevenue: todayRevenue._sum.totalAmount || 0,
+    totalTables,
+    occupiedTables,
+    topItems,
+    chartData,
+    totalRevenue,
+    avgOrderValue,
+  };
+}
+
+export async function exportOrdersCSV() {
+  const user = await getCurrentUser();
+  if (!user?.restaurantId) throw new Error("Unauthorized");
+
+  const orders = await prisma.order.findMany({
+    where: { restaurantId: user.restaurantId },
+    include: { table: true },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const header = "Order ID,Table,Customer,Phone,Status,Payment,Total,Date\n";
+  const rows = orders
+    .map(
+      (o) =>
+        `${o.id},${o.table.number},"${o.customerName}",${o.customerPhone},${o.status},${o.paymentStatus},${o.totalAmount},${o.createdAt.toISOString()}`
+    )
+    .join("\n");
+
+  return header + rows;
+}

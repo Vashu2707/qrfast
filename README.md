@@ -1,36 +1,151 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# QRFast — QR-Based Restaurant Dine-In Ordering System
+
+A production-ready QR dine-in ordering platform built with Next.js 15, Supabase, Prisma, and Razorpay. Customers scan a table QR code to browse the menu, customize orders, pay online or at the counter, and track orders in real time. Restaurant staff manage everything from admin, kitchen, and cashier dashboards.
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Next.js 15, React 19, TypeScript, Tailwind CSS, shadcn/ui |
+| State | Zustand (cart), TanStack Query (server data) |
+| Backend | Next.js Server Actions & Route Handlers |
+| Auth | Supabase Auth |
+| Database | Supabase PostgreSQL + Prisma ORM |
+| Payments | Razorpay |
+| Email | Resend (free tier) |
+| Deployment | Vercel + Supabase (free tiers) |
+
+## Features
+
+- **Customer**: QR menu, item customization (variants/add-ons), persistent cart, coupons, GST/service charge, Razorpay & pay-at-counter, live order tracking, reviews
+- **Admin Dashboard**: Analytics, revenue charts, order management, menu CRUD, table QR generation, coupons, settings
+- **Kitchen Display**: Kanban order board, status progression, sound alerts
+- **Cashier Desk**: Pending/completed payments, mark paid, complete orders
 
 ## Getting Started
 
-First, run the development server:
+### 1. Clone & Install
+
+```bash
+git clone <repo-url>
+cd hotel
+npm install --legacy-peer-deps
+```
+
+### 2. Environment Variables
+
+Copy the example env file and fill in your credentials:
+
+```bash
+cp .env.example .env.local
+```
+
+Required variables:
+- `DATABASE_URL` — Supabase PostgreSQL connection string
+- `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `NEXT_PUBLIC_APP_URL` — Your app URL (e.g. `http://localhost:3000`)
+- `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` / `NEXT_PUBLIC_RAZORPAY_KEY_ID`
+
+### 3. Database Setup
+
+```bash
+# Push schema to Supabase
+npx prisma db push
+
+# Seed demo data ("The Bistro" with menu, tables, orders)
+npx prisma db seed
+```
+
+### 4. Supabase Auth Setup
+
+1. Create a Supabase project (free tier)
+2. Enable Email auth in Authentication → Providers
+3. Create staff users in Supabase Auth matching seed emails:
+   - `admin@thebistro.com`
+   - `kitchen@thebistro.com`
+   - `cashier@thebistro.com`
+4. Update the Prisma `User` records with matching Supabase Auth UUIDs if needed
+
+### 5. Run Development Server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Demo URLs
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+After seeding:
 
-## Learn More
+| URL | Description |
+|-----|-------------|
+| `/` | Marketing landing page |
+| `/menu/the-bistro/table-1` | Customer menu (Table 1) |
+| `/login` | Staff login |
+| `/dashboard` | Admin dashboard |
+| `/kitchen` | Kitchen display |
+| `/cashier` | Cashier desk |
 
-To learn more about Next.js, take a look at the following resources:
+## Project Structure
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+app/
+  (auth)/          # Login, signup, forgot password
+  dashboard/       # Admin dashboard pages
+  kitchen/         # Kitchen display
+  cashier/         # Cashier desk
+  menu/[slug]/[table]/  # Customer QR menu
+  order/[id]/      # Order tracking
+  api/payments/    # Razorpay verify & webhook
+actions/           # Server actions
+components/
+  features/        # Feature-specific UI
+  layout/          # Shared layouts
+  ui/              # shadcn/ui primitives
+hooks/             # Custom hooks (use-cart)
+lib/               # Utilities, Supabase, Prisma, Razorpay
+prisma/            # Schema & seed
+schemas/           # Zod validation schemas
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Deployment (Vercel)
 
-## Deploy on Vercel
+1. Push to GitHub
+2. Import project in [Vercel](https://vercel.com)
+3. Add all environment variables from `.env.example`
+4. Set `NEXT_PUBLIC_APP_URL` to your production domain
+5. Deploy
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Razorpay Webhook
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Set webhook URL in Razorpay Dashboard:
+```
+https://yourdomain.com/api/payments/webhook
+```
+
+## Production Checklist
+
+- [ ] Set all environment variables in Vercel
+- [ ] Run `prisma db push` against production database
+- [ ] Configure Supabase RLS policies (optional, app uses server-side auth)
+- [ ] Set Razorpay webhook secret
+- [ ] Configure Resend domain for email receipts
+- [ ] Create real staff accounts in Supabase Auth
+- [ ] Test QR flow end-to-end on mobile
+- [ ] Enable HTTPS (automatic on Vercel)
+
+## Scripts
+
+```bash
+npm run dev      # Start dev server
+npm run build    # Production build
+npm run start    # Start production server
+npm run lint     # ESLint
+npx prisma studio  # Database GUI
+npx prisma db seed # Seed demo data
+```
+
+## License
+
+MIT
