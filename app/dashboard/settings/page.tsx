@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getSettings, updateRestaurantSettings } from "@/actions/settings";
-import { getCurrentUser } from "@/actions/auth";
 import { StaffHeader } from "@/components/layout/dashboard-sidebar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,20 +15,19 @@ export default function SettingsPage() {
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
 
-  const { data: user } = useQuery({ queryKey: ["currentUser"], queryFn: getCurrentUser });
   const { data: settings } = useQuery({ queryKey: ["settings"], queryFn: getSettings });
 
   const [form, setForm] = useState<Record<string, string>>({});
 
   const initForm = () => {
-    if (!user?.restaurant || !settings) return;
+    if (!settings) return;
     setForm({
-      restaurantName: user.restaurant.name || "",
-      address: user.restaurant.address || "",
-      phone: user.restaurant.phone || "",
-      email: user.restaurant.email || "",
-      logo: user.restaurant.logo || "",
-      banner: user.restaurant.banner || "",
+      restaurantName: settings.restaurantName || "",
+      address: settings.address || "",
+      phone: settings.phone || "",
+      email: settings.email || "",
+      logo: settings.logo || "",
+      banner: settings.banner || "",
       primaryColor: settings.primaryColor || "#E11D48",
       currency: settings.currency || "INR",
       timezone: settings.timezone || "Asia/Kolkata",
@@ -39,7 +37,7 @@ export default function SettingsPage() {
     });
   };
 
-  if (Object.keys(form).length === 0 && settings && user) initForm();
+  if (Object.keys(form).length === 0 && settings) initForm();
 
   const handleSave = async () => {
     setLoading(true);

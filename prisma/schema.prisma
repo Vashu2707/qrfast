@@ -7,7 +7,6 @@ generator client {
 }
 
 enum Role {
-  SUPERADMIN
   ADMIN
   KITCHEN
   CASHIER
@@ -54,80 +53,54 @@ enum DiscountType {
   FLAT
 }
 
-model Restaurant {
-  id            String         @id @default(uuid())
-  name          String
-  slug          String         @unique
-  logo          String?
-  banner        String?
-  phone         String?
-  email         String?
-  address       String?
-  isActive      Boolean        @default(true)
-  users         User[]
-  tables        Table[]
-  categories    Category[]
-  menuItems     MenuItem[]
-  orders        Order[]
-  coupons       Coupon[]
-  notifications Notification[]
-  settings      Settings?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-}
-
-model User {
-  id           String      @id // Matches Supabase Auth User ID (UUID)
-  email        String      @unique
-  name         String?
-  role         Role        @default(ADMIN)
-  restaurantId String?
-  restaurant   Restaurant? @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  auditLogs    AuditLog[]
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+model AdminUser {
+  id        String   @id // Matches Supabase Auth User ID (UUID)
+  email     String   @unique
+  name      String?
+  role      Role     @default(ADMIN)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Settings {
-  id                      String     @id @default(uuid())
-  restaurantId            String     @unique
-  restaurant              Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  primaryColor            String     @default("#E11D48") // Rose 600
-  currency                String     @default("INR")
-  timezone                String     @default("Asia/Kolkata")
+  id                      String  @id @default("singleton")
+  restaurantName          String  @default("My Restaurant")
+  logo                    String?
+  banner                  String?
+  address                 String?
+  phone                   String?
+  email                   String?
+  primaryColor            String  @default("#E11D48")
+  currency                String  @default("INR")
+  timezone                String  @default("Asia/Kolkata")
   gstNumber               String?
-  gstPercentage           Float      @default(5.0)
-  serviceChargePercentage Float      @default(0.0)
-  businessHours           Json?
-  updatedAt               DateTime   @updatedAt
+  gstPercentage           Float   @default(5.0)
+  serviceChargePercentage Float   @default(0.0)
+  openingHours            Json?
+  socialLinks             Json?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
 }
 
 model Table {
-  id           String      @id @default(uuid())
-  number       String
-  restaurantId String
-  restaurant   Restaurant  @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  qrCodeUrl    String?
-  status       TableStatus @default(AVAILABLE)
-  orders       Order[]
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-
-  @@unique([restaurantId, number])
+  id        String      @id @default(uuid())
+  number    String      @unique
+  qrCodeUrl String?
+  status    TableStatus @default(AVAILABLE)
+  orders    Order[]
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
 }
 
 model Category {
-  id           String     @id @default(uuid())
-  name         String
-  description  String?
-  restaurantId String
-  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  menuItems    MenuItem[]
-  sortOrder    Int        @default(0)
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-
-  @@unique([restaurantId, name])
+  id          String     @id @default(uuid())
+  name        String     @unique
+  description String?
+  image       String?
+  sortOrder   Int        @default(0)
+  menuItems   MenuItem[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 }
 
 model MenuItem {
@@ -137,17 +110,17 @@ model MenuItem {
   price           Float
   discountPrice   Float?
   isVeg           Boolean     @default(true)
-  spicyLevel      Int         @default(0) // 0 = none, 1 = mild, 2 = medium, 3 = hot
-  preparationTime Int         @default(15) // in minutes
+  spicyLevel      Int         @default(0)
+  preparationTime Int         @default(15)
   images          String[]
   isAvailable     Boolean     @default(true)
+  isChefSpecial   Boolean     @default(false)
+  isBestSeller    Boolean     @default(false)
   ingredients     String[]
   allergens       String[]
-  nutrition       Json?       // calories, protein, carbs, fat
+  nutrition       Json?
   categoryId      String
   category        Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  restaurantId    String
-  restaurant      Restaurant  @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   variants        Variant[]
   addons          Addon[]
   orderItems      OrderItem[]
@@ -160,7 +133,7 @@ model Variant {
   id         String   @id @default(uuid())
   menuItemId String
   menuItem   MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
-  name       String   // e.g. Regular, Large
+  name       String
   price      Float
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -170,7 +143,7 @@ model Addon {
   id         String   @id @default(uuid())
   menuItemId String
   menuItem   MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
-  name       String   // e.g. Extra Cheese
+  name       String
   price      Float
   isVeg      Boolean  @default(true)
   createdAt  DateTime @default(now())
@@ -179,8 +152,6 @@ model Addon {
 
 model Order {
   id                  String        @id @default(uuid())
-  restaurantId        String
-  restaurant          Restaurant    @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   tableId             String
   table               Table         @relation(fields: [tableId], references: [id], onDelete: Cascade)
   customerName        String
@@ -193,7 +164,7 @@ model Order {
   gstAmount           Float         @default(0.0)
   serviceChargeAmount Float         @default(0.0)
   totalAmount         Float
-  couponCode          String?
+  offerCode           String?
   notes               String?
   orderItems          OrderItem[]
   payments            Payment[]
@@ -212,7 +183,7 @@ model OrderItem {
   quantity       Int
   price          Float
   notes          String?
-  customizations Json?    // Stores selected variant and addons as snapshot
+  customizations Json?
   createdAt      DateTime @default(now())
 }
 
@@ -222,30 +193,27 @@ model Payment {
   order         Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
   amount        Float
   method        PaymentMethod
-  transactionId String?       // Razorpay order ID
-  paymentId     String?       // Razorpay payment ID
-  signature     String?       // Razorpay verification signature
+  transactionId String?
+  paymentId     String?
+  signature     String?
   status        PaymentStatus @default(PENDING)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 }
 
-model Coupon {
-  id            String       @id @default(uuid())
-  restaurantId  String
-  restaurant    Restaurant   @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  code          String
-  discountType  DiscountType @default(PERCENTAGE)
-  discountValue Float
-  minOrderAmount Float       @default(0.0)
-  expiryDate    DateTime
-  usageLimit    Int?
-  usageCount    Int          @default(0)
-  isActive      Boolean      @default(true)
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-
-  @@unique([restaurantId, code])
+model Offer {
+  id             String       @id @default(uuid())
+  code           String       @unique
+  title          String?
+  discountType   DiscountType @default(PERCENTAGE)
+  discountValue  Float
+  minOrderAmount Float        @default(0.0)
+  expiryDate     DateTime
+  usageLimit     Int?
+  usageCount     Int          @default(0)
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 }
 
 model Review {
@@ -255,7 +223,7 @@ model Review {
   menuItemId   String?
   menuItem     MenuItem? @relation(fields: [menuItemId], references: [id], onDelete: SetNull)
   customerName String
-  rating       Int       // 1 to 5
+  rating       Int
   comment      String?
   images       String[]
   adminReply   String?
@@ -263,34 +231,22 @@ model Review {
 }
 
 model Notification {
-  id           String           @id @default(uuid())
-  restaurantId String
-  restaurant   Restaurant       @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  title        String
-  message      String
-  type         NotificationType
-  isRead       Boolean          @default(false)
-  createdAt    DateTime         @default(now())
+  id        String           @id @default(uuid())
+  title     String
+  message   String
+  type      NotificationType
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
 }
 
 model Invoice {
-  id            String   @id @default(uuid())
-  orderId       String   @unique
-  order         Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  invoiceNumber String   @unique
-  pdfUrl        String?
-  amount        Float
-  taxAmount     Float
+  id             String   @id @default(uuid())
+  orderId        String   @unique
+  order          Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  invoiceNumber  String   @unique
+  pdfUrl         String?
+  amount         Float
+  taxAmount      Float
   discountAmount Float
-  createdAt     DateTime @default(now())
-}
-
-model AuditLog {
-  id        String   @id @default(uuid())
-  userId    String?
-  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  action    String
-  details   String?
-  ipAddress String?
-  createdAt DateTime @default(now())
+  createdAt      DateTime @default(now())
 }

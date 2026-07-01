@@ -3,51 +3,46 @@
 import prisma from "@/lib/prisma";
 import { getRazorpayClient } from "@/lib/razorpay";
 import { resend } from "@/lib/resend";
-import { validateCoupon } from "./coupons";
 import { getCurrentUser } from "./auth";
+import { validateOffer } from "./offers";
 import { OrderStatus, PaymentStatus, PaymentMethod, NotificationType, TableStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
 export async function createOrder(data: any) {
   try {
     const result = await prisma.$transaction(async (tx) => {
-      // 1. Get Table and Restaurant config
       const table = await tx.table.findUnique({
         where: { id: data.tableId },
-        include: { restaurant: { include: { settings: true } } },
       });
 
       if (!table) throw new Error("Table not found.");
-      const restaurant = table.restaurant;
-      const settings = restaurant.settings;
+
+      const settings = await tx.settings.findUnique({
+        where: { id: "singleton" },
+      });
       if (!settings) throw new Error("Restaurant settings not initialized.");
 
-      // 2. Fetch all menu items in cart to calculate prices securely on the server
       const itemIds = data.items.map((i: any) => i.menuItemId);
       const menuItems = await tx.menuItem.findMany({
-        where: { id: { in: itemIds }, restaurantId: restaurant.id },
+        where: { id: { in: itemIds } },
         include: { variants: true, addons: true },
       });
 
-      // 3. Compute Cart Subtotal
       let subtotal = 0;
       const verifiedItems = data.items.map((cartItem: any) => {
         const menuItem = menuItems.find((m) => m.id === cartItem.menuItemId);
         if (!menuItem) throw new Error(`Menu item ${cartItem.menuItemId} not found.`);
 
-        // Determine price
         let itemPrice = menuItem.price;
         if (menuItem.discountPrice) {
           itemPrice = menuItem.discountPrice;
         }
 
-        // Adjust for variant
         if (cartItem.customizations?.variant) {
           const v = menuItem.variants.find((x) => x.id === cartItem.customizations.variant.id);
           if (v) itemPrice = v.price;
         }
 
-        // Adjust for addons
         let addonsPrice = 0;
         const addonsDetails: any[] = [];
         if (cartItem.customizations?.addons) {
@@ -82,33 +77,28 @@ export async function createOrder(data: any) {
         };
       });
 
-      // 4. Verify & Apply Coupon
       let discountAmount = 0;
-      let couponCodeApplied = null;
+      let offerCodeApplied = null;
       if (data.couponCode) {
-        const couponVal = await validateCoupon(restaurant.id, data.couponCode, subtotal);
-        if (couponVal.isValid && couponVal.discountAmount) {
-          discountAmount = couponVal.discountAmount;
-          couponCodeApplied = couponVal.coupon?.code;
+        const offerVal = await validateOffer(data.couponCode, subtotal);
+        if (offerVal.isValid && offerVal.discountAmount) {
+          discountAmount = offerVal.discountAmount;
+          offerCodeApplied = offerVal.offer?.code;
 
-          // Increment coupon usage
-          await tx.coupon.update({
-            where: { restaurantId_code: { restaurantId: restaurant.id, code: couponCodeApplied! } },
+          await tx.offer.update({
+            where: { code: offerCodeApplied! },
             data: { usageCount: { increment: 1 } },
           });
         }
       }
 
-      // 5. Calculate GST & Service Charge
       const taxableAmount = Math.max(0, subtotal - discountAmount);
       const gstAmount = Math.round(((taxableAmount * settings.gstPercentage) / 100) * 100) / 100;
       const serviceChargeAmount = Math.round(((taxableAmount * settings.serviceChargePercentage) / 100) * 100) / 100;
       const totalAmount = Math.round((taxableAmount + gstAmount + serviceChargeAmount) * 100) / 100;
 
-      // 6. Create Order
       const order = await tx.order.create({
         data: {
-          restaurantId: restaurant.id,
           tableId: table.id,
           customerName: data.customerName,
           customerPhone: data.customerPhone,
@@ -120,12 +110,11 @@ export async function createOrder(data: any) {
           gstAmount,
           serviceChargeAmount,
           totalAmount,
-          couponCode: couponCodeApplied,
+          offerCode: offerCodeApplied,
           notes: data.notes || null,
         },
       });
 
-      // Create OrderItems
       for (const item of verifiedItems) {
         await tx.orderItem.create({
           data: {
@@ -139,33 +128,28 @@ export async function createOrder(data: any) {
         });
       }
 
-      // Mark Table as OCCUPIED
       await tx.table.update({
         where: { id: table.id },
         data: { status: TableStatus.OCCUPIED },
       });
 
-      // Create staff notification
       await tx.notification.create({
         data: {
-          restaurantId: restaurant.id,
           title: `New Order! Table ${table.number}`,
           message: `${data.customerName} placed an order for ₹${totalAmount}`,
           type: NotificationType.NEW_ORDER,
         },
       });
 
-      // 7. Handle Razorpay Payment Generation
       let razorpayOrder = null;
       if (data.paymentMethod === PaymentMethod.RAZORPAY) {
         try {
           const razorpayInstance = await getRazorpayClient().orders.create({
-            amount: Math.round(totalAmount * 100), // amount in paise
+            amount: Math.round(totalAmount * 100),
             currency: settings.currency || "INR",
             receipt: `rcpt_${order.id.substring(0, 14)}`,
             notes: {
               orderId: order.id,
-              restaurantId: restaurant.id,
             },
           });
 
@@ -175,7 +159,6 @@ export async function createOrder(data: any) {
             currency: razorpayInstance.currency,
           };
 
-          // Save payment details (pending)
           await tx.payment.create({
             data: {
               orderId: order.id,
@@ -190,7 +173,6 @@ export async function createOrder(data: any) {
           throw new Error("Failed to initialize Razorpay payment gateway.");
         }
       } else {
-        // Cash payment record
         await tx.payment.create({
           data: {
             orderId: order.id,
@@ -216,7 +198,6 @@ export async function getCustomerOrder(id: string) {
     where: { id },
     include: {
       table: true,
-      restaurant: { include: { settings: true } },
       orderItems: { include: { menuItem: true } },
       payments: true,
     },
@@ -225,10 +206,9 @@ export async function getCustomerOrder(id: string) {
 
 export async function getOrders() {
   const user = await getCurrentUser();
-  if (!user || !user.restaurantId) throw new Error("Unauthorized");
+  if (!user) throw new Error("Unauthorized");
 
   return prisma.order.findMany({
-    where: { restaurantId: user.restaurantId },
     include: {
       table: true,
       orderItems: { include: { menuItem: true } },
@@ -240,37 +220,32 @@ export async function getOrders() {
 
 export async function updateOrderStatus(id: string, status: OrderStatus) {
   const user = await getCurrentUser();
-  if (!user || !user.restaurantId) return { error: "Unauthorized" };
+  if (!user) return { error: "Unauthorized" };
 
   try {
     const updatedOrder = await prisma.$transaction(async (tx) => {
       const order = await tx.order.update({
-        where: { id, restaurantId: user.restaurantId! },
+        where: { id },
         data: { status },
-        include: { table: true, restaurant: true },
+        include: { table: true },
       });
 
-      // Realtime actions based on status progression
       if (status === OrderStatus.READY) {
-        // Notify customer or table
         await tx.notification.create({
           data: {
-            restaurantId: user.restaurantId!,
             title: `Order Ready! Table ${order.table.number}`,
             message: `Order for ${order.customerName} is prepared and ready to serve.`,
             type: NotificationType.KITCHEN_READY,
           },
         });
       } else if (status === OrderStatus.COMPLETED) {
-        // Mark table as AVAILABLE
         await tx.table.update({
           where: { id: order.tableId },
           data: { status: TableStatus.AVAILABLE },
         });
 
-        // Auto-generate invoice
         const count = await tx.invoice.count();
-        const invoiceNumber = `INV-${order.restaurant.slug.toUpperCase()}-${String(count + 1).padStart(4, "0")}`;
+        const invoiceNumber = `INV-${String(count + 1).padStart(4, "0")}`;
 
         await tx.invoice.create({
           data: {
@@ -282,7 +257,6 @@ export async function updateOrderStatus(id: string, status: OrderStatus) {
           },
         });
 
-        // If Cash, auto-mark payment as SUCCESS when completed
         if (order.paymentMethod === PaymentMethod.CASH) {
           await tx.order.update({
             where: { id },
@@ -295,13 +269,12 @@ export async function updateOrderStatus(id: string, status: OrderStatus) {
           });
         }
 
-        // Send email notification via Resend (Safely)
         try {
-          if (process.env.RESEND_API_KEY && order.restaurant.email) {
+          if (process.env.RESEND_API_KEY) {
             await resend.emails.send({
               from: process.env.RESEND_FROM_EMAIL || "receipts@resend.dev",
-              to: order.restaurant.email,
-              subject: `Invoice ${invoiceNumber} | The Bistro`,
+              to: order.customerName,
+              subject: `Invoice ${invoiceNumber} | Your Restaurant`,
               html: `<p>Dear ${order.customerName},</p><p>Thank you for dining with us! Here is your bill summary:</p><ul><li>Invoice Number: ${invoiceNumber}</li><li>Subtotal: ₹${order.subtotal}</li><li>Discount: ₹${order.discountAmount}</li><li>GST (Tax): ₹${order.gstAmount}</li><li>Service Charge: ₹${order.serviceChargeAmount}</li><li><strong>Grand Total: ₹${order.totalAmount}</strong></li></ul><p>We hope to see you again soon!</p>`,
             });
           }
@@ -322,12 +295,12 @@ export async function updateOrderStatus(id: string, status: OrderStatus) {
 
 export async function updateOrderPaymentStatus(id: string, paymentStatus: PaymentStatus) {
   const user = await getCurrentUser();
-  if (!user || !user.restaurantId) return { error: "Unauthorized" };
+  if (!user) return { error: "Unauthorized" };
 
   try {
     await prisma.$transaction(async (tx) => {
       await tx.order.update({
-        where: { id, restaurantId: user.restaurantId! },
+        where: { id },
         data: { paymentStatus },
       });
 
@@ -336,10 +309,8 @@ export async function updateOrderPaymentStatus(id: string, paymentStatus: Paymen
         data: { status: paymentStatus },
       });
 
-      // Log invoice or notify
       await tx.notification.create({
         data: {
-          restaurantId: user.restaurantId!,
           title: `Payment Updated`,
           message: `Order payment status changed to ${paymentStatus} for Table.`,
           type: NotificationType.PAYMENT,
@@ -354,12 +325,10 @@ export async function updateOrderPaymentStatus(id: string, paymentStatus: Paymen
   }
 }
 
-// Request Bill or Call Waiter
 export async function requestService(tableId: string, type: "CALL_WAITER" | "REQUEST_BILL") {
   try {
     const table = await prisma.table.findUnique({
       where: { id: tableId },
-      include: { restaurant: true },
     });
 
     if (!table) throw new Error("Table not found.");
@@ -375,7 +344,6 @@ export async function requestService(tableId: string, type: "CALL_WAITER" | "REQ
 
     await prisma.notification.create({
       data: {
-        restaurantId: table.restaurantId,
         title,
         message,
         type: notificationType,
@@ -388,7 +356,6 @@ export async function requestService(tableId: string, type: "CALL_WAITER" | "REQ
   }
 }
 
-// Submit Item/Order Review
 export async function submitReview(data: {
   orderId?: string;
   menuItemId?: string;

@@ -6,7 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useCart } from "@/hooks/use-cart";
 import { createOrder } from "@/actions/orders";
-import { validateCoupon } from "@/actions/coupons";
+import { validateOffer } from "@/actions/offers";
 import { formatCurrency } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,14 +17,7 @@ import { PaymentMethod } from "@prisma/client";
 import { toast } from "sonner";
 import { ArrowLeft, Minus, Plus, Trash2, Loader2, CreditCard, Banknote } from "lucide-react";
 
-declare global {
-  interface Window {
-    Razorpay: new (options: Record<string, unknown>) => { open: () => void };
-  }
-}
-
 interface Props {
-  slug: string;
   tableParam: string;
   gstPercentage: number;
   serviceChargePercentage: number;
@@ -47,11 +40,11 @@ function loadRazorpayScript(): Promise<boolean> {
 }
 
 export function CartClient({
-  slug, tableParam, gstPercentage, serviceChargePercentage, primaryColor, restaurantName,
+  tableParam, gstPercentage, serviceChargePercentage, primaryColor, restaurantName,
 }: Props) {
   const router = useRouter();
   const {
-    items, tableId, tableNumber, restaurantId, notes, coupon,
+    items, tableId, tableNumber, notes, coupon,
     updateQuantity, removeItem, setNotes, applyCoupon, removeCoupon, clearCart,
     getSubtotal, getDiscountAmount, getGstAmount, getServiceChargeAmount, getTotalAmount,
   } = useCart();
@@ -65,21 +58,20 @@ export function CartClient({
 
   useEffect(() => {
     if (items.length === 0 && !loading) {
-      // Allow empty cart view briefly
     }
   }, [items, loading]);
 
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) return;
     setCouponLoading(true);
-    const result = await validateCoupon(restaurantId, couponCode, getSubtotal());
+    const result = await validateOffer(couponCode, getSubtotal());
     setCouponLoading(false);
     if (!result.isValid) {
-      toast.error(result.message || "Invalid coupon");
+      toast.error(result.message || "Invalid offer");
       return;
     }
-    applyCoupon(result.coupon!);
-    toast.success(`Coupon ${result.coupon!.code} applied!`);
+    applyCoupon(result.offer!);
+    toast.success(`Offer ${result.offer!.code} applied!`);
   };
 
   const handleCheckout = async () => {
@@ -124,7 +116,7 @@ export function CartClient({
       }
 
       const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "",
         amount: result.razorpayOrder.amount,
         currency: result.razorpayOrder.currency,
         name: restaurantName,
@@ -161,7 +153,7 @@ export function CartClient({
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-6">
         <p className="text-muted-foreground">Your cart is empty</p>
-        <Link href={`/menu/${slug}/${tableParam}`}>
+        <Link href={`/menu/${tableParam}`}>
           <Button>
             <ArrowLeft className="mr-2 size-4" />Back to Menu
           </Button>
@@ -179,7 +171,7 @@ export function CartClient({
   return (
     <div className="min-h-screen bg-background pb-8">
       <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-border/60 bg-background/95 px-4 py-4 backdrop-blur-md">
-        <Link href={`/menu/${slug}/${tableParam}`}>
+        <Link href={`/menu/${tableParam}`}>
           <Button variant="ghost" size="icon"><ArrowLeft className="size-5" /></Button>
         </Link>
         <h1 className="text-lg font-semibold">Checkout · Table {tableNumber}</h1>
@@ -235,12 +227,12 @@ export function CartClient({
           <CardContent className="pt-4">
             {coupon ? (
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-green-600">Coupon {coupon.code} applied</span>
+                <span className="text-sm font-medium text-green-600">Offer {coupon.code} applied</span>
                 <Button variant="ghost" size="sm" onClick={removeCoupon}>Remove</Button>
               </div>
             ) : (
               <div className="flex gap-2">
-                <Input placeholder="Coupon code" value={couponCode} onChange={(e) => setCouponCode(e.target.value.toUpperCase())} />
+                <Input placeholder="Offer code" value={couponCode} onChange={(e) => setCouponCode(e.target.value.toUpperCase())} />
                 <Button variant="outline" onClick={handleApplyCoupon} disabled={couponLoading}>Apply</Button>
               </div>
             )}

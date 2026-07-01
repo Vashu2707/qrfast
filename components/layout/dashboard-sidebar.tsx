@@ -27,7 +27,7 @@ const adminLinks = [
   { href: "/dashboard/orders", label: "Orders", icon: ShoppingBag },
   { href: "/dashboard/menu", label: "Menu", icon: UtensilsCrossed },
   { href: "/dashboard/tables", label: "Tables", icon: Grid3X3 },
-  { href: "/dashboard/coupons", label: "Coupons", icon: Ticket },
+  { href: "/dashboard/offers", label: "Offers", icon: Ticket },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
@@ -36,7 +36,6 @@ interface DashboardSidebarProps {
     name: string | null;
     email: string;
     role: Role;
-    restaurant?: { name: string; slug: string } | null;
   };
   unreadCount?: number;
 }
@@ -58,7 +57,6 @@ export function DashboardSidebar({ user, unreadCount = 0 }: DashboardSidebarProp
         <Link href="/dashboard" className="text-lg font-semibold tracking-tight">
           QRFast
         </Link>
-        <p className="mt-1 truncate text-xs text-muted-foreground">{user.restaurant?.name}</p>
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">

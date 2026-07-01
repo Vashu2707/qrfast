@@ -2,11 +2,11 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 export interface CartItem {
-  id: string; // Composite ID of menuItemId + variantId + addonIds
+  id: string;
   menuItemId: string;
   name: string;
   image?: string;
-  price: number; // Price of unit (including variant)
+  price: number;
   quantity: number;
   notes?: string;
   isVeg: boolean;
@@ -35,12 +35,10 @@ interface CartStore {
   items: CartItem[];
   tableId: string;
   tableNumber: string;
-  restaurantSlug: string;
-  restaurantId: string;
   notes: string;
   coupon: Coupon | null;
-  
-  setTable: (tableId: string, tableNumber: string, restaurantSlug: string, restaurantId: string) => void;
+
+  setTable: (tableId: string, tableNumber: string) => void;
   addItem: (item: Omit<CartItem, "id">) => void;
   removeItem: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
@@ -49,7 +47,6 @@ interface CartStore {
   removeCoupon: () => void;
   clearCart: () => void;
 
-  // Calculators
   getSubtotal: () => number;
   getDiscountAmount: () => number;
   getGstAmount: (gstPercentage: number) => number;
@@ -57,7 +54,6 @@ interface CartStore {
   getTotalAmount: (gstPercentage: number, serviceChargePercentage: number) => number;
 }
 
-// Helper to generate a unique composite ID for different customizations of the same menuItem
 const generateCompositeId = (
   menuItemId: string,
   customizations?: CartItem["customizations"]
@@ -76,13 +72,11 @@ export const useCart = create<CartStore>()(
       items: [],
       tableId: "",
       tableNumber: "",
-      restaurantSlug: "",
-      restaurantId: "",
       notes: "",
       coupon: null,
 
-      setTable: (tableId, tableNumber, restaurantSlug, restaurantId) =>
-        set({ tableId, tableNumber, restaurantSlug, restaurantId }),
+      setTable: (tableId, tableNumber) =>
+        set({ tableId, tableNumber }),
 
       addItem: (newItem) => {
         const id = generateCompositeId(newItem.menuItemId, newItem.customizations);

@@ -17,8 +17,18 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "QRFast | Smart QR Dine-In Menu & Ordering System",
+  title: {
+    default: "QRFast | Smart QR Dine-In Menu & Ordering System",
+    template: "%s | QRFast",
+  },
   description: "Browse the menu, customize your order, and pay instantly from your table. A seamless and contactless restaurant dine-in experience.",
+  keywords: ["QR menu", "restaurant ordering", "dine-in", "contactless menu", "QR code restaurant"],
+  authors: [{ name: "QRFast" }],
+  openGraph: {
+    title: "QRFast | Smart QR Dine-In Ordering System",
+    description: "Contactless tableside ordering, digital checkout, and admin insights for modern restaurants.",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
@@ -27,7 +37,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={cn("font-sans")}>
+    <html lang="en" className={cn("font-sans")} suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

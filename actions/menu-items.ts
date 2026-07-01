@@ -6,10 +6,9 @@ import { revalidatePath } from "next/cache";
 
 export async function getMenuItems() {
   const user = await getCurrentUser();
-  if (!user || !user.restaurantId) throw new Error("Unauthorized");
+  if (!user) throw new Error("Unauthorized");
 
   return prisma.menuItem.findMany({
-    where: { restaurantId: user.restaurantId },
     include: {
       category: true,
       variants: true,
@@ -21,7 +20,7 @@ export async function getMenuItems() {
 
 export async function createMenuItem(data: any) {
   const user = await getCurrentUser();
-  if (!user || !user.restaurantId) return { error: "Unauthorized" };
+  if (!user) return { error: "Unauthorized" };
 
   try {
     const menuItem = await prisma.$transaction(async (tx) => {
@@ -39,7 +38,6 @@ export async function createMenuItem(data: any) {
           allergens: data.allergens || [],
           nutrition: data.nutrition || null,
           categoryId: data.categoryId,
-          restaurantId: user.restaurantId!,
         },
       });
 
@@ -77,13 +75,12 @@ export async function createMenuItem(data: any) {
 
 export async function updateMenuItem(id: string, data: any) {
   const user = await getCurrentUser();
-  if (!user || !user.restaurantId) return { error: "Unauthorized" };
+  if (!user) return { error: "Unauthorized" };
 
   try {
     const menuItem = await prisma.$transaction(async (tx) => {
-      // 1. Update the base item
       const item = await tx.menuItem.update({
-        where: { id, restaurantId: user.restaurantId! },
+        where: { id },
         data: {
           name: data.name,
           description: data.description,
@@ -100,11 +97,9 @@ export async function updateMenuItem(id: string, data: any) {
         },
       });
 
-      // 2. Clear old variants and addons
       await tx.variant.deleteMany({ where: { menuItemId: id } });
       await tx.addon.deleteMany({ where: { menuItemId: id } });
 
-      // 3. Insert new variants and addons
       if (data.variants && data.variants.length > 0) {
         await tx.variant.createMany({
           data: data.variants.map((v: any) => ({
@@ -139,11 +134,11 @@ export async function updateMenuItem(id: string, data: any) {
 
 export async function deleteMenuItem(id: string) {
   const user = await getCurrentUser();
-  if (!user || !user.restaurantId) return { error: "Unauthorized" };
+  if (!user) return { error: "Unauthorized" };
 
   try {
     await prisma.menuItem.delete({
-      where: { id, restaurantId: user.restaurantId },
+      where: { id },
     });
     revalidatePath("/dashboard/menu");
     return { success: true };
@@ -154,11 +149,11 @@ export async function deleteMenuItem(id: string) {
 
 export async function toggleMenuItemAvailability(id: string, isAvailable: boolean) {
   const user = await getCurrentUser();
-  if (!user || !user.restaurantId) return { error: "Unauthorized" };
+  if (!user) return { error: "Unauthorized" };
 
   try {
     await prisma.menuItem.update({
-      where: { id, restaurantId: user.restaurantId },
+      where: { id },
       data: { isAvailable },
     });
     revalidatePath("/dashboard/menu");

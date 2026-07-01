@@ -16,34 +16,82 @@ import {
 import { requestService } from "@/actions/orders";
 import { toast } from "sonner";
 
-type MenuData = NonNullable<Awaited<ReturnType<typeof import("@/actions/public-menu").getPublicMenu>>>;
+interface MenuData {
+  restaurant: {
+    restaurantName: string;
+    logo: string | null;
+    banner: string | null;
+    primaryColor: string;
+  };
+  table: {
+    id: string;
+    number: string;
+  };
+  bestsellers: Array<{
+    id: string;
+    name: string;
+    description: string | null;
+    price: number;
+    discountPrice: number | null;
+    isVeg: boolean;
+    spicyLevel: number;
+    preparationTime: number;
+    images: string[];
+    ingredients: string[];
+    allergens: string[];
+    variants: { id: string; name: string; price: number }[];
+    addons: { id: string; name: string; price: number; isVeg: boolean }[];
+    category: { id: string; name: string };
+  }>;
+  newItems: Array<Record<string, unknown>>;
+  reviews: Array<Record<string, unknown>>;
+  categories: Array<{
+    id: string;
+    name: string;
+    description: string | null;
+    menuItems: Array<{
+      id: string;
+      name: string;
+      description: string | null;
+      price: number;
+      discountPrice: number | null;
+      isVeg: boolean;
+      spicyLevel: number;
+      preparationTime: number;
+      images: string[];
+      ingredients: string[];
+      allergens: string[];
+      variants: { id: string; name: string; price: number }[];
+      addons: { id: string; name: string; price: number; isVeg: boolean }[];
+    }>;
+  }>;
+}
 
 interface Props {
   data: MenuData;
-  slug: string;
   tableParam: string;
 }
 
-export function MenuClient({ data, slug, tableParam }: Props) {
-  const { restaurant, table, bestsellers } = data;
-  const settings = restaurant.settings!;
+export function MenuClient({ data, tableParam }: Props) {
+  const { restaurant, table, bestsellers, categories } = data;
   const { items, setTable, getSubtotal } = useCart();
 
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [vegFilter, setVegFilter] = useState<"all" | "veg" | "nonveg">("all");
-  const [selectedItem, setSelectedItem] = useState<MenuData["restaurant"]["categories"][0]["menuItems"][0] | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [selectedItem, setSelectedItem] = useState<any>(null);
   const [sortBy, setSortBy] = useState<"name" | "price-low" | "price-high">("name");
 
   useEffect(() => {
-    setTable(table.id, table.number, slug, restaurant.id);
-  }, [table.id, table.number, slug, restaurant.id, setTable]);
+    setTable(table.id, table.number);
+  }, [table.id, table.number, setTable]);
 
   const allItems = useMemo(() => {
-    return restaurant.categories.flatMap((c) =>
+    return categories.flatMap((c) =>
       c.menuItems.map((item) => ({ ...item, categoryName: c.name, categoryId: c.id }))
     );
-  }, [restaurant.categories]);
+  }, [categories]);
 
   const filteredItems = useMemo(() => {
     let result = allItems;
@@ -76,7 +124,7 @@ export function MenuClient({ data, slug, tableParam }: Props) {
       {/* Hero Banner */}
       <div className="relative h-48 overflow-hidden sm:h-56">
         {restaurant.banner && (
-          <Image src={restaurant.banner} alt={restaurant.name} fill className="object-cover" priority />
+          <Image src={restaurant.banner} alt={restaurant.restaurantName} fill className="object-cover" priority />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
         <div className="absolute inset-x-0 top-0 flex items-center justify-between p-4">
@@ -91,7 +139,7 @@ export function MenuClient({ data, slug, tableParam }: Props) {
               </div>
             )}
             <div>
-              <h1 className="text-2xl font-bold tracking-tight">{restaurant.name}</h1>
+              <h1 className="text-2xl font-bold tracking-tight">{restaurant.restaurantName}</h1>
               <p className="text-sm text-muted-foreground">Table {table.number} · Dine-In Menu</p>
             </div>
           </div>
@@ -127,7 +175,7 @@ export function MenuClient({ data, slug, tableParam }: Props) {
                   </div>
                 )}
                 <p className="truncate text-sm font-medium">{item.name}</p>
-                <p className="text-sm font-bold" style={{ color: settings.primaryColor }}>
+                <p className="text-sm font-bold" style={{ color: restaurant.primaryColor }}>
                   {formatCurrency(item.discountPrice || item.price)}
                 </p>
               </button>
@@ -155,7 +203,7 @@ export function MenuClient({ data, slug, tableParam }: Props) {
           >
             All
           </button>
-          {restaurant.categories.map((cat) => (
+          {categories.map((cat) => (
             <button
               key={cat.id}
               onClick={() => setActiveCategory(cat.id)}
@@ -210,7 +258,7 @@ export function MenuClient({ data, slug, tableParam }: Props) {
                 </div>
                 <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{item.description}</p>
                 <div className="mt-2 flex items-center gap-2">
-                  <span className="font-bold" style={{ color: settings.primaryColor }}>
+                  <span className="font-bold" style={{ color: restaurant.primaryColor }}>
                     {formatCurrency(item.discountPrice || item.price)}
                   </span>
                   {item.discountPrice && (
@@ -228,8 +276,8 @@ export function MenuClient({ data, slug, tableParam }: Props) {
       {/* Sticky Cart Bar */}
       {cartCount > 0 && (
         <div className="fixed bottom-0 inset-x-0 z-30 border-t border-border/60 bg-card/95 p-4 backdrop-blur-md">
-          <Link href={`/menu/${slug}/${tableParam}/cart`}>
-            <Button className="w-full h-12 text-base" style={{ backgroundColor: settings.primaryColor }}>
+          <Link href={`/menu/${tableParam}/cart`}>
+            <Button className="w-full h-12 text-base" style={{ backgroundColor: restaurant.primaryColor }}>
               <ShoppingBag className="mr-2 size-5" />
               {cartCount} item{cartCount > 1 ? "s" : ""} · {formatCurrency(cartTotal)}
               <ChevronRight className="ml-auto size-5" />
@@ -241,7 +289,7 @@ export function MenuClient({ data, slug, tableParam }: Props) {
       {selectedItem && (
         <MenuItemDialog
           item={selectedItem}
-          primaryColor={settings.primaryColor}
+          primaryColor={restaurant.primaryColor}
           onClose={() => setSelectedItem(null)}
         />
       )}

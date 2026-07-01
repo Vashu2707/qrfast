@@ -7,26 +7,21 @@ import QRCode from "qrcode";
 
 export async function getTables() {
   const user = await getCurrentUser();
-  if (!user || !user.restaurantId) throw new Error("Unauthorized");
+  if (!user) throw new Error("Unauthorized");
 
   return prisma.table.findMany({
-    where: { restaurantId: user.restaurantId },
     orderBy: { number: "asc" },
   });
 }
 
 export async function createTable(data: { number: string }) {
   const user = await getCurrentUser();
-  if (!user || !user.restaurantId || !user.restaurant) {
-    return { error: "Unauthorized" };
-  }
+  if (!user) return { error: "Unauthorized" };
 
   try {
-    const slug = user.restaurant.slug;
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const qrTargetUrl = `${appUrl}/menu/${slug}/table-${data.number}`;
+    const qrTargetUrl = `${appUrl}/menu/table-${data.number}`;
 
-    // Generate high-quality QR code data URL (Base64 PNG)
     const qrCodeDataUrl = await QRCode.toDataURL(qrTargetUrl, {
       errorCorrectionLevel: "H",
       margin: 2,
@@ -40,7 +35,6 @@ export async function createTable(data: { number: string }) {
     const table = await prisma.table.create({
       data: {
         number: data.number,
-        restaurantId: user.restaurantId,
         qrCodeUrl: qrCodeDataUrl,
       },
     });
@@ -49,17 +43,17 @@ export async function createTable(data: { number: string }) {
     return { success: true, table };
   } catch (error: any) {
     console.error("Table create failure:", error);
-    return { error: "A table with this number already exists in this restaurant." };
+    return { error: "A table with this number already exists." };
   }
 }
 
 export async function deleteTable(id: string) {
   const user = await getCurrentUser();
-  if (!user || !user.restaurantId) return { error: "Unauthorized" };
+  if (!user) return { error: "Unauthorized" };
 
   try {
     await prisma.table.delete({
-      where: { id, restaurantId: user.restaurantId },
+      where: { id },
     });
     revalidatePath("/dashboard/tables");
     return { success: true };
@@ -70,11 +64,11 @@ export async function deleteTable(id: string) {
 
 export async function updateTableStatus(id: string, status: any) {
   const user = await getCurrentUser();
-  if (!user || !user.restaurantId) return { error: "Unauthorized" };
+  if (!user) return { error: "Unauthorized" };
 
   try {
     const table = await prisma.table.update({
-      where: { id, restaurantId: user.restaurantId },
+      where: { id },
       data: { status },
     });
     revalidatePath("/dashboard/tables");

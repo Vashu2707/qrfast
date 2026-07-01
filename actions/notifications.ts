@@ -6,10 +6,9 @@ import { revalidatePath } from "next/cache";
 
 export async function getNotifications() {
   const user = await getCurrentUser();
-  if (!user?.restaurantId) throw new Error("Unauthorized");
+  if (!user) throw new Error("Unauthorized");
 
   return prisma.notification.findMany({
-    where: { restaurantId: user.restaurantId },
     orderBy: { createdAt: "desc" },
     take: 50,
   });
@@ -17,10 +16,10 @@ export async function getNotifications() {
 
 export async function markNotificationRead(id: string) {
   const user = await getCurrentUser();
-  if (!user?.restaurantId) return { error: "Unauthorized" };
+  if (!user) return { error: "Unauthorized" };
 
   await prisma.notification.update({
-    where: { id, restaurantId: user.restaurantId },
+    where: { id },
     data: { isRead: true },
   });
 
@@ -30,10 +29,10 @@ export async function markNotificationRead(id: string) {
 
 export async function markAllNotificationsRead() {
   const user = await getCurrentUser();
-  if (!user?.restaurantId) return { error: "Unauthorized" };
+  if (!user) return { error: "Unauthorized" };
 
   await prisma.notification.updateMany({
-    where: { restaurantId: user.restaurantId, isRead: false },
+    where: { isRead: false },
     data: { isRead: true },
   });
 
@@ -43,9 +42,9 @@ export async function markAllNotificationsRead() {
 
 export async function getUnreadNotificationCount() {
   const user = await getCurrentUser();
-  if (!user?.restaurantId) return 0;
+  if (!user) return 0;
 
   return prisma.notification.count({
-    where: { restaurantId: user.restaurantId, isRead: false },
+    where: { isRead: false },
   });
 }

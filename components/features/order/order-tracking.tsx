@@ -82,12 +82,12 @@ export function OrderTrackingClient({ orderId }: { orderId: string }) {
   }
 
   const currentStepIndex = STATUS_STEPS.indexOf(order.status);
-  const primaryColor = order.restaurant.settings?.primaryColor || "#E11D48";
+  const primaryColor = "#E11D48";
 
   return (
     <div className="min-h-screen bg-background">
       <div className="border-b border-border/60 px-4 py-6 text-center">
-        <h1 className="text-xl font-bold">{order.restaurant.name}</h1>
+        <h1 className="text-xl font-bold">Order Tracking</h1>
         <p className="text-sm text-muted-foreground">Table {order.table.number} · Order Tracking</p>
       </div>
 
@@ -180,7 +180,7 @@ export function OrderTrackingClient({ orderId }: { orderId: string }) {
 
         {reviewSubmitted && (
           <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-center text-sm text-green-800 dark:border-green-800 dark:bg-green-900/20 dark:text-green-300">
-            Thank you for your feedback! 🎉
+            Thank you for your feedback!
           </div>
         )}
       </div>

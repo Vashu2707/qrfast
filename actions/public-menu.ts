@@ -2,48 +2,34 @@
 
 import prisma from "@/lib/prisma";
 
-export async function getPublicMenu(slug: string, tableParam: string) {
+export async function getPublicMenu(tableParam: string) {
   const tableNumber = tableParam.replace(/^table-/, "");
 
-  const restaurant = await prisma.restaurant.findUnique({
-    where: { slug, isActive: true },
+  const settings = await prisma.settings.findUnique({
+    where: { id: "singleton" },
+  });
+
+  if (!settings) return null;
+
+  const categories = await prisma.category.findMany({
+    orderBy: { sortOrder: "asc" },
     include: {
-      settings: true,
-      categories: {
-        orderBy: { sortOrder: "asc" },
-        include: {
-          menuItems: {
-            where: { isAvailable: true },
-            include: { variants: true, addons: true },
-            orderBy: { name: "asc" },
-          },
-        },
-      },
       menuItems: {
         where: { isAvailable: true },
-        include: { variants: true, addons: true, category: true },
-        orderBy: { createdAt: "desc" },
-        take: 6,
+        include: { variants: true, addons: true },
+        orderBy: { name: "asc" },
       },
     },
   });
 
-  if (!restaurant) return null;
-
   const table = await prisma.table.findUnique({
-    where: {
-      restaurantId_number: {
-        restaurantId: restaurant.id,
-        number: tableNumber,
-      },
-    },
+    where: { number: tableNumber },
   });
 
   if (!table) return null;
 
   const popularItems = await prisma.orderItem.groupBy({
     by: ["menuItemId"],
-    where: { menuItem: { restaurantId: restaurant.id } },
     _sum: { quantity: true },
     orderBy: { _sum: { quantity: "desc" } },
     take: 8,
@@ -57,30 +43,32 @@ export async function getPublicMenu(slug: string, tableParam: string) {
       })
     : [];
 
+  const newItems = await prisma.menuItem.findMany({
+    where: { isAvailable: true },
+    include: { variants: true, addons: true, category: true },
+    orderBy: { createdAt: "desc" },
+    take: 6,
+  });
+
   const reviews = await prisma.review.findMany({
-    where: { menuItem: { restaurantId: restaurant.id } },
     include: { menuItem: true },
     orderBy: { createdAt: "desc" },
     take: 10,
   });
 
   return {
-    restaurant,
+    restaurant: settings,
     table,
+    categories,
     bestsellers,
-    newItems: restaurant.menuItems,
+    newItems,
     reviews,
   };
 }
 
-export async function getPublicMenuItem(slug: string, itemId: string) {
-  const restaurant = await prisma.restaurant.findUnique({
-    where: { slug, isActive: true },
-  });
-  if (!restaurant) return null;
-
+export async function getPublicMenuItem(itemId: string) {
   return prisma.menuItem.findFirst({
-    where: { id: itemId, restaurantId: restaurant.id, isAvailable: true },
+    where: { id: itemId, isAvailable: true },
     include: { variants: true, addons: true, category: true, reviews: true },
   });
 }

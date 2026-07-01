@@ -6,9 +6,8 @@ import { OrderStatus, PaymentStatus } from "@prisma/client";
 
 export async function getDashboardStats() {
   const user = await getCurrentUser();
-  if (!user?.restaurantId) throw new Error("Unauthorized");
+  if (!user) throw new Error("Unauthorized");
 
-  const restaurantId = user.restaurantId;
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
 
@@ -22,36 +21,33 @@ export async function getDashboardStats() {
     allOrders,
   ] = await Promise.all([
     prisma.order.count({
-      where: { restaurantId, createdAt: { gte: todayStart } },
+      where: { createdAt: { gte: todayStart } },
     }),
     prisma.order.count({
       where: {
-        restaurantId,
         status: { in: [OrderStatus.PLACED, OrderStatus.CONFIRMED, OrderStatus.PREPARING, OrderStatus.READY] },
       },
     }),
     prisma.order.count({
-      where: { restaurantId, status: OrderStatus.COMPLETED, createdAt: { gte: todayStart } },
+      where: { status: OrderStatus.COMPLETED, createdAt: { gte: todayStart } },
     }),
     prisma.order.aggregate({
       where: {
-        restaurantId,
         paymentStatus: PaymentStatus.SUCCESS,
         createdAt: { gte: todayStart },
       },
       _sum: { totalAmount: true },
     }),
-    prisma.table.count({ where: { restaurantId } }),
-    prisma.table.count({ where: { restaurantId, status: "OCCUPIED" } }),
+    prisma.table.count(),
+    prisma.table.count({ where: { status: "OCCUPIED" } }),
     prisma.order.findMany({
-      where: { restaurantId, createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } },
+      where: { createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } },
       select: { totalAmount: true, createdAt: true, paymentStatus: true },
     }),
   ]);
 
   const popularItems = await prisma.orderItem.groupBy({
     by: ["menuItemId"],
-    where: { order: { restaurantId } },
     _sum: { quantity: true },
     orderBy: { _sum: { quantity: "desc" } },
     take: 5,
@@ -109,10 +105,9 @@ export async function getDashboardStats() {
 
 export async function exportOrdersCSV() {
   const user = await getCurrentUser();
-  if (!user?.restaurantId) throw new Error("Unauthorized");
+  if (!user) throw new Error("Unauthorized");
 
   const orders = await prisma.order.findMany({
-    where: { restaurantId: user.restaurantId },
     include: { table: true },
     orderBy: { createdAt: "desc" },
   });

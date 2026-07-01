@@ -6,7 +6,6 @@ export function getDefaultRouteForRole(role: Role): string {
       return "/kitchen";
     case Role.CASHIER:
       return "/cashier";
-    case Role.SUPERADMIN:
     case Role.ADMIN:
     default:
       return "/dashboard";
@@ -14,13 +13,13 @@ export function getDefaultRouteForRole(role: Role): string {
 }
 
 export function canAccessDashboard(role: Role): boolean {
-  return role === Role.ADMIN || role === Role.SUPERADMIN;
+  return role === Role.ADMIN;
 }
 
 export function canAccessKitchen(role: Role): boolean {
-  return role === Role.KITCHEN || role === Role.ADMIN || role === Role.SUPERADMIN;
+  return role === Role.KITCHEN || role === Role.ADMIN;
 }
 
 export function canAccessCashier(role: Role): boolean {
-  return role === Role.CASHIER || role === Role.ADMIN || role === Role.SUPERADMIN;
+  return role === Role.CASHIER || role === Role.ADMIN;
 }

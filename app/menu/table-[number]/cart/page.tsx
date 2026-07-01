@@ -1,0 +1,32 @@
+import { notFound } from "next/navigation";
+import { getPublicMenu } from "@/actions/public-menu";
+import { CartClient } from "@/components/features/menu/cart-client";
+import prisma from "@/lib/prisma";
+
+export const dynamic = "force-dynamic";
+
+interface Props {
+  params: Promise<{ number: string }>;
+}
+
+export default async function CartPage({ params }: Props) {
+  const { number } = await params;
+  const tableParam = `table-${number}`;
+  const data = await getPublicMenu(tableParam);
+
+  if (!data) notFound();
+
+  const settings = await prisma.settings.findUnique({
+    where: { id: "singleton" },
+  });
+
+  return (
+    <CartClient
+      tableParam={tableParam}
+      gstPercentage={settings?.gstPercentage ?? 5}
+      serviceChargePercentage={settings?.serviceChargePercentage ?? 0}
+      primaryColor={settings?.primaryColor ?? "#E11D48"}
+      restaurantName={settings?.restaurantName ?? "Restaurant"}
+    />
+  );
+}

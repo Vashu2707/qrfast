@@ -46,8 +46,8 @@ export default function LoginPage() {
   return (
     <Card className="w-full max-w-md border-border/60 shadow-xl">
       <CardHeader className="text-center">
-        <CardTitle className="text-2xl">Restaurant Login</CardTitle>
-        <CardDescription>Sign in to manage your restaurant</CardDescription>
+        <CardTitle className="text-2xl">Staff Login</CardTitle>
+        <CardDescription>Sign in to manage the restaurant</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -71,12 +71,6 @@ export default function LoginPage() {
             Sign In
           </Button>
         </form>
-        <p className="mt-6 text-center text-sm text-muted-foreground">
-          New restaurant?{" "}
-          <Link href="/signup" className="font-medium text-foreground hover:underline">
-            Create account
-          </Link>
-        </p>
       </CardContent>
     </Card>
   );
