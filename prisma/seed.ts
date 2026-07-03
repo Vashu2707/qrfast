@@ -54,9 +54,9 @@ async function main() {
   });
 
   console.log("Creating admin users...");
-  const adminId = "d007c0de-adad-4074-b525-4560d0a7a0b0";
-  const kitchenId = "k107c0de-adad-4074-b525-4560d0a7a0b1";
-  const cashierId = "c207c0de-adad-4074-b525-4560d0a7a0b2";
+  const adminId = "44906845-303e-4479-be34-7edd22c56581";
+  const kitchenId = "96a5492c-5b02-418e-9d3d-868eb916af0d";
+  const cashierId = "fd7ab4ab-5c77-45d3-bb6b-4714ec594691";
 
   await prisma.adminUser.createMany({
     data: [

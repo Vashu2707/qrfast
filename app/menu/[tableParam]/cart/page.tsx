@@ -6,12 +6,11 @@ import prisma from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 
 interface Props {
-  params: Promise<{ number: string }>;
+  params: Promise<{ tableParam: string }>;
 }
 
 export default async function CartPage({ params }: Props) {
-  const { number } = await params;
-  const tableParam = `table-${number}`;
+  const { tableParam } = await params;
   const data = await getPublicMenu(tableParam);
 
   if (!data) notFound();

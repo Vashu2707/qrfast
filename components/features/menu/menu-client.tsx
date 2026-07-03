@@ -3,15 +3,17 @@
 import { useEffect, useState, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { motion, AnimatePresence, type Variants } from "framer-motion";
 import { useCart } from "@/hooks/use-cart";
 import { formatCurrency } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { MenuItemDialog } from "@/components/features/menu/menu-item-dialog";
 import {
-  Search, ShoppingBag, Leaf, Flame, Bell, Receipt,
-  Star, ChevronRight, Filter,
+  Search, ShoppingBag, Bell, Receipt,
+  Star, ChevronRight, Filter, Sparkles, Crown,
 } from "lucide-react";
 import { requestService } from "@/actions/orders";
 import { toast } from "sonner";
@@ -39,12 +41,36 @@ interface MenuData {
     images: string[];
     ingredients: string[];
     allergens: string[];
+    isChefSpecial?: boolean;
     variants: { id: string; name: string; price: number }[];
     addons: { id: string; name: string; price: number; isVeg: boolean }[];
     category: { id: string; name: string };
   }>;
-  newItems: Array<Record<string, unknown>>;
-  reviews: Array<Record<string, unknown>>;
+  newItems: Array<{
+    id: string;
+    name: string;
+    description: string | null;
+    price: number;
+    discountPrice: number | null;
+    isVeg: boolean;
+    spicyLevel: number;
+    preparationTime: number;
+    images: string[];
+    ingredients: string[];
+    allergens: string[];
+    isChefSpecial?: boolean;
+    variants: { id: string; name: string; price: number }[];
+    addons: { id: string; name: string; price: number; isVeg: boolean }[];
+    category: { id: string; name: string };
+  }>;
+  reviews: Array<{
+    id: string;
+    customerName: string;
+    rating: number;
+    comment: string | null;
+    createdAt: Date | string;
+    menuItem: { name: string } | null;
+  }>;
   categories: Array<{
     id: string;
     name: string;
@@ -61,6 +87,7 @@ interface MenuData {
       images: string[];
       ingredients: string[];
       allergens: string[];
+      isChefSpecial?: boolean;
       variants: { id: string; name: string; price: number }[];
       addons: { id: string; name: string; price: number; isVeg: boolean }[];
     }>;
@@ -72,8 +99,54 @@ interface Props {
   tableParam: string;
 }
 
+/** Veg/Non-veg FSSAI-style square indicator */
+function VegIndicator({ isVeg }: { isVeg: boolean }) {
+  return (
+    <span
+      className={`inline-flex size-4 shrink-0 items-center justify-center rounded-sm border-2 ${
+        isVeg ? "border-green-600" : "border-red-600"
+      }`}
+    >
+      <span
+        className={`size-2 rounded-full ${isVeg ? "bg-green-600" : "bg-red-600"}`}
+      />
+    </span>
+  );
+}
+
+/** Spicy flame dots (1-3) */
+function SpicyLevel({ level }: { level: number }) {
+  if (level === 0) return null;
+  return (
+    <span className="flex items-center gap-0.5" title={`Spicy level ${level}/3`}>
+      {Array.from({ length: level }).map((_, i) => (
+        <span key={i} className="text-[11px]">🌶️</span>
+      ))}
+    </span>
+  );
+}
+
+/** Chef special crown badge */
+function ChefSpecialBadge() {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
+      <Crown className="size-2.5" />
+      Chef&apos;s Special
+    </span>
+  );
+}
+
+const cardVariants: Variants = {
+  hidden: { opacity: 0, y: 16 },
+  visible: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: { delay: i * 0.04, duration: 0.3, ease: [0.25, 0.1, 0.25, 1] as [number, number, number, number] },
+  }),
+};
+
 export function MenuClient({ data, tableParam }: Props) {
-  const { restaurant, table, bestsellers, categories } = data;
+  const { restaurant, table, bestsellers, newItems, reviews, categories } = data;
   const { items, setTable, getSubtotal } = useCart();
 
   const [search, setSearch] = useState("");
@@ -101,8 +174,8 @@ export function MenuClient({ data, tableParam }: Props) {
     if (search) result = result.filter((i) => i.name.toLowerCase().includes(search.toLowerCase()));
 
     result = [...result].sort((a, b) => {
-      const priceA = a.discountPrice || a.price;
-      const priceB = b.discountPrice || b.price;
+      const priceA = a.discountPrice ?? a.price;
+      const priceB = b.discountPrice ?? b.price;
       if (sortBy === "price-low") return priceA - priceB;
       if (sortBy === "price-high") return priceB - priceA;
       return a.name.localeCompare(b.name);
@@ -119,72 +192,176 @@ export function MenuClient({ data, tableParam }: Props) {
     else toast.success(type === "CALL_WAITER" ? "Waiter has been notified!" : "Bill request sent!");
   };
 
+  const isFiltering = search || activeCategory !== "all" || vegFilter !== "all";
+
   return (
-    <div className="min-h-screen bg-background pb-24">
-      {/* Hero Banner */}
-      <div className="relative h-48 overflow-hidden sm:h-56">
-        {restaurant.banner && (
-          <Image src={restaurant.banner} alt={restaurant.restaurantName} fill className="object-cover" priority />
+    <div className="min-h-screen bg-background pb-28">
+      {/* ──────────────── Hero Banner ──────────────── */}
+      <div className="relative h-52 overflow-hidden sm:h-60">
+        {restaurant.banner ? (
+          <Image
+            src={restaurant.banner}
+            alt={restaurant.restaurantName}
+            fill
+            className="object-cover"
+            priority
+          />
+        ) : (
+          <div className="h-full w-full bg-gradient-to-br from-primary/20 to-primary/5" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
+
+        {/* Top bar */}
         <div className="absolute inset-x-0 top-0 flex items-center justify-between p-4">
           <div />
           <ThemeToggle />
         </div>
+
+        {/* Restaurant info */}
         <div className="absolute bottom-4 left-4 right-4">
           <div className="flex items-end gap-3">
             {restaurant.logo && (
-              <div className="relative size-14 overflow-hidden rounded-xl border-2 border-background shadow-lg">
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.4 }}
+                className="relative size-14 shrink-0 overflow-hidden rounded-xl border-2 border-background shadow-lg"
+              >
                 <Image src={restaurant.logo} alt="" fill className="object-cover" />
-              </div>
+              </motion.div>
             )}
-            <div>
+            <motion.div
+              initial={{ x: -10, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ duration: 0.4, delay: 0.1 }}
+            >
               <h1 className="text-2xl font-bold tracking-tight">{restaurant.restaurantName}</h1>
-              <p className="text-sm text-muted-foreground">Table {table.number} · Dine-In Menu</p>
-            </div>
+              <p className="text-sm text-muted-foreground">Table {table.number} · Dine-In</p>
+            </motion.div>
           </div>
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="flex gap-2 overflow-x-auto px-4 py-3">
+      {/* ──────────────── Quick Actions ──────────────── */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0.15 }}
+        className="flex gap-2 overflow-x-auto px-4 py-3"
+      >
         <Button variant="outline" size="sm" onClick={() => handleService("CALL_WAITER")}>
-          <Bell className="mr-1.5 size-3.5" />Call Waiter
+          <Bell className="mr-1.5 size-3.5" />
+          Call Waiter
         </Button>
         <Button variant="outline" size="sm" onClick={() => handleService("REQUEST_BILL")}>
-          <Receipt className="mr-1.5 size-3.5" />Request Bill
+          <Receipt className="mr-1.5 size-3.5" />
+          Request Bill
         </Button>
-      </div>
+      </motion.div>
 
-      {/* Bestsellers */}
-      {bestsellers.length > 0 && (
-        <section className="px-4 py-3">
+      {/* ──────────────── Bestsellers (horizontal scroll) ──────────────── */}
+      {bestsellers.length > 0 && !isFiltering && (
+        <motion.section
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4, delay: 0.2 }}
+          className="px-4 py-3"
+        >
           <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-            <Star className="size-4 text-amber-500" />Popular
+            <Star className="size-4 text-amber-500" />
+            Popular
           </h2>
-          <div className="flex gap-3 overflow-x-auto pb-2">
-            {bestsellers.map((item) => (
-              <button
+          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none">
+            {bestsellers.map((item, i) => (
+              <motion.button
                 key={item.id}
+                custom={i}
+                initial="hidden"
+                animate="visible"
+                variants={cardVariants}
                 onClick={() => setSelectedItem(item)}
-                className="w-36 shrink-0 rounded-xl border border-border/60 bg-card p-2 text-left transition-shadow hover:shadow-md"
+                className="w-36 shrink-0 rounded-xl border border-border/60 bg-card p-2 text-left transition-shadow hover:shadow-md active:scale-[0.98]"
               >
-                {item.images[0] && (
+                {item.images[0] ? (
                   <div className="relative mb-2 h-24 overflow-hidden rounded-lg">
                     <Image src={item.images[0]} alt={item.name} fill className="object-cover" />
+                    {item.isChefSpecial && (
+                      <div className="absolute left-1 top-1">
+                        <span className="flex items-center gap-0.5 rounded-full bg-amber-500 px-1.5 py-0.5 text-[9px] font-bold text-white">
+                          <Crown className="size-2" /> Chef
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="mb-2 flex h-24 items-center justify-center rounded-lg bg-muted text-3xl">
+                    🍽️
                   </div>
                 )}
-                <p className="truncate text-sm font-medium">{item.name}</p>
+                <div className="flex items-center gap-1 mb-0.5">
+                  <VegIndicator isVeg={item.isVeg} />
+                  <p className="truncate text-sm font-medium">{item.name}</p>
+                </div>
                 <p className="text-sm font-bold" style={{ color: restaurant.primaryColor }}>
-                  {formatCurrency(item.discountPrice || item.price)}
+                  {formatCurrency(item.discountPrice ?? item.price)}
                 </p>
-              </button>
+              </motion.button>
             ))}
           </div>
-        </section>
+        </motion.section>
       )}
 
-      {/* Search & Filters */}
+      {/* ──────────────── New Items (horizontal scroll) ──────────────── */}
+      {newItems.length > 0 && !isFiltering && (
+        <motion.section
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4, delay: 0.25 }}
+          className="px-4 py-3"
+        >
+          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+            <Sparkles className="size-4 text-primary" />
+            New on Menu
+          </h2>
+          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none">
+            {newItems.map((item, i) => (
+              <motion.button
+                key={item.id}
+                custom={i}
+                initial="hidden"
+                animate="visible"
+                variants={cardVariants}
+                onClick={() => setSelectedItem(item)}
+                className="w-36 shrink-0 rounded-xl border border-primary/20 bg-primary/5 p-2 text-left transition-shadow hover:shadow-md active:scale-[0.98]"
+              >
+                {item.images[0] ? (
+                  <div className="relative mb-2 h-24 overflow-hidden rounded-lg">
+                    <Image src={item.images[0]} alt={item.name} fill className="object-cover" />
+                    <div className="absolute right-1 top-1">
+                      <Badge className="bg-primary text-primary-foreground text-[9px] px-1.5 py-0.5 font-bold">
+                        NEW
+                      </Badge>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mb-2 flex h-24 items-center justify-center rounded-lg bg-muted text-3xl">
+                    🆕
+                  </div>
+                )}
+                <div className="flex items-center gap-1 mb-0.5">
+                  <VegIndicator isVeg={item.isVeg} />
+                  <p className="truncate text-sm font-medium">{item.name}</p>
+                </div>
+                <p className="text-sm font-bold" style={{ color: restaurant.primaryColor }}>
+                  {formatCurrency(item.discountPrice ?? item.price)}
+                </p>
+              </motion.button>
+            ))}
+          </div>
+        </motion.section>
+      )}
+
+      {/* ──────────────── Search & Filters ──────────────── */}
       <div className="sticky top-0 z-20 space-y-3 border-b border-border/60 bg-background/95 px-4 py-3 backdrop-blur-md">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -195,11 +372,15 @@ export function MenuClient({ data, tableParam }: Props) {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <div className="flex items-center gap-2 overflow-x-auto">
+        <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-0.5">
           <Filter className="size-4 shrink-0 text-muted-foreground" />
           <button
             onClick={() => setActiveCategory("all")}
-            className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors ${activeCategory === "all" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
+            className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+              activeCategory === "all"
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground hover:bg-muted/80"
+            }`}
           >
             All
           </button>
@@ -207,85 +388,194 @@ export function MenuClient({ data, tableParam }: Props) {
             <button
               key={cat.id}
               onClick={() => setActiveCategory(cat.id)}
-              className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors ${activeCategory === cat.id ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
+              className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                activeCategory === cat.id
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+              }`}
             >
               {cat.name}
             </button>
           ))}
-          <button onClick={() => setVegFilter(vegFilter === "veg" ? "all" : "veg")} className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium ${vegFilter === "veg" ? "bg-green-600 text-white" : "bg-muted"}`}>
-            <Leaf className="mr-1 inline size-3" />Veg
+          <button
+            onClick={() => setVegFilter(vegFilter === "veg" ? "all" : "veg")}
+            className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+              vegFilter === "veg" ? "bg-green-600 text-white" : "bg-muted text-muted-foreground"
+            }`}
+          >
+            🥬 Veg
           </button>
-          <button onClick={() => setVegFilter(vegFilter === "nonveg" ? "all" : "nonveg")} className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium ${vegFilter === "nonveg" ? "bg-red-600 text-white" : "bg-muted"}`}>
-            Non-Veg
+          <button
+            onClick={() => setVegFilter(vegFilter === "nonveg" ? "all" : "nonveg")}
+            className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+              vegFilter === "nonveg" ? "bg-red-600 text-white" : "bg-muted text-muted-foreground"
+            }`}
+          >
+            🍖 Non-Veg
           </button>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-            className="shrink-0 rounded-full border-0 bg-muted px-3 py-1 text-xs"
+            className="shrink-0 rounded-full border-0 bg-muted px-3 py-1 text-xs text-muted-foreground"
           >
-            <option value="name">Name</option>
-            <option value="price-low">Price: Low</option>
-            <option value="price-high">Price: High</option>
+            <option value="name">A-Z</option>
+            <option value="price-low">Price ↑</option>
+            <option value="price-high">Price ↓</option>
           </select>
         </div>
       </div>
 
-      {/* Menu Grid */}
+      {/* ──────────────── Menu Grid ──────────────── */}
       <div className="grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-3">
-        {filteredItems.length === 0 ? (
-          <p className="col-span-full py-12 text-center text-muted-foreground">No items found</p>
-        ) : (
-          filteredItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setSelectedItem(item)}
-              className="flex gap-4 rounded-xl border border-border/60 bg-card p-3 text-left transition-all hover:shadow-md active:scale-[0.99]"
+        <AnimatePresence mode="popLayout">
+          {filteredItems.length === 0 ? (
+            <motion.p
+              key="empty"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="col-span-full py-16 text-center text-muted-foreground"
             >
-              {item.images[0] ? (
-                <div className="relative size-24 shrink-0 overflow-hidden rounded-lg">
-                  <Image src={item.images[0]} alt={item.name} fill className="object-cover" />
+              No items found
+            </motion.p>
+          ) : (
+            filteredItems.map((item, i) => (
+              <motion.button
+                key={item.id}
+                custom={i}
+                initial="hidden"
+                animate="visible"
+                exit={{ opacity: 0, scale: 0.95 }}
+                variants={cardVariants}
+                onClick={() => setSelectedItem(item)}
+                className="flex gap-4 rounded-xl border border-border/60 bg-card p-3 text-left transition-all hover:shadow-md active:scale-[0.99]"
+              >
+                {/* Item image */}
+                {item.images[0] ? (
+                  <div className="relative size-24 shrink-0 overflow-hidden rounded-lg">
+                    <Image src={item.images[0]} alt={item.name} fill className="object-cover" />
+                    {item.isChefSpecial && (
+                      <div className="absolute bottom-0 left-0 right-0 bg-amber-500/90 py-0.5 text-center text-[9px] font-bold text-white">
+                        CHEF&apos;S SPECIAL
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex size-24 shrink-0 items-center justify-center rounded-lg bg-muted text-2xl">
+                    🍽️
+                  </div>
+                )}
+
+                {/* Item info */}
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
+                    <VegIndicator isVeg={item.isVeg} />
+                    <SpicyLevel level={item.spicyLevel} />
+                    <span className="truncate font-semibold text-sm leading-tight">{item.name}</span>
+                  </div>
+                  {item.isChefSpecial && <ChefSpecialBadge />}
+                  <p className="mt-1 line-clamp-2 text-xs text-muted-foreground leading-relaxed">
+                    {item.description}
+                  </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <span className="font-bold text-sm" style={{ color: restaurant.primaryColor }}>
+                      {formatCurrency(item.discountPrice ?? item.price)}
+                    </span>
+                    {item.discountPrice && (
+                      <span className="text-xs text-muted-foreground line-through">
+                        {formatCurrency(item.price)}
+                      </span>
+                    )}
+                    <span className="text-xs text-muted-foreground">· {item.preparationTime} min</span>
+                  </div>
                 </div>
-              ) : (
-                <div className="flex size-24 shrink-0 items-center justify-center rounded-lg bg-muted text-2xl">🍽️</div>
-              )}
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
-                  <span className={`size-3.5 rounded-sm border ${item.isVeg ? "border-green-600" : "border-red-600"}`}>
-                    <span className={`block size-full rounded-sm ${item.isVeg ? "bg-green-600" : "bg-red-600"} m-[1px] scale-50`} />
-                  </span>
-                  {item.spicyLevel > 0 && <Flame className="size-3.5 text-orange-500" />}
-                  <span className="truncate font-semibold">{item.name}</span>
-                </div>
-                <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{item.description}</p>
-                <div className="mt-2 flex items-center gap-2">
-                  <span className="font-bold" style={{ color: restaurant.primaryColor }}>
-                    {formatCurrency(item.discountPrice || item.price)}
-                  </span>
-                  {item.discountPrice && (
-                    <span className="text-xs text-muted-foreground line-through">{formatCurrency(item.price)}</span>
-                  )}
-                  <span className="text-xs text-muted-foreground">· {item.preparationTime} min</span>
-                </div>
-              </div>
-              <ChevronRight className="size-4 shrink-0 self-center text-muted-foreground" />
-            </button>
-          ))
-        )}
+
+                <ChevronRight className="size-4 shrink-0 self-center text-muted-foreground" />
+              </motion.button>
+            ))
+          )}
+        </AnimatePresence>
       </div>
 
-      {/* Sticky Cart Bar */}
-      {cartCount > 0 && (
-        <div className="fixed bottom-0 inset-x-0 z-30 border-t border-border/60 bg-card/95 p-4 backdrop-blur-md">
-          <Link href={`/menu/${tableParam}/cart`}>
-            <Button className="w-full h-12 text-base" style={{ backgroundColor: restaurant.primaryColor }}>
-              <ShoppingBag className="mr-2 size-5" />
-              {cartCount} item{cartCount > 1 ? "s" : ""} · {formatCurrency(cartTotal)}
-              <ChevronRight className="ml-auto size-5" />
-            </Button>
-          </Link>
-        </div>
+      {/* ──────────────── Customer Reviews ──────────────── */}
+      {reviews.length > 0 && !isFiltering && (
+        <motion.section
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="border-t border-border/60 px-4 py-6"
+        >
+          <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+            <Star className="size-4 text-amber-500" />
+            What Guests Say
+          </h2>
+          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none">
+            {reviews.map((review, i) => (
+              <motion.div
+                key={review.id}
+                custom={i}
+                initial="hidden"
+                animate="visible"
+                variants={cardVariants}
+                className="w-64 shrink-0 rounded-xl border border-border/60 bg-card p-4"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <p className="text-sm font-semibold">{review.customerName}</p>
+                    {review.menuItem && (
+                      <p className="text-xs text-muted-foreground">{review.menuItem.name}</p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-0.5">
+                    {Array.from({ length: 5 }).map((_, idx) => (
+                      <Star
+                        key={idx}
+                        className={`size-3 ${
+                          idx < review.rating
+                            ? "fill-amber-400 text-amber-400"
+                            : "text-muted-foreground/30"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </div>
+                {review.comment && (
+                  <p className="text-xs text-muted-foreground line-clamp-3 italic">
+                    &ldquo;{review.comment}&rdquo;
+                  </p>
+                )}
+              </motion.div>
+            ))}
+          </div>
+        </motion.section>
       )}
 
+      {/* ──────────────── Sticky Cart Bar ──────────────── */}
+      <AnimatePresence>
+        {cartCount > 0 && (
+          <motion.div
+            initial={{ y: 80, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 80, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            className="fixed inset-x-0 bottom-0 z-30 border-t border-border/60 bg-card/95 p-4 backdrop-blur-md"
+          >
+            <Link href={`/menu/${tableParam}/cart`}>
+              <Button
+                className="w-full h-12 text-base font-semibold gap-2"
+                style={{ backgroundColor: restaurant.primaryColor }}
+              >
+                <ShoppingBag className="size-5" />
+                <span>
+                  {cartCount} item{cartCount > 1 ? "s" : ""} · {formatCurrency(cartTotal)}
+                </span>
+                <ChevronRight className="ml-auto size-5" />
+              </Button>
+            </Link>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ──────────────── Item Dialog ──────────────── */}
       {selectedItem && (
         <MenuItemDialog
           item={selectedItem}

@@ -61,9 +61,9 @@ export default function TablesPage() {
   };
 
   const statusColors: Record<string, string> = {
-    AVAILABLE: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
-    OCCUPIED: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
-    RESERVED: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
+    AVAILABLE: "bg-green-100 text-green-800",
+    OCCUPIED: "bg-red-100 text-red-800",
+    RESERVED: "bg-amber-100 text-amber-800",
   };
 
   return (
