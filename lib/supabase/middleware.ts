@@ -1,4 +1,4 @@
-import { createServerClient } from "@supabase/ssr/dist/module/createServerClient";
+import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 const protectedPrefixes = ["/dashboard", "/kitchen", "/cashier"];
