@@ -1,24 +1,29 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 
-const prismaClientSingleton = () => {
-  const connectionString = process.env.DATABASE_URL;
+declare const globalThis: {
+  prismaGlobal?: PrismaClient;
+};
 
+function getClient(): PrismaClient {
+  if (globalThis.prismaGlobal) return globalThis.prismaGlobal;
+  const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
     throw new Error("DATABASE_URL is required to initialize Prisma.");
   }
-
-  return new PrismaClient({
+  const client = new PrismaClient({
     adapter: new PrismaPg({ connectionString }),
   });
-};
+  if (process.env.NODE_ENV !== "production") {
+    globalThis.prismaGlobal = client;
+  }
+  return client;
+}
 
-declare const globalThis: {
-  prismaGlobal: ReturnType<typeof prismaClientSingleton> | undefined;
-};
-
-const prisma = globalThis.prismaGlobal ?? prismaClientSingleton();
+const prisma = new Proxy<PrismaClient>({} as PrismaClient, {
+  get(_, prop) {
+    return Reflect.get(getClient(), prop);
+  },
+});
 
 export default prisma;
-
-if (process.env.NODE_ENV !== "production") globalThis.prismaGlobal = prisma;
