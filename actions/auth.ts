@@ -1,7 +1,8 @@
 "use server";
 
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
-import prisma from "@/lib/prisma";
+import prisma, { prismaWithRetry } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { unstable_rethrow } from "next/navigation";
 
@@ -56,6 +57,12 @@ export async function resetPassword(password: string) {
   return { success: true };
 }
 
+const getDbUser = cache(async (userId: string) => {
+  return prismaWithRetry(() =>
+    prisma.adminUser.findUnique({ where: { id: userId } })
+  );
+});
+
 export async function getCurrentUser() {
   try {
     const supabase = await createClient();
@@ -65,9 +72,7 @@ export async function getCurrentUser() {
 
     if (!authUser) return null;
 
-    const dbUser = await prisma.adminUser.findUnique({
-      where: { id: authUser.id },
-    });
+    const dbUser = await getDbUser(authUser.id);
 
     return dbUser;
   } catch (err) {
