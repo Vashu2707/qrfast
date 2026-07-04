@@ -8,12 +8,22 @@ import { getDefaultRouteForRole } from "@/lib/roles";
 export const dynamic = "force-dynamic";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const user = await getCurrentUser();
+  let user;
+  try {
+    user = await getCurrentUser();
+  } catch {
+    redirect("/login?redirect=/dashboard");
+  }
 
   if (!user) redirect("/login?redirect=/dashboard");
   if (!canAccessDashboard(user.role)) redirect(getDefaultRouteForRole(user.role));
 
-  const unreadCount = await getUnreadNotificationCount();
+  let unreadCount = 0;
+  try {
+    unreadCount = await getUnreadNotificationCount();
+  } catch {
+    // Ignore — non-critical
+  }
 
   return (
     <div className="flex min-h-screen bg-background">
