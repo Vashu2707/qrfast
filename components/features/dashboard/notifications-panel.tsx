@@ -1,10 +1,12 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { markNotificationRead } from "@/actions/notifications";
+import { Button } from "@/components/ui/button";
+import { markNotificationRead, markAllNotificationsRead } from "@/actions/notifications";
 import { formatDate } from "@/lib/format";
-import { Bell } from "lucide-react";
+import { Bell, CheckCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 type Notification = {
   id: string;
@@ -17,19 +19,35 @@ type Notification = {
 
 export function NotificationsPanel({ notifications }: { notifications: Notification[] }) {
   const router = useRouter();
+  const [clearing, setClearing] = useState(false);
 
   const handleRead = async (id: string) => {
     await markNotificationRead(id);
     router.refresh();
   };
 
+  const handleClearAll = async () => {
+    setClearing(true);
+    await markAllNotificationsRead();
+    setClearing(false);
+    router.refresh();
+  };
+
   return (
     <Card className="border-border/60">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Bell className="size-4" />
-          Notifications
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Bell className="size-4" />
+            Notifications
+          </CardTitle>
+          {notifications.length > 0 && (
+            <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs text-muted-foreground" onClick={handleClearAll} disabled={clearing}>
+              <CheckCheck className="size-3.5" />
+              Clear all
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="space-y-3">
         {notifications.length === 0 ? (
