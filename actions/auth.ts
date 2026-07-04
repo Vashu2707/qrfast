@@ -9,16 +9,25 @@ import { unstable_rethrow } from "next/navigation";
 import { getDefaultRouteForRole } from "@/lib/roles";
 
 export async function signIn(data: { email: string; password: string }) {
-  const supabase = await createClient();
+  let supabase;
+  try {
+    supabase = await createClient();
+  } catch (error: any) {
+    return { error: "Failed to initialize auth: " + error.message };
+  }
 
-  const { data: authData, error: authError } =
-    await supabase.auth.signInWithPassword({
+  let authData;
+  try {
+    const result = await supabase.auth.signInWithPassword({
       email: data.email,
       password: data.password,
     });
-
-  if (authError || !authData.user) {
-    return { error: authError?.message || "Invalid credentials." };
+    authData = result.data;
+    if (result.error || !authData.user) {
+      return { error: result.error?.message || "Invalid credentials." };
+    }
+  } catch (error: any) {
+    return { error: "Auth service error: " + error.message };
   }
 
   let user;
@@ -38,16 +47,26 @@ export async function signIn(data: { email: string; password: string }) {
 }
 
 export async function signUp(data: { name: string; email: string; password: string }) {
-  const supabase = await createClient();
+  let supabase;
+  try {
+    supabase = await createClient();
+  } catch (error: any) {
+    return { error: "Failed to initialize auth: " + error.message };
+  }
 
-  const { data: authData, error: authError } = await supabase.auth.signUp({
-    email: data.email,
-    password: data.password,
-    options: { data: { name: data.name } },
-  });
-
-  if (authError || !authData.user) {
-    return { error: authError?.message || "Failed to create account." };
+  let authData;
+  try {
+    const result = await supabase.auth.signUp({
+      email: data.email,
+      password: data.password,
+      options: { data: { name: data.name } },
+    });
+    authData = result.data;
+    if (result.error || !authData.user) {
+      return { error: result.error?.message || "Failed to create account." };
+    }
+  } catch (error: any) {
+    return { error: "Auth service error: " + error.message };
   }
 
   try {
@@ -67,28 +86,61 @@ export async function signUp(data: { name: string; email: string; password: stri
 }
 
 export async function signOut() {
-  const supabase = await createClient();
-  await supabase.auth.signOut();
+  try {
+    const supabase = await createClient();
+    await supabase.auth.signOut();
+  } catch {
+    // Proceed with sign-out even if Supabase call fails
+  }
   revalidatePath("/");
   return { success: true };
 }
 
 export async function forgotPassword(email: string) {
-  const supabase = await createClient();
-  const host = (await headers()).get("host") || "localhost:3000";
+  let supabase;
+  try {
+    supabase = await createClient();
+  } catch (error: any) {
+    return { error: "Failed to initialize auth: " + error.message };
+  }
+
+  let host = "localhost:3000";
+  try {
+    host = (await headers()).get("host") || "localhost:3000";
+  } catch {
+    // Use default if headers unavailable
+  }
+
   const protocol = process.env.NODE_ENV === "production" || host !== "localhost:3000" ? "https" : "http";
   const baseUrl = `${protocol}://${host}`;
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${baseUrl}/reset-password`,
-  });
-  if (error) return { error: error.message };
+
+  try {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${baseUrl}/reset-password`,
+    });
+    if (error) return { error: error.message };
+  } catch (error: any) {
+    return { error: "Failed to send reset email: " + error.message };
+  }
+
   return { success: true };
 }
 
 export async function resetPassword(password: string) {
-  const supabase = await createClient();
-  const { error } = await supabase.auth.updateUser({ password });
-  if (error) return { error: error.message };
+  let supabase;
+  try {
+    supabase = await createClient();
+  } catch (error: any) {
+    return { error: "Failed to initialize auth: " + error.message };
+  }
+
+  try {
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) return { error: error.message };
+  } catch (error: any) {
+    return { error: "Failed to reset password: " + error.message };
+  }
+
   return { success: true };
 }
 

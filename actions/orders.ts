@@ -194,28 +194,36 @@ export async function createOrder(data: any) {
 }
 
 export async function getCustomerOrder(id: string) {
-  return prisma.order.findUnique({
-    where: { id },
-    include: {
-      table: true,
-      orderItems: { include: { menuItem: true } },
-      payments: true,
-    },
-  });
+  try {
+    return prisma.order.findUnique({
+      where: { id },
+      include: {
+        table: true,
+        orderItems: { include: { menuItem: true } },
+        payments: true,
+      },
+    });
+  } catch {
+    return null;
+  }
 }
 
 export async function getOrders() {
   const user = await getCurrentUser();
   if (!user) return [];
 
-  return prisma.order.findMany({
-    include: {
-      table: true,
-      orderItems: { include: { menuItem: true } },
-      payments: true,
-    },
-    orderBy: { createdAt: "desc" },
-  });
+  try {
+    return prisma.order.findMany({
+      include: {
+        table: true,
+        orderItems: { include: { menuItem: true } },
+        payments: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  } catch {
+    return [];
+  }
 }
 
 export async function updateOrderStatus(id: string, status: OrderStatus) {

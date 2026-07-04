@@ -8,11 +8,15 @@ import QRCode from "qrcode";
 
 export async function getTables() {
   const user = await getCurrentUser();
-  if (!user) throw new Error("Unauthorized");
+  if (!user) return [];
 
-  return prisma.table.findMany({
-    orderBy: { number: "asc" },
-  });
+  try {
+    return prisma.table.findMany({
+      orderBy: { number: "asc" },
+    });
+  } catch {
+    return [];
+  }
 }
 
 export async function createTable(data: { number: string }) {

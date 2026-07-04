@@ -8,20 +8,28 @@ export async function getNotifications() {
   const user = await getCurrentUser();
   if (!user) return [];
 
-  return prisma.notification.findMany({
-    orderBy: { createdAt: "desc" },
-    take: 50,
-  });
+  try {
+    return prisma.notification.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    });
+  } catch {
+    return [];
+  }
 }
 
 export async function markNotificationRead(id: string) {
   const user = await getCurrentUser();
   if (!user) return { error: "Unauthorized" };
 
-  await prisma.notification.update({
-    where: { id },
-    data: { isRead: true },
-  });
+  try {
+    await prisma.notification.update({
+      where: { id },
+      data: { isRead: true },
+    });
+  } catch {
+    return { error: "Failed to mark notification as read." };
+  }
 
   revalidatePath("/dashboard");
   return { success: true };
@@ -31,10 +39,14 @@ export async function markAllNotificationsRead() {
   const user = await getCurrentUser();
   if (!user) return { error: "Unauthorized" };
 
-  await prisma.notification.updateMany({
-    where: { isRead: false },
-    data: { isRead: true },
-  });
+  try {
+    await prisma.notification.updateMany({
+      where: { isRead: false },
+      data: { isRead: true },
+    });
+  } catch {
+    return { error: "Failed to mark notifications as read." };
+  }
 
   revalidatePath("/dashboard");
   return { success: true };
@@ -44,7 +56,11 @@ export async function getUnreadNotificationCount() {
   const user = await getCurrentUser();
   if (!user) return 0;
 
-  return prisma.notification.count({
-    where: { isRead: false },
-  });
+  try {
+    return prisma.notification.count({
+      where: { isRead: false },
+    });
+  } catch {
+    return 0;
+  }
 }

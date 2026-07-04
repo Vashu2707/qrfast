@@ -39,8 +39,10 @@ async function withRetry<T>(fn: () => Promise<T>, attempt = 0): Promise<T> {
   }
 }
 
-function getPrismaClient(): PrismaClient {
-  if (globalThis.prismaGlobal) return globalThis.prismaGlobal;
+let prismaClient: PrismaClient | undefined;
+
+function getPrisma(): PrismaClient {
+  if (prismaClient) return prismaClient;
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
     throw new Error("DATABASE_URL is required to initialize Prisma.");
@@ -54,14 +56,16 @@ function getPrismaClient(): PrismaClient {
   const client = new PrismaClient({
     adapter: new PrismaPg(pool),
   });
-  globalThis.prismaGlobal = client;
+  prismaClient = client;
   return client;
 }
-
-const prisma = getPrismaClient();
 
 export function prismaWithRetry<T>(fn: () => Promise<T>): Promise<T> {
   return withRetry(fn);
 }
 
-export default prisma;
+export default new Proxy({} as PrismaClient, {
+  get(_, prop) {
+    return getPrisma()[prop as keyof PrismaClient];
+  },
+});
