@@ -168,3 +168,20 @@ export async function getCurrentUser() {
     return null;
   }
 }
+
+export async function getCurrentUserFast() {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.user) return null;
+
+    const dbUser = await getDbUser(session.user.id);
+    return dbUser;
+  } catch (err) {
+    unstable_rethrow(err);
+    return null;
+  }
+}

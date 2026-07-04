@@ -41,15 +41,27 @@ async function withRetry<T>(fn: () => Promise<T>, attempt = 0): Promise<T> {
 
 let prismaClient: PrismaClient | undefined;
 
+function getPoolerUrl(): string {
+  const raw = process.env.DATABASE_URL;
+  if (!raw) throw new Error("DATABASE_URL is required to initialize Prisma.");
+  try {
+    const url = new URL(raw);
+    if (url.hostname.includes("pooler.supabase.com") && url.port === "5432") {
+      url.port = "6543";
+      url.searchParams.set("pgbouncer", "true");
+    }
+    return url.toString();
+  } catch {
+    return raw;
+  }
+}
+
 function getPrisma(): PrismaClient {
   if (prismaClient) return prismaClient;
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) {
-    throw new Error("DATABASE_URL is required to initialize Prisma.");
-  }
+  const connectionString = getPoolerUrl();
   const pool = new Pool({
     connectionString,
-    max: 3,
+    max: 2,
     connectionTimeoutMillis: 30000,
     idleTimeoutMillis: 10000,
   });
