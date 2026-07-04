@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { markNotificationRead, markAllNotificationsRead } from "@/actions/notifications";
+import { markNotificationRead, clearAllNotifications } from "@/actions/notifications";
 import { formatDate } from "@/lib/format";
 import { Bell, CheckCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -38,12 +38,12 @@ export function NotificationsPanel({ notifications }: { notifications: Notificat
   const handleClearAll = async () => {
     setClearing(true);
     try {
-      const result = await markAllNotificationsRead();
+      const result = await clearAllNotifications();
       if (result?.error) {
         toast.error(result.error);
         return;
       }
-      toast.success("All notifications marked as read.");
+      toast.success("All notifications cleared.");
       router.refresh();
     } catch {
       toast.error("Failed to clear notifications.");

@@ -35,17 +35,14 @@ export async function markNotificationRead(id: string) {
   return { success: true };
 }
 
-export async function markAllNotificationsRead() {
+export async function clearAllNotifications() {
   const user = await getCurrentUser();
   if (!user) return { error: "Unauthorized" };
 
   try {
-    await prisma.notification.updateMany({
-      where: { isRead: false },
-      data: { isRead: true },
-    });
+    await prisma.notification.deleteMany({});
   } catch {
-    return { error: "Failed to mark notifications as read." };
+    return { error: "Failed to clear notifications." };
   }
 
   revalidatePath("/dashboard");

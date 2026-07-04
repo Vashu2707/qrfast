@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getCurrentUserFast } from "@/actions/auth";
+import { getCurrentUser } from "@/actions/auth";
 import { getUnreadNotificationCount } from "@/actions/notifications";
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
 import { canAccessDashboard } from "@/lib/roles";
@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [user, unreadCount] = await Promise.all([
-    getCurrentUserFast().catch(() => null),
+    getCurrentUser().catch(() => null),
     getUnreadNotificationCount().catch(() => 0),
   ]);
 
