@@ -34,6 +34,35 @@ export async function signIn(data: { email: string; password: string }) {
   }
 }
 
+export async function signUp(data: { name: string; email: string; password: string }) {
+  const supabase = await createClient();
+
+  const { data: authData, error: authError } = await supabase.auth.signUp({
+    email: data.email,
+    password: data.password,
+    options: { data: { name: data.name } },
+  });
+
+  if (authError || !authData.user) {
+    return { error: authError?.message || "Failed to create account." };
+  }
+
+  try {
+    await prisma.adminUser.create({
+      data: {
+        id: authData.user.id,
+        email: data.email,
+        name: data.name,
+        role: "ADMIN",
+      },
+    });
+  } catch (error: any) {
+    return { error: "Failed to create staff record: " + error.message };
+  }
+
+  return { success: true };
+}
+
 export async function signOut() {
   const supabase = await createClient();
   await supabase.auth.signOut();
