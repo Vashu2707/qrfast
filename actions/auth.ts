@@ -74,8 +74,12 @@ export async function signOut() {
 
 export async function forgotPassword(email: string) {
   const supabase = await createClient();
+  const { headers } = await import("next/headers");
+  const host = (await headers()).get("host") || "localhost:3000";
+  const protocol = process.env.NODE_ENV === "production" || host !== "localhost:3000" ? "https" : "http";
+  const baseUrl = `${protocol}://${host}`;
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/reset-password`,
+    redirectTo: `${baseUrl}/reset-password`,
   });
   if (error) return { error: error.message };
   return { success: true };

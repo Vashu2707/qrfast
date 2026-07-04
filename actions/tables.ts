@@ -19,7 +19,10 @@ export async function createTable(data: { number: string }) {
   if (!user) return { error: "Unauthorized" };
 
   try {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const { headers } = await import("next/headers");
+    const host = (await headers()).get("host") || "localhost:3000";
+    const protocol = process.env.NODE_ENV === "production" || host !== "localhost:3000" ? "https" : "http";
+    const appUrl = `${protocol}://${host}`;
     const qrTargetUrl = `${appUrl}/menu/table-${data.number}`;
 
     const qrCodeDataUrl = await QRCode.toDataURL(qrTargetUrl, {
