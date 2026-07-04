@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { resetPassword } from "@/actions/auth";
@@ -15,7 +14,6 @@ import { toast } from "sonner";
 import { ArrowLeft, Loader2 } from "lucide-react";
 
 export default function ResetPasswordPage() {
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   const {
@@ -37,7 +35,7 @@ export default function ResetPasswordPage() {
     }
 
     toast.success("Password updated. Please sign in again.");
-    router.push("/login");
+    window.location.href = "/login";
   };
 
   return (
