@@ -4,9 +4,10 @@ import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import prisma, { prismaWithRetry } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { unstable_rethrow } from "next/navigation";
+import { redirect, unstable_rethrow } from "next/navigation";
+import { getDefaultRouteForRole } from "@/lib/roles";
 
-export async function signIn(data: { email: string; password: string }) {
+export async function signIn(data: { email: string; password: string; redirectTo?: string }) {
   const supabase = await createClient();
 
   const { data: authData, error: authError } =
@@ -19,19 +20,21 @@ export async function signIn(data: { email: string; password: string }) {
     return { error: authError?.message || "Invalid credentials." };
   }
 
+  let user;
   try {
-    const user = await prisma.adminUser.findUnique({
+    user = await prisma.adminUser.findUnique({
       where: { id: authData.user.id },
     });
 
     if (!user) {
       return { error: "Staff account record not found in database." };
     }
-
-    return { success: true, user };
   } catch (error: any) {
     return { error: "Failed to fetch account info: " + error.message };
   }
+
+  const target = data.redirectTo || getDefaultRouteForRole(user.role);
+  redirect(target);
 }
 
 export async function signUp(data: { name: string; email: string; password: string }) {
