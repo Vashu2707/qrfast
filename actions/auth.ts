@@ -4,10 +4,10 @@ import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import prisma, { prismaWithRetry } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { redirect, unstable_rethrow } from "next/navigation";
+import { unstable_rethrow } from "next/navigation";
 import { getDefaultRouteForRole } from "@/lib/roles";
 
-export async function signIn(data: { email: string; password: string; redirectTo?: string }) {
+export async function signIn(data: { email: string; password: string }) {
   const supabase = await createClient();
 
   const { data: authData, error: authError } =
@@ -33,8 +33,7 @@ export async function signIn(data: { email: string; password: string; redirectTo
     return { error: "Failed to fetch account info: " + error.message };
   }
 
-  const target = data.redirectTo || getDefaultRouteForRole(user.role);
-  redirect(target);
+  return { success: true, role: user.role };
 }
 
 export async function signUp(data: { name: string; email: string; password: string }) {

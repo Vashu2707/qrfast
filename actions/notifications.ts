@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 
 export async function getNotifications() {
   const user = await getCurrentUser();
-  if (!user) throw new Error("Unauthorized");
+  if (!user) return [];
 
   return prisma.notification.findMany({
     orderBy: { createdAt: "desc" },

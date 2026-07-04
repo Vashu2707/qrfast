@@ -206,7 +206,7 @@ export async function getCustomerOrder(id: string) {
 
 export async function getOrders() {
   const user = await getCurrentUser();
-  if (!user) throw new Error("Unauthorized");
+  if (!user) return [];
 
   return prisma.order.findMany({
     include: {

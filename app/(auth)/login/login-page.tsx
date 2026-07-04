@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { getDefaultRouteForRole } from "@/lib/roles";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
@@ -26,12 +27,23 @@ export default function LoginPage() {
 
   const onSubmit = async (data: LoginFormData) => {
     setLoading(true);
-    const redirectTo = searchParams.get("redirect") || undefined;
-    const result = await signIn({ ...data, redirectTo });
+    const result = await signIn(data);
     setLoading(false);
 
-    if (result?.error) {
+    if (result.error) {
       toast.error(result.error);
+      return;
+    }
+
+    toast.success("Welcome back!");
+    const redirectTo = searchParams.get("redirect");
+    const roleRoute = result.role ? getDefaultRouteForRole(result.role) : "/dashboard";
+    const target = redirectTo || roleRoute;
+
+    if (target === window.location.pathname) {
+      window.location.reload();
+    } else {
+      window.location.href = target;
     }
   };
 

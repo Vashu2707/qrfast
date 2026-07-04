@@ -6,7 +6,9 @@ import { OrderStatus, PaymentStatus } from "@prisma/client";
 
 export async function getDashboardStats() {
   const user = await getCurrentUser();
-  if (!user) throw new Error("Unauthorized");
+  if (!user) {
+    return { todayOrders: 0, pendingOrders: 0, completedToday: 0, todayRevenue: 0, totalTables: 0, occupiedTables: 0, topItems: [], chartData: [], totalRevenue: 0, avgOrderValue: 0 };
+  }
 
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
