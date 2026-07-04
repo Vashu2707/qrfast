@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { motion, AnimatePresence } from "framer-motion";
 import { getCustomerOrder, submitReview } from "@/actions/orders";
 import { formatCurrency, formatDate, getOrderStatusColor, getOrderStatusLabel } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
@@ -187,11 +186,7 @@ export function OrderTrackingClient({
       <div className="mx-auto max-w-lg space-y-5 p-4">
 
         {/* ─── Live Status Banner ─── */}
-        <motion.div
-          key={order.status}
-          initial={{ opacity: 0, scale: 0.97 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.3 }}
+        <div
           className="rounded-2xl p-5 text-white text-center"
           style={{ backgroundColor: primaryColor }}
         >
@@ -208,7 +203,7 @@ export function OrderTrackingClient({
               {eta}
             </div>
           )}
-        </motion.div>
+        </div>
 
         {/* ─── Status Timeline ─── */}
         {!isCancelled && (
@@ -237,22 +232,16 @@ export function OrderTrackingClient({
                       )}
 
                       {/* Step circle */}
-                      <motion.div
-                        animate={
-                          isCurrent && isActive
-                            ? { scale: [1, 1.05, 1] }
-                            : { scale: 1 }
-                        }
-                        transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+                      <div
                         className={`relative z-10 mt-3 flex size-10 shrink-0 items-center justify-center rounded-full transition-colors ${
                           isComplete
                             ? "text-white"
                             : "bg-muted text-muted-foreground"
-                        }`}
+                        } ${isCurrent && isActive ? "animate-pulse" : ""}`}
                         style={isComplete ? { backgroundColor: primaryColor } : {}}
                       >
                         {meta?.icon ?? <Clock className="size-5" />}
-                      </motion.div>
+                      </div>
 
                       {/* Step label */}
                       <div className="flex-1 pb-8 pt-3">
@@ -388,14 +377,8 @@ export function OrderTrackingClient({
         )}
 
         {/* ─── Review ─── */}
-        <AnimatePresence>
           {isCompleted && !reviewSubmitted && (
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.4 }}
-            >
+            <div>
               <Card className="border-amber-200 bg-amber-50/50">
                 <CardHeader className="pb-2">
                   <CardTitle className="flex items-center gap-2 text-base">
@@ -438,23 +421,18 @@ export function OrderTrackingClient({
                   </Button>
                 </CardContent>
               </Card>
-            </motion.div>
+            </div>
           )}
-        </AnimatePresence>
 
         {/* ─── Thank you banner after review ─── */}
         {reviewSubmitted && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="rounded-2xl border border-green-200 bg-green-50 p-5 text-center"
-          >
+          <div className="rounded-2xl border border-green-200 bg-green-50 p-5 text-center">
             <p className="text-2xl mb-1">🙏</p>
             <p className="font-semibold text-green-800">Thank you!</p>
             <p className="text-sm text-green-700 mt-0.5">
               Your feedback helps us improve.
             </p>
-          </motion.div>
+          </div>
         )}
       </div>
     </div>

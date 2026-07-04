@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "@/hooks/use-cart";
 import { createOrder } from "@/actions/orders";
 import { validateOffer } from "@/actions/offers";
@@ -252,17 +251,8 @@ export function CartClient({
             <CardTitle className="text-base">Order Items</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <AnimatePresence initial={false}>
               {items.map((item) => (
-                <motion.div
-                  key={item.id}
-                  layout
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="overflow-hidden"
-                >
+                <div key={item.id} className="overflow-hidden">
                   <div className="flex gap-3">
                     {/* Thumbnail */}
                     {item.image ? (
@@ -349,9 +339,8 @@ export function CartClient({
                       </Button>
                     </div>
                   </div>
-                </motion.div>
+                </div>
               ))}
-            </AnimatePresence>
           </CardContent>
         </Card>
 
@@ -365,11 +354,7 @@ export function CartClient({
           </CardHeader>
           <CardContent>
             {coupon ? (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="flex items-center justify-between rounded-lg border border-green-200 bg-green-50 px-3 py-2"
-              >
+              <div className="animate-in fade-in zoom-in-95 duration-200 flex items-center justify-between rounded-lg border border-green-200 bg-green-50 px-3 py-2">
                 <div>
                   <p className="text-sm font-semibold text-green-700">
                     🎉 {coupon.code} applied
@@ -381,7 +366,7 @@ export function CartClient({
                 <Button variant="ghost" size="sm" className="text-destructive h-7" onClick={removeCoupon}>
                   Remove
                 </Button>
-              </motion.div>
+              </div>
             ) : (
               <div className="flex gap-2">
                 <Input

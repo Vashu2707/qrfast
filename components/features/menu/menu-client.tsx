@@ -3,7 +3,6 @@
 import { useEffect, useState, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { motion, AnimatePresence, type Variants } from "framer-motion";
 import { useCart } from "@/hooks/use-cart";
 import { formatCurrency } from "@/lib/format";
 import { Button } from "@/components/ui/button";
@@ -136,15 +135,6 @@ function ChefSpecialBadge() {
   );
 }
 
-const cardVariants: Variants = {
-  hidden: { opacity: 0, y: 16 },
-  visible: (i: number) => ({
-    opacity: 1,
-    y: 0,
-    transition: { delay: i * 0.04, duration: 0.3, ease: [0.25, 0.1, 0.25, 1] as [number, number, number, number] },
-  }),
-};
-
 export function MenuClient({ data, tableParam }: Props) {
   const { restaurant, table, bestsellers, newItems, reviews, categories } = data;
   const { items, setTable, getSubtotal } = useCart();
@@ -221,34 +211,20 @@ export function MenuClient({ data, tableParam }: Props) {
         <div className="absolute bottom-4 left-4 right-4">
           <div className="flex items-end gap-3">
             {restaurant.logo && (
-              <motion.div
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ duration: 0.4 }}
-                className="relative size-14 shrink-0 overflow-hidden rounded-xl border-2 border-background shadow-lg"
-              >
+              <div className="relative size-14 shrink-0 overflow-hidden rounded-xl border-2 border-background shadow-lg">
                 <Image src={restaurant.logo} alt="" fill className="object-cover" />
-              </motion.div>
+              </div>
             )}
-            <motion.div
-              initial={{ x: -10, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              transition={{ duration: 0.4, delay: 0.1 }}
-            >
+            <div>
               <h1 className="text-2xl font-bold tracking-tight">{restaurant.restaurantName}</h1>
               <p className="text-sm text-muted-foreground">Table {table.number} · Dine-In</p>
-            </motion.div>
+            </div>
           </div>
         </div>
       </div>
 
       {/* ──────────────── Quick Actions ──────────────── */}
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.15 }}
-        className="flex gap-2 overflow-x-auto px-4 py-3"
-      >
+      <div className="flex gap-2 overflow-x-auto px-4 py-3">
         <Button variant="outline" size="sm" onClick={() => handleService("CALL_WAITER")}>
           <Bell className="mr-1.5 size-3.5" />
           Call Waiter
@@ -257,30 +233,22 @@ export function MenuClient({ data, tableParam }: Props) {
           <Receipt className="mr-1.5 size-3.5" />
           Request Bill
         </Button>
-      </motion.div>
+      </div>
 
       {/* ──────────────── Bestsellers (horizontal scroll) ──────────────── */}
       {bestsellers.length > 0 && !isFiltering && (
-        <motion.section
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.4, delay: 0.2 }}
-          className="px-4 py-3"
-        >
+        <section className="px-4 py-3">
           <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
             <Star className="size-4 text-amber-500" />
             Popular
           </h2>
           <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none">
             {bestsellers.map((item, i) => (
-              <motion.button
+              <button
                 key={item.id}
-                custom={i}
-                initial="hidden"
-                animate="visible"
-                variants={cardVariants}
                 onClick={() => setSelectedItem(item)}
-                className="w-36 shrink-0 rounded-xl border border-border/60 bg-card p-2 text-left transition-shadow hover:shadow-md active:scale-[0.98]"
+                className="animate-fadeIn w-36 shrink-0 rounded-xl border border-border/60 bg-card p-2 text-left transition-shadow hover:shadow-md active:scale-[0.98]"
+                style={{ animationDelay: `${i * 0.04}s` }}
               >
                 {item.images[0] ? (
                   <div className="relative mb-2 h-24 overflow-hidden rounded-lg">
@@ -305,34 +273,26 @@ export function MenuClient({ data, tableParam }: Props) {
                 <p className="text-sm font-bold" style={{ color: restaurant.primaryColor }}>
                   {formatCurrency(item.discountPrice ?? item.price)}
                 </p>
-              </motion.button>
+              </button>
             ))}
           </div>
-        </motion.section>
+        </section>
       )}
 
       {/* ──────────────── New Items (horizontal scroll) ──────────────── */}
       {newItems.length > 0 && !isFiltering && (
-        <motion.section
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.4, delay: 0.25 }}
-          className="px-4 py-3"
-        >
+        <section className="px-4 py-3">
           <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
             <Sparkles className="size-4 text-primary" />
             New on Menu
           </h2>
           <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none">
             {newItems.map((item, i) => (
-              <motion.button
+              <button
                 key={item.id}
-                custom={i}
-                initial="hidden"
-                animate="visible"
-                variants={cardVariants}
                 onClick={() => setSelectedItem(item)}
-                className="w-36 shrink-0 rounded-xl border border-primary/20 bg-primary/5 p-2 text-left transition-shadow hover:shadow-md active:scale-[0.98]"
+                className="animate-fadeIn w-36 shrink-0 rounded-xl border border-primary/20 bg-primary/5 p-2 text-left transition-shadow hover:shadow-md active:scale-[0.98]"
+                style={{ animationDelay: `${i * 0.04}s` }}
               >
                 {item.images[0] ? (
                   <div className="relative mb-2 h-24 overflow-hidden rounded-lg">
@@ -355,10 +315,10 @@ export function MenuClient({ data, tableParam }: Props) {
                 <p className="text-sm font-bold" style={{ color: restaurant.primaryColor }}>
                   {formatCurrency(item.discountPrice ?? item.price)}
                 </p>
-              </motion.button>
+              </button>
             ))}
           </div>
-        </motion.section>
+        </section>
       )}
 
       {/* ──────────────── Search & Filters ──────────────── */}
@@ -427,27 +387,20 @@ export function MenuClient({ data, tableParam }: Props) {
 
       {/* ──────────────── Menu Grid ──────────────── */}
       <div className="grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-3">
-        <AnimatePresence mode="popLayout">
           {filteredItems.length === 0 ? (
-            <motion.p
+            <p
               key="empty"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
               className="col-span-full py-16 text-center text-muted-foreground"
             >
               No items found
-            </motion.p>
+            </p>
           ) : (
             filteredItems.map((item, i) => (
-              <motion.button
+              <button
                 key={item.id}
-                custom={i}
-                initial="hidden"
-                animate="visible"
-                exit={{ opacity: 0, scale: 0.95 }}
-                variants={cardVariants}
                 onClick={() => setSelectedItem(item)}
-                className="flex gap-4 rounded-xl border border-border/60 bg-card p-3 text-left transition-all hover:shadow-md active:scale-[0.99]"
+                className="animate-fadeIn flex gap-4 rounded-xl border border-border/60 bg-card p-3 text-left transition-all hover:shadow-md active:scale-[0.99]"
+                style={{ animationDelay: `${i * 0.04}s` }}
               >
                 {/* Item image */}
                 {item.images[0] ? (
@@ -490,33 +443,24 @@ export function MenuClient({ data, tableParam }: Props) {
                 </div>
 
                 <ChevronRight className="size-4 shrink-0 self-center text-muted-foreground" />
-              </motion.button>
+              </button>
             ))
           )}
-        </AnimatePresence>
       </div>
 
       {/* ──────────────── Customer Reviews ──────────────── */}
       {reviews.length > 0 && !isFiltering && (
-        <motion.section
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="border-t border-border/60 px-4 py-6"
-        >
+        <section className="border-t border-border/60 px-4 py-6">
           <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
             <Star className="size-4 text-amber-500" />
             What Guests Say
           </h2>
           <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none">
             {reviews.map((review, i) => (
-              <motion.div
+              <div
                 key={review.id}
-                custom={i}
-                initial="hidden"
-                animate="visible"
-                variants={cardVariants}
-                className="w-64 shrink-0 rounded-xl border border-border/60 bg-card p-4"
+                className="animate-fadeIn w-64 shrink-0 rounded-xl border border-border/60 bg-card p-4"
+                style={{ animationDelay: `${i * 0.04}s` }}
               >
                 <div className="flex items-center justify-between mb-2">
                   <div>
@@ -543,22 +487,15 @@ export function MenuClient({ data, tableParam }: Props) {
                     &ldquo;{review.comment}&rdquo;
                   </p>
                 )}
-              </motion.div>
+              </div>
             ))}
           </div>
-        </motion.section>
+        </section>
       )}
 
       {/* ──────────────── Sticky Cart Bar ──────────────── */}
-      <AnimatePresence>
         {cartCount > 0 && (
-          <motion.div
-            initial={{ y: 80, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 80, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="fixed inset-x-0 bottom-0 z-30 border-t border-border/60 bg-card/95 p-4 backdrop-blur-md"
-          >
+          <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border/60 bg-card/95 p-4 backdrop-blur-md">
             <Link href={`/menu/${tableParam}/cart`}>
               <Button
                 className="w-full h-12 text-base font-semibold gap-2"
@@ -571,9 +508,8 @@ export function MenuClient({ data, tableParam }: Props) {
                 <ChevronRight className="ml-auto size-5" />
               </Button>
             </Link>
-          </motion.div>
+          </div>
         )}
-      </AnimatePresence>
 
       {/* ──────────────── Item Dialog ──────────────── */}
       {selectedItem && (
