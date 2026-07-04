@@ -7,6 +7,7 @@ import { formatDate } from "@/lib/format";
 import { Bell, CheckCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
 
 type Notification = {
   id: string;
@@ -22,15 +23,33 @@ export function NotificationsPanel({ notifications }: { notifications: Notificat
   const [clearing, setClearing] = useState(false);
 
   const handleRead = async (id: string) => {
-    await markNotificationRead(id);
-    router.refresh();
+    try {
+      const result = await markNotificationRead(id);
+      if (result?.error) {
+        toast.error(result.error);
+        return;
+      }
+      router.refresh();
+    } catch {
+      toast.error("Failed to mark notification as read.");
+    }
   };
 
   const handleClearAll = async () => {
     setClearing(true);
-    await markAllNotificationsRead();
-    setClearing(false);
-    router.refresh();
+    try {
+      const result = await markAllNotificationsRead();
+      if (result?.error) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success("All notifications marked as read.");
+      router.refresh();
+    } catch {
+      toast.error("Failed to clear notifications.");
+    } finally {
+      setClearing(false);
+    }
   };
 
   return (
