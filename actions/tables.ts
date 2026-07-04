@@ -3,6 +3,7 @@
 import prisma from "@/lib/prisma";
 import { getCurrentUser } from "./auth";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import QRCode from "qrcode";
 
 export async function getTables() {
@@ -19,7 +20,6 @@ export async function createTable(data: { number: string }) {
   if (!user) return { error: "Unauthorized" };
 
   try {
-    const { headers } = await import("next/headers");
     const host = (await headers()).get("host") || "localhost:3000";
     const protocol = process.env.NODE_ENV === "production" || host !== "localhost:3000" ? "https" : "http";
     const appUrl = `${protocol}://${host}`;

@@ -4,6 +4,7 @@ import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import prisma, { prismaWithRetry } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { unstable_rethrow } from "next/navigation";
 import { getDefaultRouteForRole } from "@/lib/roles";
 
@@ -74,7 +75,6 @@ export async function signOut() {
 
 export async function forgotPassword(email: string) {
   const supabase = await createClient();
-  const { headers } = await import("next/headers");
   const host = (await headers()).get("host") || "localhost:3000";
   const protocol = process.env.NODE_ENV === "production" || host !== "localhost:3000" ? "https" : "http";
   const baseUrl = `${protocol}://${host}`;
