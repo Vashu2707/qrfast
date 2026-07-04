@@ -12,7 +12,7 @@ declare const globalThis: {
   prismaGlobal?: PrismaClient;
 };
 
-const MAX_RETRIES = 3;
+const MAX_RETRIES = 5;
 const RETRY_DELAY_MS = 500;
 
 function isPoolError(err: unknown): boolean {
@@ -49,7 +49,7 @@ function getPrisma(): PrismaClient {
   }
   const pool = new Pool({
     connectionString,
-    max: 10,
+    max: 3,
     connectionTimeoutMillis: 30000,
     idleTimeoutMillis: 10000,
   });
