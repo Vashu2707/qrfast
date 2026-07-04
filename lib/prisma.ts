@@ -5,7 +5,7 @@ declare const globalThis: {
   prismaGlobal?: PrismaClient;
 };
 
-function getClient(): PrismaClient {
+function getPrismaClient(): PrismaClient {
   if (globalThis.prismaGlobal) return globalThis.prismaGlobal;
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
@@ -13,17 +13,14 @@ function getClient(): PrismaClient {
   }
   const client = new PrismaClient({
     adapter: new PrismaPg({ connectionString }),
+    maxConnections: 30,
+    connectionTimeoutMillis: 30000,
+    log: ["error", "warn"],
   });
-  if (process.env.NODE_ENV !== "production") {
-    globalThis.prismaGlobal = client;
-  }
+  globalThis.prismaGlobal = client;
   return client;
 }
 
-const prisma = new Proxy<PrismaClient>({} as PrismaClient, {
-  get(_, prop) {
-    return Reflect.get(getClient(), prop);
-  },
-});
+const prisma = getPrismaClient();
 
 export default prisma;
