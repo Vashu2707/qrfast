@@ -34,7 +34,7 @@ import { Badge } from "@/components/ui/badge";
 import { ImageUpload } from "@/components/ui/image-upload";
 import { formatCurrency } from "@/lib/format";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Leaf } from "lucide-react";
+import { Plus, Pencil, Trash2 } from "lucide-react";
 import Image from "next/image";
 
 // ── Form state ───────────────────────────────────────────────────────────────
@@ -44,7 +44,7 @@ interface ItemFormState {
   description: string;
   price: string;
   discountPrice: string;
-  isVeg: boolean;
+  foodType: "VEG" | "NON_VEG" | "VEGAN";
   spicyLevel: string;
   preparationTime: string;
   categoryId: string;
@@ -59,7 +59,7 @@ const emptyItem: ItemFormState = {
   description: "",
   price: "",
   discountPrice: "",
-  isVeg: true,
+  foodType: "VEG",
   spicyLevel: "0",
   preparationTime: "15",
   categoryId: "",
@@ -105,7 +105,7 @@ export default function MenuPage() {
       description: itemForm.description.trim() || undefined,
       price: parseFloat(itemForm.price),
       discountPrice: itemForm.discountPrice ? parseFloat(itemForm.discountPrice) : null,
-      isVeg: itemForm.isVeg,
+      foodType: itemForm.foodType,
       spicyLevel: parseInt(itemForm.spicyLevel),
       preparationTime: parseInt(itemForm.preparationTime),
       categoryId: itemForm.categoryId,
@@ -144,7 +144,7 @@ export default function MenuPage() {
       description: item.description ?? "",
       price: String(item.price),
       discountPrice: item.discountPrice ? String(item.discountPrice) : "",
-      isVeg: item.isVeg,
+      foodType: (item.foodType ?? "VEG") as "VEG" | "NON_VEG" | "VEGAN",
       spicyLevel: String(item.spicyLevel),
       preparationTime: String(item.preparationTime),
       categoryId: item.categoryId,
@@ -295,13 +295,34 @@ export default function MenuPage() {
                   />
                 </div>
 
-                {/* Veg toggle */}
-                <div className="flex items-center gap-3">
-                  <Switch
-                    checked={itemForm.isVeg}
-                    onCheckedChange={(v) => setItemForm({ ...itemForm, isVeg: v })}
-                  />
-                  <Label>Vegetarian</Label>
+                {/* Food Type — 3-way selector */}
+                <div className="space-y-2">
+                  <Label>Food Type <span className="text-destructive">*</span></Label>
+                  <div className="flex gap-2">
+                    {(
+                      [
+                        { value: "VEG",     label: "Veg",     dot: "bg-green-600",  border: "border-green-600",  active: "bg-green-50 border-green-600 text-green-700 dark:bg-green-950/40" },
+                        { value: "NON_VEG", label: "Non-Veg", dot: "bg-red-600",    border: "border-red-600",    active: "bg-red-50 border-red-600 text-red-700 dark:bg-red-950/40" },
+                        { value: "VEGAN",   label: "Vegan",   dot: "bg-emerald-500",border: "border-emerald-500",active: "bg-emerald-50 border-emerald-500 text-emerald-700 dark:bg-emerald-950/40" },
+                      ] as const
+                    ).map(({ value, label, dot, active }) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setItemForm({ ...itemForm, foodType: value })}
+                        className={`flex flex-1 items-center justify-center gap-2 rounded-lg border-2 py-2 text-sm font-medium transition-colors ${
+                          itemForm.foodType === value
+                            ? active
+                            : "border-border text-muted-foreground hover:border-muted-foreground"
+                        }`}
+                      >
+                        <span className={`size-3 rounded-sm border-2 ${itemForm.foodType === value ? dot.replace("bg-", "border-") : "border-muted-foreground"} flex items-center justify-center`}>
+                          <span className={`size-1.5 rounded-full ${itemForm.foodType === value ? dot : "bg-muted-foreground"}`} />
+                        </span>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Spicy level */}
@@ -450,7 +471,21 @@ export default function MenuPage() {
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5">
                       <h3 className="truncate font-semibold">{item.name}</h3>
-                      {item.isVeg && <Leaf className="size-3.5 shrink-0 text-green-600" />}
+                      {item.foodType === "VEG" && (
+                        <span className="inline-flex size-4 shrink-0 items-center justify-center rounded-sm border-2 border-green-600">
+                          <span className="size-2 rounded-full bg-green-600" />
+                        </span>
+                      )}
+                      {item.foodType === "NON_VEG" && (
+                        <span className="inline-flex size-4 shrink-0 items-center justify-center rounded-sm border-2 border-red-600">
+                          <span className="size-2 rounded-full bg-red-600" />
+                        </span>
+                      )}
+                      {item.foodType === "VEGAN" && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500 bg-emerald-50 px-1.5 py-0.5 text-[9px] font-bold text-emerald-700 dark:bg-emerald-950/40">
+                          🌱 Vegan
+                        </span>
+                      )}
                     </div>
                     <p className="text-sm text-muted-foreground">{item.category.name}</p>
                     <p className="mt-1 font-bold">

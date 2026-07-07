@@ -43,15 +43,22 @@ function loadRazorpayScript(): Promise<boolean> {
   });
 }
 
-/** Veg/Non-veg FSSAI-style indicator */
-function VegIndicator({ isVeg }: { isVeg: boolean }) {
+/** FSSAI-style food type indicator */
+function VegIndicator({ foodType }: { foodType: "VEG" | "NON_VEG" | "VEGAN" }) {
+  if (foodType === "VEGAN") {
+    return (
+      <span className="inline-flex items-center gap-0.5 rounded-full border border-emerald-500 bg-emerald-50 px-1.5 py-0.5 text-[9px] font-bold leading-none text-emerald-700">
+        🌱 Vegan
+      </span>
+    );
+  }
   return (
     <span
       className={`inline-flex size-3.5 shrink-0 items-center justify-center rounded-sm border-2 ${
-        isVeg ? "border-green-600" : "border-red-600"
+        foodType === "VEG" ? "border-green-600" : "border-red-600"
       }`}
     >
-      <span className={`size-1.5 rounded-full ${isVeg ? "bg-green-600" : "bg-red-600"}`} />
+      <span className={`size-1.5 rounded-full ${foodType === "VEG" ? "bg-green-600" : "bg-red-600"}`} />
     </span>
   );
 }
@@ -268,7 +275,7 @@ export function CartClient({
                     {/* Details */}
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5 mb-0.5">
-                        <VegIndicator isVeg={item.isVeg} />
+                        <VegIndicator foodType={item.foodType} />
                         <p className="truncate font-medium text-sm">{item.name}</p>
                       </div>
 

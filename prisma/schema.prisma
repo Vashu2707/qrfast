@@ -53,6 +53,12 @@ enum DiscountType {
   FLAT
 }
 
+enum FoodType {
+  VEG
+  NON_VEG
+  VEGAN
+}
+
 model AdminUser {
   id        String   @id // Matches Supabase Auth User ID (UUID)
   email     String   @unique
@@ -109,7 +115,7 @@ model MenuItem {
   description     String?
   price           Float
   discountPrice   Float?
-  isVeg           Boolean     @default(true)
+  foodType        FoodType    @default(VEG)
   spicyLevel      Int         @default(0)
   preparationTime Int         @default(15)
   images          String[]

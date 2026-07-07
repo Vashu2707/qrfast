@@ -98,7 +98,7 @@ async function main() {
       name: "Garlic Bread with Cheese",
       description: "Baked artisan loaf spread with homemade garlic butter, herbs, and melted mozzarella.",
       price: 150.0,
-      isVeg: true,
+      foodType: "VEG",
       spicyLevel: 0,
       preparationTime: 10,
       images: ["https://images.unsplash.com/photo-1573145959290-b1ee3f17f7df?w=600&q=80"],
@@ -120,7 +120,7 @@ async function main() {
     data: {
       name: "Paneer Tikka",
       description: "Cubes of paneer, bell peppers, and onions marinated in a yogurt tandoori marinade, roasted in a clay oven.",
-      price: 250.0, isVeg: true, spicyLevel: 2, preparationTime: 15,
+      price: 250.0, foodType: "VEG", spicyLevel: 2, preparationTime: 15,
       images: ["https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?w=600&q=80"],
       ingredients: ["Paneer", "Yogurt", "Tandoori Spices", "Bell Pepper", "Onion"],
       allergens: ["Dairy"],
@@ -134,7 +134,7 @@ async function main() {
     data: {
       name: "Spicy Buffalo Chicken Wings",
       description: "Crispy fried chicken wings tossed in our signature hot sauce, served with celery and blue cheese dip.",
-      price: 280.0, isVeg: false, spicyLevel: 3, preparationTime: 18,
+      price: 280.0, foodType: "NON_VEG", spicyLevel: 3, preparationTime: 18,
       images: ["https://images.unsplash.com/photo-1567620832903-9fc6debc209f?w=600&q=80"],
       ingredients: ["Chicken Wings", "Buffalo Sauce", "Blue Cheese Dressing", "Spices"],
       allergens: ["Gluten", "Dairy"],
@@ -154,7 +154,7 @@ async function main() {
     data: {
       name: "Butter Chicken (Murgh Makhani)",
       description: "Tender tandoori chicken cooked in a rich, buttery, creamy tomato gravy with a hint of fenugreek.",
-      price: 360.0, isVeg: false, spicyLevel: 1, preparationTime: 20,
+      price: 360.0, foodType: "NON_VEG", spicyLevel: 1, preparationTime: 20,
       images: ["https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?w=600&q=80"],
       ingredients: ["Chicken", "Tomato Puree", "Butter", "Fresh Cream", "Indian Spices"],
       allergens: ["Dairy", "Nuts"],
@@ -180,7 +180,7 @@ async function main() {
     data: {
       name: "Dal Makhani",
       description: "Black lentils and kidney beans slow-cooked overnight with butter, cream, tomatoes, and spices.",
-      price: 240.0, isVeg: true, spicyLevel: 1, preparationTime: 15,
+      price: 240.0, foodType: "VEG", spicyLevel: 1, preparationTime: 15,
       images: ["https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=600&q=80"],
       ingredients: ["Black Lentils", "Kidney Beans", "Butter", "Cream", "Ginger-Garlic Paste"],
       allergens: ["Dairy"],
@@ -193,7 +193,7 @@ async function main() {
     data: {
       name: "Hyderabadi Veg Biryani",
       description: "Fragrant basmati rice layered with spiced garden vegetables, cooked on dum, served with raita.",
-      price: 290.0, isVeg: true, spicyLevel: 2, preparationTime: 22,
+      price: 290.0, foodType: "VEG", spicyLevel: 2, preparationTime: 22,
       images: ["https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=600&q=80"],
       ingredients: ["Basmati Rice", "Carrot", "Beans", "Green Peas", "Biryani Masala", "Saffron"],
       allergens: ["Dairy"],
@@ -207,7 +207,7 @@ async function main() {
     data: {
       name: "Chocolate Lava Cake",
       description: "Delectable warm chocolate cake with a molten chocolate center, served with a scoop of vanilla ice cream.",
-      price: 180.0, isVeg: true, spicyLevel: 0, preparationTime: 12,
+      price: 180.0, foodType: "VEG", spicyLevel: 0, preparationTime: 12,
       images: ["https://images.unsplash.com/photo-1606313564200-e75d5e30476c?w=600&q=80"],
       ingredients: ["Dark Chocolate", "Butter", "Flour", "Sugar", "Vanilla Ice Cream"],
       allergens: ["Gluten", "Dairy"],
@@ -221,7 +221,7 @@ async function main() {
     data: {
       name: "Gulab Jamun (2 Pcs)",
       description: "Warm milk dumplings fried and soaked in cardamom-flavored sugar syrup.",
-      price: 80.0, isVeg: true, spicyLevel: 0, preparationTime: 5,
+      price: 80.0, foodType: "VEG", spicyLevel: 0, preparationTime: 5,
       images: ["https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=600&q=80"],
       ingredients: ["Milk Solids (Khoya)", "Sugar Syrup", "Cardamom", "Rosewater"],
       allergens: ["Dairy", "Gluten"],
@@ -234,7 +234,7 @@ async function main() {
     data: {
       name: "Virgin Mojito",
       description: "A perfect summer refresher with fresh mint leaves, lime chunks, simple syrup, topped with sparkling soda and ice.",
-      price: 120.0, isVeg: true, spicyLevel: 0, preparationTime: 5,
+      price: 120.0, foodType: "VEG", spicyLevel: 0, preparationTime: 5,
       images: ["https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=600&q=80"],
       ingredients: ["Mint Leaves", "Lime Juice", "Sugar Syrup", "Soda Water", "Ice"],
       allergens: [],
@@ -247,7 +247,7 @@ async function main() {
     data: {
       name: "Iced Caramel Macchiato",
       description: "Chilled espresso with creamy milk, sweet vanilla syrup, and finished with a caramel drizzle.",
-      price: 160.0, isVeg: true, spicyLevel: 0, preparationTime: 7,
+      price: 160.0, foodType: "VEG", spicyLevel: 0, preparationTime: 7,
       images: ["https://images.unsplash.com/photo-1461023058943-07fcbe16d735?w=600&q=80"],
       ingredients: ["Espresso", "Milk", "Caramel Sauce", "Vanilla Syrup", "Ice"],
       allergens: ["Dairy"],

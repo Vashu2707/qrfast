@@ -69,7 +69,7 @@ export const menuItemSchema = z.object({
   description: z.string().max(1000).optional().or(z.literal("")),
   price: z.coerce.number().nonnegative("Price must be ≥ 0"),
   discountPrice: z.coerce.number().nonnegative().nullable().optional(),
-  isVeg: z.boolean(),
+  foodType: z.enum(["VEG", "NON_VEG", "VEGAN"]),
   spicyLevel: z.coerce.number().int().min(0).max(3),
   preparationTime: z.coerce.number().int().min(0).max(999),
   images: z.array(z.string().url()).optional().default([]),

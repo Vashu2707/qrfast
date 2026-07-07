@@ -19,7 +19,7 @@ type MenuItem = {
   description: string | null;
   price: number;
   discountPrice: number | null;
-  isVeg: boolean;
+  foodType: "VEG" | "NON_VEG" | "VEGAN";
   spicyLevel: number;
   preparationTime: number;
   images: string[];
@@ -63,7 +63,7 @@ export function MenuItemDialog({ item, primaryColor, onClose }: Props) {
       price: unitPrice,
       quantity,
       notes: notes || undefined,
-      isVeg: item.isVeg,
+      foodType: item.foodType,
       customizations: {
         variant: selectedVariant
           ? { id: selectedVariant.id, name: selectedVariant.name, price: selectedVariant.price }
@@ -89,7 +89,13 @@ export function MenuItemDialog({ item, primaryColor, onClose }: Props) {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-xl">
               {item.name}
-              {item.isVeg ? <Leaf className="size-4 text-green-600" /> : null}
+              {item.foodType === "VEGAN" ? (
+        <span className="inline-flex items-center gap-0.5 rounded-full border border-emerald-500 bg-emerald-50 px-1.5 py-0.5 text-[9px] font-bold leading-none text-emerald-700">🌱 Vegan</span>
+      ) : item.foodType === "VEG" ? (
+        <Leaf className="size-4 text-green-600" />
+      ) : (
+        <span className="inline-flex size-4 shrink-0 items-center justify-center rounded-sm border-2 border-red-600"><span className="size-2 rounded-full bg-red-600" /></span>
+      )}
               {item.spicyLevel > 0 && <Flame className="size-4 text-orange-500" />}
             </DialogTitle>
           </DialogHeader>

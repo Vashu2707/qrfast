@@ -9,7 +9,7 @@ export interface CartItem {
   price: number;
   quantity: number;
   notes?: string;
-  isVeg: boolean;
+  foodType: "VEG" | "NON_VEG" | "VEGAN";
   customizations?: {
     variant?: {
       id: string;

@@ -34,7 +34,7 @@ interface MenuData {
     description: string | null;
     price: number;
     discountPrice: number | null;
-    isVeg: boolean;
+    foodType: "VEG" | "NON_VEG" | "VEGAN";
     spicyLevel: number;
     preparationTime: number;
     images: string[];
@@ -51,7 +51,7 @@ interface MenuData {
     description: string | null;
     price: number;
     discountPrice: number | null;
-    isVeg: boolean;
+    foodType: "VEG" | "NON_VEG" | "VEGAN";
     spicyLevel: number;
     preparationTime: number;
     images: string[];
@@ -80,7 +80,7 @@ interface MenuData {
       description: string | null;
       price: number;
       discountPrice: number | null;
-      isVeg: boolean;
+      foodType: "VEG" | "NON_VEG" | "VEGAN";
       spicyLevel: number;
       preparationTime: number;
       images: string[];
@@ -98,16 +98,23 @@ interface Props {
   tableParam: string;
 }
 
-/** Veg/Non-veg FSSAI-style square indicator */
-function VegIndicator({ isVeg }: { isVeg: boolean }) {
+/** FSSAI-style food type indicator */
+function FoodTypeIndicator({ foodType }: { foodType: "VEG" | "NON_VEG" | "VEGAN" }) {
+  if (foodType === "VEGAN") {
+    return (
+      <span className="inline-flex items-center gap-0.5 rounded-full border border-emerald-500 bg-emerald-50 px-1.5 py-0.5 text-[9px] font-bold leading-none text-emerald-700 dark:bg-emerald-950/40">
+        🌱 Vegan
+      </span>
+    );
+  }
   return (
     <span
       className={`inline-flex size-4 shrink-0 items-center justify-center rounded-sm border-2 ${
-        isVeg ? "border-green-600" : "border-red-600"
+        foodType === "VEG" ? "border-green-600" : "border-red-600"
       }`}
     >
       <span
-        className={`size-2 rounded-full ${isVeg ? "bg-green-600" : "bg-red-600"}`}
+        className={`size-2 rounded-full ${foodType === "VEG" ? "bg-green-600" : "bg-red-600"}`}
       />
     </span>
   );
@@ -141,7 +148,7 @@ export function MenuClient({ data, tableParam }: Props) {
 
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<string>("all");
-  const [vegFilter, setVegFilter] = useState<"all" | "veg" | "nonveg">("all");
+  const [vegFilter, setVegFilter] = useState<"all" | "VEG" | "NON_VEG" | "VEGAN">("all");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [sortBy, setSortBy] = useState<"name" | "price-low" | "price-high">("name");
@@ -159,8 +166,7 @@ export function MenuClient({ data, tableParam }: Props) {
   const filteredItems = useMemo(() => {
     let result = allItems;
     if (activeCategory !== "all") result = result.filter((i) => i.categoryId === activeCategory);
-    if (vegFilter === "veg") result = result.filter((i) => i.isVeg);
-    if (vegFilter === "nonveg") result = result.filter((i) => !i.isVeg);
+    if (vegFilter !== "all") result = result.filter((i) => i.foodType === vegFilter);
     if (search) result = result.filter((i) => i.name.toLowerCase().includes(search.toLowerCase()));
 
     result = [...result].sort((a, b) => {
@@ -267,7 +273,7 @@ export function MenuClient({ data, tableParam }: Props) {
                   </div>
                 )}
                 <div className="flex items-center gap-1 mb-0.5">
-                  <VegIndicator isVeg={item.isVeg} />
+                  <FoodTypeIndicator foodType={item.foodType} />
                   <p className="truncate text-sm font-medium">{item.name}</p>
                 </div>
                 <p className="text-sm font-bold" style={{ color: restaurant.primaryColor }}>
@@ -309,7 +315,7 @@ export function MenuClient({ data, tableParam }: Props) {
                   </div>
                 )}
                 <div className="flex items-center gap-1 mb-0.5">
-                  <VegIndicator isVeg={item.isVeg} />
+                  <FoodTypeIndicator foodType={item.foodType} />
                   <p className="truncate text-sm font-medium">{item.name}</p>
                 </div>
                 <p className="text-sm font-bold" style={{ color: restaurant.primaryColor }}>
@@ -358,20 +364,28 @@ export function MenuClient({ data, tableParam }: Props) {
             </button>
           ))}
           <button
-            onClick={() => setVegFilter(vegFilter === "veg" ? "all" : "veg")}
+            onClick={() => setVegFilter(vegFilter === "VEG" ? "all" : "VEG")}
             className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-              vegFilter === "veg" ? "bg-green-600 text-white" : "bg-muted text-muted-foreground"
+              vegFilter === "VEG" ? "bg-green-600 text-white" : "bg-muted text-muted-foreground"
             }`}
           >
             🥬 Veg
           </button>
           <button
-            onClick={() => setVegFilter(vegFilter === "nonveg" ? "all" : "nonveg")}
+            onClick={() => setVegFilter(vegFilter === "NON_VEG" ? "all" : "NON_VEG")}
             className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-              vegFilter === "nonveg" ? "bg-red-600 text-white" : "bg-muted text-muted-foreground"
+              vegFilter === "NON_VEG" ? "bg-red-600 text-white" : "bg-muted text-muted-foreground"
             }`}
           >
             🍖 Non-Veg
+          </button>
+          <button
+            onClick={() => setVegFilter(vegFilter === "VEGAN" ? "all" : "VEGAN")}
+            className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+              vegFilter === "VEGAN" ? "bg-emerald-600 text-white" : "bg-muted text-muted-foreground"
+            }`}
+          >
+            🌱 Vegan
           </button>
           <select
             value={sortBy}
@@ -421,7 +435,7 @@ export function MenuClient({ data, tableParam }: Props) {
                 {/* Item info */}
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
-                    <VegIndicator isVeg={item.isVeg} />
+                    <FoodTypeIndicator foodType={item.foodType} />
                     <SpicyLevel level={item.spicyLevel} />
                     <span className="truncate font-semibold text-sm leading-tight">{item.name}</span>
                   </div>
