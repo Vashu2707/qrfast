@@ -4,7 +4,6 @@ import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import prisma, { prismaWithRetry } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
 import { unstable_rethrow } from "next/navigation";
 import { getDefaultRouteForRole } from "@/lib/roles";
 
@@ -12,8 +11,9 @@ export async function signIn(data: { email: string; password: string }) {
   let supabase;
   try {
     supabase = await createClient();
-  } catch (error: any) {
-    return { error: "Failed to initialize auth: " + error.message };
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Unknown error";
+    return { error: "Failed to initialize auth: " + msg };
   }
 
   let authData;
@@ -26,8 +26,9 @@ export async function signIn(data: { email: string; password: string }) {
     if (result.error || !authData.user) {
       return { error: result.error?.message || "Invalid credentials." };
     }
-  } catch (error: any) {
-    return { error: "Auth service error: " + error.message };
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Unknown error";
+    return { error: "Auth service error: " + msg };
   }
 
   let user;
@@ -35,23 +36,28 @@ export async function signIn(data: { email: string; password: string }) {
     user = await prisma.adminUser.findUnique({
       where: { id: authData.user.id },
     });
-
     if (!user) {
       return { error: "Staff account record not found in database." };
     }
-  } catch (error: any) {
-    return { error: "Failed to fetch account info: " + error.message };
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Unknown error";
+    return { error: "Failed to fetch account info: " + msg };
   }
 
   return { success: true, role: user.role };
 }
 
-export async function signUp(data: { name: string; email: string; password: string }) {
+export async function signUp(data: {
+  name: string;
+  email: string;
+  password: string;
+}) {
   let supabase;
   try {
     supabase = await createClient();
-  } catch (error: any) {
-    return { error: "Failed to initialize auth: " + error.message };
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Unknown error";
+    return { error: "Failed to initialize auth: " + msg };
   }
 
   let authData;
@@ -65,8 +71,9 @@ export async function signUp(data: { name: string; email: string; password: stri
     if (result.error || !authData.user) {
       return { error: result.error?.message || "Failed to create account." };
     }
-  } catch (error: any) {
-    return { error: "Auth service error: " + error.message };
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Unknown error";
+    return { error: "Auth service error: " + msg };
   }
 
   try {
@@ -78,8 +85,9 @@ export async function signUp(data: { name: string; email: string; password: stri
         role: "ADMIN",
       },
     });
-  } catch (error: any) {
-    return { error: "Failed to create staff record: " + error.message };
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Unknown error";
+    return { error: "Failed to create staff record: " + msg };
   }
 
   return { success: true };
@@ -100,27 +108,32 @@ export async function forgotPassword(email: string) {
   let supabase;
   try {
     supabase = await createClient();
-  } catch (error: any) {
-    return { error: "Failed to initialize auth: " + error.message };
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Unknown error";
+    return { error: "Failed to initialize auth: " + msg };
   }
 
-  let host = "localhost:3000";
-  try {
-    host = (await headers()).get("host") || "localhost:3000";
-  } catch {
-    // Use default if headers unavailable
-  }
+  // Use the configured app URL — never derive from the Host header to prevent
+  // host header injection attacks.
+  const appUrl =
+    process.env.NEXT_PUBLIC_APP_URL ||
+    (process.env.NODE_ENV === "production"
+      ? undefined // force configuration in production
+      : "http://localhost:3000");
 
-  const protocol = process.env.NODE_ENV === "production" || host !== "localhost:3000" ? "https" : "http";
-  const baseUrl = `${protocol}://${host}`;
+  if (!appUrl) {
+    console.error("NEXT_PUBLIC_APP_URL is not set in production.");
+    return { error: "Server configuration error. Please contact support." };
+  }
 
   try {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${baseUrl}/reset-password`,
+      redirectTo: `${appUrl}/reset-password`,
     });
     if (error) return { error: error.message };
-  } catch (error: any) {
-    return { error: "Failed to send reset email: " + error.message };
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Unknown error";
+    return { error: "Failed to send reset email: " + msg };
   }
 
   return { success: true };
@@ -130,15 +143,17 @@ export async function resetPassword(password: string) {
   let supabase;
   try {
     supabase = await createClient();
-  } catch (error: any) {
-    return { error: "Failed to initialize auth: " + error.message };
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Unknown error";
+    return { error: "Failed to initialize auth: " + msg };
   }
 
   try {
     const { error } = await supabase.auth.updateUser({ password });
     if (error) return { error: error.message };
-  } catch (error: any) {
-    return { error: "Failed to reset password: " + error.message };
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Unknown error";
+    return { error: "Failed to reset password: " + msg };
   }
 
   return { success: true };
@@ -160,7 +175,6 @@ export async function getCurrentUser() {
     if (!authUser) return null;
 
     const dbUser = await getDbUser(authUser.id);
-
     return dbUser;
   } catch (err) {
     unstable_rethrow(err);
@@ -168,5 +182,3 @@ export async function getCurrentUser() {
     return null;
   }
 }
-
-

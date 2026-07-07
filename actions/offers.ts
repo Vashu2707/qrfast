@@ -2,6 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { getCurrentUser } from "./auth";
+import { offerSchema, type OfferInput } from "@/schemas";
 import { revalidatePath } from "next/cache";
 
 export async function getOffers() {
@@ -13,9 +14,15 @@ export async function getOffers() {
   });
 }
 
-export async function createOffer(data: any) {
+export async function createOffer(rawData: OfferInput) {
   const user = await getCurrentUser();
   if (!user) return { error: "Unauthorized" };
+
+  const parsed = offerSchema.safeParse(rawData);
+  if (!parsed.success) {
+    return { error: parsed.error.issues.map((e) => e.message).join(", ") };
+  }
+  const data = parsed.data;
 
   try {
     const offer = await prisma.offer.create({
@@ -23,23 +30,29 @@ export async function createOffer(data: any) {
         code: data.code.toUpperCase().trim(),
         title: data.title || null,
         discountType: data.discountType,
-        discountValue: parseFloat(data.discountValue),
-        minOrderAmount: parseFloat(data.minOrderAmount || 0),
+        discountValue: data.discountValue,
+        minOrderAmount: data.minOrderAmount ?? 0,
         expiryDate: new Date(data.expiryDate),
-        usageLimit: data.usageLimit ? parseInt(data.usageLimit) : null,
+        usageLimit: data.usageLimit ?? null,
       },
     });
     revalidatePath("/dashboard/offers");
     return { success: true, offer };
-  } catch (error: any) {
-    console.error("Offer create failure:", error);
+  } catch (error: unknown) {
+    console.error("createOffer error:", error);
     return { error: "An offer with this code already exists." };
   }
 }
 
-export async function updateOffer(id: string, data: any) {
+export async function updateOffer(id: string, rawData: OfferInput) {
   const user = await getCurrentUser();
   if (!user) return { error: "Unauthorized" };
+
+  const parsed = offerSchema.safeParse(rawData);
+  if (!parsed.success) {
+    return { error: parsed.error.issues.map((e) => e.message).join(", ") };
+  }
+  const data = parsed.data;
 
   try {
     const offer = await prisma.offer.update({
@@ -48,17 +61,18 @@ export async function updateOffer(id: string, data: any) {
         code: data.code.toUpperCase().trim(),
         title: data.title || null,
         discountType: data.discountType,
-        discountValue: parseFloat(data.discountValue),
-        minOrderAmount: parseFloat(data.minOrderAmount || 0),
+        discountValue: data.discountValue,
+        minOrderAmount: data.minOrderAmount ?? 0,
         expiryDate: new Date(data.expiryDate),
-        usageLimit: data.usageLimit ? parseInt(data.usageLimit) : null,
-        isActive: data.isActive,
+        usageLimit: data.usageLimit ?? null,
+        isActive: data.isActive ?? true,
       },
     });
     revalidatePath("/dashboard/offers");
     return { success: true, offer };
-  } catch (error: any) {
-    return { error: error.message };
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Update failed.";
+    return { error: msg };
   }
 }
 
@@ -67,13 +81,12 @@ export async function deleteOffer(id: string) {
   if (!user) return { error: "Unauthorized" };
 
   try {
-    await prisma.offer.delete({
-      where: { id },
-    });
+    await prisma.offer.delete({ where: { id } });
     revalidatePath("/dashboard/offers");
     return { success: true };
-  } catch (error: any) {
-    return { error: error.message };
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Delete failed.";
+    return { error: msg };
   }
 }
 
@@ -82,7 +95,7 @@ export async function toggleOfferStatus(id: string) {
   if (!user) return { error: "Unauthorized" };
 
   const offer = await prisma.offer.findUnique({ where: { id } });
-  if (!offer) return { error: "Not found" };
+  if (!offer) return { error: "Offer not found." };
 
   await prisma.offer.update({
     where: { id },
@@ -93,6 +106,10 @@ export async function toggleOfferStatus(id: string) {
 }
 
 export async function validateOffer(code: string, subtotal: number) {
+  if (!code || typeof code !== "string") {
+    return { isValid: false, message: "Invalid offer code." };
+  }
+
   try {
     const offer = await prisma.offer.findFirst({
       where: {
@@ -116,16 +133,14 @@ export async function validateOffer(code: string, subtotal: number) {
     if (subtotal < offer.minOrderAmount) {
       return {
         isValid: false,
-        message: `Minimum order amount of ${offer.minOrderAmount} required.`,
+        message: `Minimum order amount of ₹${offer.minOrderAmount} required.`,
       };
     }
 
-    let discount = 0;
-    if (offer.discountType === "PERCENTAGE") {
-      discount = (subtotal * offer.discountValue) / 100;
-    } else {
-      discount = offer.discountValue;
-    }
+    let discount =
+      offer.discountType === "PERCENTAGE"
+        ? (subtotal * offer.discountValue) / 100
+        : offer.discountValue;
 
     discount = Math.min(discount, subtotal);
 
@@ -139,7 +154,7 @@ export async function validateOffer(code: string, subtotal: number) {
       },
       discountAmount: discount,
     };
-  } catch (error: any) {
+  } catch {
     return { isValid: false, message: "Error validating offer." };
   }
 }

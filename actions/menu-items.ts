@@ -1,7 +1,9 @@
 "use server";
 
 import prisma from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { getCurrentUser } from "./auth";
+import { menuItemSchema, type MenuItemInput } from "@/schemas";
 import { revalidatePath } from "next/cache";
 
 export async function getMenuItems() {
@@ -9,18 +11,20 @@ export async function getMenuItems() {
   if (!user) throw new Error("Unauthorized");
 
   return prisma.menuItem.findMany({
-    include: {
-      category: true,
-      variants: true,
-      addons: true,
-    },
+    include: { category: true, variants: true, addons: true },
     orderBy: { createdAt: "desc" },
   });
 }
 
-export async function createMenuItem(data: any) {
+export async function createMenuItem(rawData: MenuItemInput) {
   const user = await getCurrentUser();
   if (!user) return { error: "Unauthorized" };
+
+  const parsed = menuItemSchema.safeParse(rawData);
+  if (!parsed.success) {
+    return { error: parsed.error.issues.map((e) => e.message).join(", ") };
+  }
+  const data = parsed.data;
 
   try {
     const menuItem = await prisma.$transaction(async (tx) => {
@@ -28,36 +32,36 @@ export async function createMenuItem(data: any) {
         data: {
           name: data.name,
           description: data.description,
-          price: parseFloat(data.price),
-          discountPrice: data.discountPrice ? parseFloat(data.discountPrice) : null,
+          price: data.price,
+          discountPrice: data.discountPrice ?? null,
           isVeg: data.isVeg,
-          spicyLevel: parseInt(data.spicyLevel),
-          preparationTime: parseInt(data.preparationTime),
-          images: data.images || [],
-          ingredients: data.ingredients || [],
-          allergens: data.allergens || [],
-          nutrition: data.nutrition || null,
+          spicyLevel: data.spicyLevel,
+          preparationTime: data.preparationTime,
+          images: data.images ?? [],
+          ingredients: data.ingredients ?? [],
+          allergens: data.allergens ?? [],
+          nutrition: data.nutrition != null ? (data.nutrition as Prisma.InputJsonValue) : Prisma.JsonNull,
           categoryId: data.categoryId,
         },
       });
 
       if (data.variants && data.variants.length > 0) {
         await tx.variant.createMany({
-          data: data.variants.map((v: any) => ({
+          data: data.variants.map((v) => ({
             menuItemId: item.id,
             name: v.name,
-            price: parseFloat(v.price),
+            price: v.price,
           })),
         });
       }
 
       if (data.addons && data.addons.length > 0) {
         await tx.addon.createMany({
-          data: data.addons.map((a: any) => ({
+          data: data.addons.map((a) => ({
             menuItemId: item.id,
             name: a.name,
-            price: parseFloat(a.price),
-            isVeg: a.isVeg !== undefined ? a.isVeg : true,
+            price: a.price,
+            isVeg: a.isVeg ?? true,
           })),
         });
       }
@@ -67,15 +71,22 @@ export async function createMenuItem(data: any) {
 
     revalidatePath("/dashboard/menu");
     return { success: true, menuItem };
-  } catch (error: any) {
-    console.error("Create MenuItem Error:", error);
-    return { error: error.message || "Failed to create menu item." };
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Failed to create menu item.";
+    console.error("createMenuItem error:", error);
+    return { error: msg };
   }
 }
 
-export async function updateMenuItem(id: string, data: any) {
+export async function updateMenuItem(id: string, rawData: MenuItemInput) {
   const user = await getCurrentUser();
   if (!user) return { error: "Unauthorized" };
+
+  const parsed = menuItemSchema.safeParse(rawData);
+  if (!parsed.success) {
+    return { error: parsed.error.issues.map((e) => e.message).join(", ") };
+  }
+  const data = parsed.data;
 
   try {
     const menuItem = await prisma.$transaction(async (tx) => {
@@ -84,15 +95,15 @@ export async function updateMenuItem(id: string, data: any) {
         data: {
           name: data.name,
           description: data.description,
-          price: parseFloat(data.price),
-          discountPrice: data.discountPrice ? parseFloat(data.discountPrice) : null,
+          price: data.price,
+          discountPrice: data.discountPrice ?? null,
           isVeg: data.isVeg,
-          spicyLevel: parseInt(data.spicyLevel),
-          preparationTime: parseInt(data.preparationTime),
-          images: data.images || [],
-          ingredients: data.ingredients || [],
-          allergens: data.allergens || [],
-          nutrition: data.nutrition || null,
+          spicyLevel: data.spicyLevel,
+          preparationTime: data.preparationTime,
+          images: data.images ?? [],
+          ingredients: data.ingredients ?? [],
+          allergens: data.allergens ?? [],
+          nutrition: data.nutrition != null ? (data.nutrition as Prisma.InputJsonValue) : Prisma.JsonNull,
           categoryId: data.categoryId,
         },
       });
@@ -102,21 +113,21 @@ export async function updateMenuItem(id: string, data: any) {
 
       if (data.variants && data.variants.length > 0) {
         await tx.variant.createMany({
-          data: data.variants.map((v: any) => ({
+          data: data.variants.map((v) => ({
             menuItemId: id,
             name: v.name,
-            price: parseFloat(v.price),
+            price: v.price,
           })),
         });
       }
 
       if (data.addons && data.addons.length > 0) {
         await tx.addon.createMany({
-          data: data.addons.map((a: any) => ({
+          data: data.addons.map((a) => ({
             menuItemId: id,
             name: a.name,
-            price: parseFloat(a.price),
-            isVeg: a.isVeg !== undefined ? a.isVeg : true,
+            price: a.price,
+            isVeg: a.isVeg ?? true,
           })),
         });
       }
@@ -126,9 +137,10 @@ export async function updateMenuItem(id: string, data: any) {
 
     revalidatePath("/dashboard/menu");
     return { success: true, menuItem };
-  } catch (error: any) {
-    console.error("Update MenuItem Error:", error);
-    return { error: error.message || "Failed to update menu item." };
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Failed to update menu item.";
+    console.error("updateMenuItem error:", error);
+    return { error: msg };
   }
 }
 
@@ -137,28 +149,51 @@ export async function deleteMenuItem(id: string) {
   if (!user) return { error: "Unauthorized" };
 
   try {
-    await prisma.menuItem.delete({
+    // Fetch the menu item to get its image URLs
+    const item = await prisma.menuItem.findUnique({
       where: { id },
+      select: { images: true },
     });
+
+    if (!item) {
+      return { error: "Menu item not found." };
+    }
+
+    // Delete from database first
+    await prisma.menuItem.delete({ where: { id } });
+
+    // Then delete images from Supabase Storage (non-fatal if it fails)
+    if (item.images.length > 0) {
+      const { deleteImages } = await import("@/lib/supabase/storage");
+      try {
+        await deleteImages(item.images);
+      } catch (storageError) {
+        console.error("Failed to delete images from storage:", storageError);
+        // Non-fatal: DB record is already gone
+      }
+    }
+
     revalidatePath("/dashboard/menu");
     return { success: true };
-  } catch (error: any) {
-    return { error: "Failed to delete menu item: " + error.message };
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Failed to delete menu item.";
+    return { error: msg };
   }
 }
 
-export async function toggleMenuItemAvailability(id: string, isAvailable: boolean) {
+export async function toggleMenuItemAvailability(
+  id: string,
+  isAvailable: boolean
+) {
   const user = await getCurrentUser();
   if (!user) return { error: "Unauthorized" };
 
   try {
-    await prisma.menuItem.update({
-      where: { id },
-      data: { isAvailable },
-    });
+    await prisma.menuItem.update({ where: { id }, data: { isAvailable } });
     revalidatePath("/dashboard/menu");
     return { success: true };
-  } catch (error: any) {
-    return { error: error.message };
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Update failed.";
+    return { error: msg };
   }
 }

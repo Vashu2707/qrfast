@@ -1,23 +1,29 @@
 "use server";
 
 import prisma from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { getCurrentUser } from "./auth";
+import { settingsSchema, type SettingsInput } from "@/schemas";
 import { revalidatePath } from "next/cache";
 
 export async function getSettings() {
   const user = await getCurrentUser();
   if (!user) throw new Error("Unauthorized");
 
-  const settings = await prisma.settings.findUnique({
+  return prisma.settings.findUnique({
     where: { id: "singleton" },
   });
-
-  return settings;
 }
 
-export async function updateRestaurantSettings(data: any) {
+export async function updateRestaurantSettings(rawData: SettingsInput) {
   const user = await getCurrentUser();
   if (!user) return { error: "Unauthorized" };
+
+  const parsed = settingsSchema.safeParse(rawData);
+  if (!parsed.success) {
+    return { error: parsed.error.issues.map((e) => e.message).join(", ") };
+  }
+  const data = parsed.data;
 
   try {
     const settings = await prisma.settings.update({
@@ -29,21 +35,22 @@ export async function updateRestaurantSettings(data: any) {
         address: data.address || null,
         phone: data.phone || null,
         email: data.email || null,
-        primaryColor: data.primaryColor || "#E11D48",
-        currency: data.currency || "INR",
-        timezone: data.timezone || "Asia/Kolkata",
+        primaryColor: data.primaryColor ?? "#E11D48",
+        currency: data.currency ?? "INR",
+        timezone: data.timezone ?? "Asia/Kolkata",
         gstNumber: data.gstNumber || null,
-        gstPercentage: parseFloat(data.gstPercentage || 0),
-        serviceChargePercentage: parseFloat(data.serviceChargePercentage || 0),
-        openingHours: data.openingHours || null,
-        socialLinks: data.socialLinks || null,
+        gstPercentage: data.gstPercentage,
+        serviceChargePercentage: data.serviceChargePercentage,
+        openingHours: data.openingHours != null ? (data.openingHours as Prisma.InputJsonValue) : Prisma.JsonNull,
+        socialLinks: data.socialLinks != null ? (data.socialLinks as Prisma.InputJsonValue) : Prisma.JsonNull,
       },
     });
 
     revalidatePath("/dashboard/settings");
     return { success: true, settings };
-  } catch (error: any) {
-    console.error("Settings update failure:", error);
-    return { error: error.message || "Failed to update settings." };
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Failed to update settings.";
+    console.error("updateRestaurantSettings error:", error);
+    return { error: msg };
   }
 }

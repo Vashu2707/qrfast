@@ -27,10 +27,14 @@ export default function OffersPage() {
 
   const handleCreate = async () => {
     const result = await createOffer({
-      ...form,
+      code: form.code,
+      title: form.title,
+      discountType: form.discountType as "PERCENTAGE" | "FLAT",
       discountValue: parseFloat(form.discountValue),
       minOrderAmount: parseFloat(form.minOrderAmount),
+      expiryDate: form.expiryDate,
       usageLimit: form.usageLimit ? parseInt(form.usageLimit) : null,
+      isActive: true,
     });
     if (result.error) toast.error(result.error);
     else {

@@ -8,10 +8,6 @@ type DriverError = {
   cause?: { message?: string };
 };
 
-declare const globalThis: {
-  prismaGlobal?: PrismaClient;
-};
-
 const MAX_RETRIES = 5;
 const RETRY_DELAY_MS = 500;
 
@@ -76,8 +72,10 @@ export function prismaWithRetry<T>(fn: () => Promise<T>): Promise<T> {
   return withRetry(fn);
 }
 
-export default new Proxy({} as PrismaClient, {
+const prismaProxy = new Proxy({} as PrismaClient, {
   get(_, prop) {
     return getPrisma()[prop as keyof PrismaClient];
   },
 });
+
+export default prismaProxy;

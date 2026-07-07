@@ -36,6 +36,7 @@ A production-ready QR dine-in ordering platform built with Next.js 15, Supabase,
 - Analytics: today's revenue, orders, pending/completed counts, popular items
 - 7-day sales chart with Recharts
 - Menu CRUD: categories, items, variants, add-ons, availability toggle
+- **Image uploads**: Drag-drop image uploads to Supabase Storage (see [SUPABASE_STORAGE_SETUP.md](./SUPABASE_STORAGE_SETUP.md))
 - Table management: create, delete, generate QR codes (downloadable)
 - Coupon engine: percentage/flat discounts, expiry, usage limits
 - Order management: status flow, payment updates
@@ -78,6 +79,7 @@ cp .env.example .env.local
 | `DATABASE_URL` | Supabase PostgreSQL connection string |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (for image uploads) |
 | `NEXT_PUBLIC_APP_URL` | Your app URL (`http://localhost:3000` for dev) |
 | `RAZORPAY_KEY_ID` | Razorpay API key |
 | `RAZORPAY_KEY_SECRET` | Razorpay API secret |
@@ -213,11 +215,19 @@ In Supabase Dashboard → Authentication → URL Configuration:
 - Site URL: `https://yourdomain.com`
 - Redirect URLs: `https://yourdomain.com/**`
 
+### 5. Supabase Storage Bucket
+
+In Supabase Dashboard → Storage:
+1. Create a new bucket named `menu-images`
+2. Set it to **Public**
+3. See [SUPABASE_STORAGE_SETUP.md](./SUPABASE_STORAGE_SETUP.md) for details
+
 ## Production Checklist
 
 - [ ] All environment variables set in Vercel
 - [ ] `prisma db push` run against production database
 - [ ] Supabase Auth configured with correct redirect URLs
+- [ ] **Supabase Storage bucket `menu-images` created and set to Public**
 - [ ] Razorpay webhook configured and tested
 - [ ] Resend domain verified (if using email receipts)
 - [ ] Create real staff accounts in Supabase Auth
@@ -226,6 +236,7 @@ In Supabase Dashboard → Authentication → URL Configuration:
 - [ ] Update `NEXT_PUBLIC_APP_URL` to production domain
 - [ ] Test coupon validation
 - [ ] Test Razorpay payment flow (use test mode keys)
+- [ ] **Test image upload on the menu management page**
 - [ ] Configure custom domain in Vercel (optional)
 
 ## Security

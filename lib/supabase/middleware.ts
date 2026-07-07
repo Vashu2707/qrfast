@@ -1,38 +1,62 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { createServerClient } from "@supabase/ssr";
 
 const protectedPrefixes = ["/dashboard", "/kitchen", "/cashier"];
 const authRoutes = ["/login", "/signup", "/forgot-password"];
 
-function getProjectRef(): string {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-  const match = url.match(/https:\/\/(.+)\.supabase\.co/);
-  return match ? match[1] : "";
-}
-
-function hasSessionCookie(request: NextRequest): boolean {
-  const projectRef = getProjectRef();
-  if (!projectRef) return false;
-  return request.cookies.has(`sb-${projectRef}-auth-token`);
-}
-
 export async function updateSession(request: NextRequest) {
-  const hasSession = hasSessionCookie(request);
   const pathname = request.nextUrl.pathname;
   const isProtected = protectedPrefixes.some((p) => pathname.startsWith(p));
   const isAuthRoute = authRoutes.some((p) => pathname.startsWith(p));
 
-  if (isProtected && !hasSession) {
+  // Only run Supabase session check when the route requires it
+  if (!isProtected && !isAuthRoute) {
+    return NextResponse.next({ request });
+  }
+
+  let response = NextResponse.next({ request });
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value)
+          );
+          response = NextResponse.next({ request });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options)
+          );
+        },
+      },
+    }
+  );
+
+  // getUser() is the only method that validates the JWT with Supabase Auth server.
+  // Do NOT use getSession() here — it only reads the local cookie without verification.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (isProtected && !user) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    url.searchParams.set("redirect", pathname);
+    // Only allow same-origin redirect targets
+    const redirect = pathname;
+    url.searchParams.set("redirect", redirect);
     return NextResponse.redirect(url);
   }
 
-  if (isAuthRoute && hasSession) {
+  if (isAuthRoute && user) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     return NextResponse.redirect(url);
   }
 
-  return NextResponse.next({ request });
+  return response;
 }

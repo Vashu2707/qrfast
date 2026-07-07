@@ -36,9 +36,15 @@ export default function LoginPage() {
     }
 
     toast.success("Welcome back!");
-    const redirectTo = searchParams.get("redirect");
     const roleRoute = result.role ? getDefaultRouteForRole(result.role) : "/dashboard";
-    const target = redirectTo || roleRoute;
+
+    // Prevent open redirect: only allow same-origin relative paths (starting with /)
+    const rawRedirect = searchParams.get("redirect") ?? "";
+    const isSafeRedirect =
+      rawRedirect.startsWith("/") &&
+      !rawRedirect.startsWith("//") &&
+      !rawRedirect.startsWith("/\\");
+    const target = isSafeRedirect ? rawRedirect : roleRoute;
 
     if (target === window.location.pathname) {
       window.location.reload();

@@ -41,7 +41,20 @@ export default function SettingsPage() {
 
   const handleSave = async () => {
     setLoading(true);
-    const result = await updateRestaurantSettings(form);
+    const result = await updateRestaurantSettings({
+      restaurantName: form.restaurantName || "",
+      address: form.address || null,
+      phone: form.phone || null,
+      email: form.email || null,
+      logo: form.logo || null,
+      banner: form.banner || null,
+      primaryColor: form.primaryColor || "#E11D48",
+      currency: form.currency || "INR",
+      timezone: form.timezone || "Asia/Kolkata",
+      gstNumber: form.gstNumber || null,
+      gstPercentage: parseFloat(form.gstPercentage || "0"),
+      serviceChargePercentage: parseFloat(form.serviceChargePercentage || "0"),
+    });
     setLoading(false);
     if (result.error) toast.error(result.error);
     else {

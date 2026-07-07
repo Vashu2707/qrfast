@@ -3,6 +3,14 @@ import crypto from "crypto";
 import prisma from "@/lib/prisma";
 import { PaymentStatus } from "@prisma/client";
 
+// Never cache payment endpoints
+export const dynamic = "force-dynamic";
+
+const PAYMENT_NO_CACHE_HEADERS = {
+  "Cache-Control": "no-store, no-cache, must-revalidate",
+  "Pragma": "no-cache",
+};
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -11,42 +19,39 @@ export async function POST(request: Request) {
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
       return NextResponse.json(
         { error: "Missing required verification parameters." },
-        { status: 400 }
+        { status: 400, headers: PAYMENT_NO_CACHE_HEADERS }
       );
     }
 
     const secret = process.env.RAZORPAY_KEY_SECRET;
-
     if (!secret) {
       return NextResponse.json(
-        { error: "Razorpay verification secret is not configured." },
-        { status: 500 }
+        { error: "Payment verification is not configured." },
+        { status: 500, headers: PAYMENT_NO_CACHE_HEADERS }
       );
     }
 
-    // 1. Verify Razorpay Signature
+    // Verify Razorpay HMAC signature
     const hash = crypto
       .createHmac("sha256", secret)
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
       .digest("hex");
 
     if (hash !== razorpay_signature) {
-      console.warn("Razorpay verification failed: Signature mismatch.");
+      console.warn("Razorpay verification failed: signature mismatch.");
       return NextResponse.json(
         { error: "Payment verification failed. Invalid signature." },
-        { status: 400 }
+        { status: 400, headers: PAYMENT_NO_CACHE_HEADERS }
       );
     }
 
-    // 2. Transactionally update Payment and Order statuses to SUCCESS
+    // Transactionally update Payment and Order to SUCCESS
     await prisma.$transaction(async (tx) => {
       const payment = await tx.payment.findFirst({
         where: { transactionId: razorpay_order_id },
       });
 
-      if (!payment) {
-        throw new Error("Local payment record not found.");
-      }
+      if (!payment) throw new Error("Local payment record not found.");
 
       await tx.payment.update({
         where: { id: payment.id },
@@ -59,16 +64,21 @@ export async function POST(request: Request) {
 
       await tx.order.update({
         where: { id: payment.orderId },
-        data: {
-          paymentStatus: PaymentStatus.SUCCESS,
-        },
+        data: { paymentStatus: PaymentStatus.SUCCESS },
       });
     });
 
-    return NextResponse.json({ success: true, message: "Payment verified successfully." });
+    return NextResponse.json(
+      { success: true, message: "Payment verified successfully." },
+      { headers: PAYMENT_NO_CACHE_HEADERS }
+    );
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Internal server error.";
-    console.error("Razorpay verification handler exception:", error);
-    return NextResponse.json({ error: message }, { status: 500 });
+    const message =
+      error instanceof Error ? error.message : "Internal server error.";
+    console.error("Razorpay verify exception:", error);
+    return NextResponse.json(
+      { error: message },
+      { status: 500, headers: PAYMENT_NO_CACHE_HEADERS }
+    );
   }
 }

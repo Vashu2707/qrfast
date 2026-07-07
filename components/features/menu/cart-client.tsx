@@ -136,7 +136,7 @@ export function CartClient({
         menuItemId: item.menuItemId,
         quantity: item.quantity,
         notes: item.notes,
-        customizations: item.customizations,
+        customizations: item.customizations ?? undefined,
       })),
     });
 
