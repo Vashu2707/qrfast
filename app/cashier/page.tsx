@@ -18,7 +18,7 @@ export default function CashierPage() {
 
   const { data: orders = [], refetch, isLoading } = useQuery({
     queryKey: ["cashier-orders"],
-    queryFn: getOrders,
+    queryFn: () => getOrders(),
     refetchInterval: 10000,
   });
 

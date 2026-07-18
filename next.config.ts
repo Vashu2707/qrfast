@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+const isDev = process.env.NODE_ENV === "development";
+
 const securityHeaders = [
   // Prevent clickjacking
   { key: "X-Frame-Options", value: "SAMEORIGIN" },
@@ -26,14 +28,18 @@ const securityHeaders = [
       "default-src 'self'",
       // Next.js requires 'unsafe-inline' for styles; nonce-based CSP needs additional setup
       "style-src 'self' 'unsafe-inline'",
-      // Scripts: self + Razorpay SDK
-      "script-src 'self' 'unsafe-inline' https://checkout.razorpay.com",
+      // Scripts: self + Razorpay SDK + (unsafe-eval in development for Fast Refresh)
+      isDev
+        ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com"
+        : "script-src 'self' 'unsafe-inline' https://checkout.razorpay.com",
       // Images: self + data URIs (QR codes) + Supabase + Unsplash
       "img-src 'self' data: blob: https://*.supabase.co https://images.unsplash.com",
       // Frames: Razorpay payment iframe
       "frame-src https://api.razorpay.com https://checkout.razorpay.com",
-      // API connections
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.razorpay.com",
+      // API connections + HMR WebSockets in development
+      isDev
+        ? "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.razorpay.com ws://localhost:* wss://localhost:* ws://127.0.0.1:* wss://127.0.0.1:*"
+        : "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.razorpay.com",
       // Fonts: local only
       "font-src 'self' data:",
       "object-src 'none'",
