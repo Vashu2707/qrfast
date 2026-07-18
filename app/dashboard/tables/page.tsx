@@ -21,7 +21,7 @@ export default function TablesPage() {
   const [tableNumber, setTableNumber] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  const { data: tables = [] } = useQuery({ queryKey: ["tables"], queryFn: getTables });
+  const { data: tables = [] } = useQuery({ queryKey: ["tables"], queryFn: () => getTables() });
 
   const handleCreate = async () => {
     const result = await createTable({ number: tableNumber });

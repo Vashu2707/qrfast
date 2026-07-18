@@ -21,7 +21,7 @@ export default function OrdersPage() {
 
   const { data: orders = [], isLoading, refetch } = useQuery({
     queryKey: ["orders"],
-    queryFn: getOrders,
+    queryFn: () => getOrders(),
     refetchInterval: 15000,
   });
 
