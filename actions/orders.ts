@@ -118,12 +118,14 @@ export async function createOrder(rawData: CreateOrderInput) {
       const totalAmount =
         Math.round((taxableAmount + gstAmount + serviceChargeAmount) * 100) / 100;
 
+      const isRazorpay = data.paymentMethod === PaymentMethod.RAZORPAY;
+
       const order = await tx.order.create({
         data: {
           tableId: table.id,
           customerName: data.customerName,
           customerPhone: data.customerPhone ?? "",
-          status: OrderStatus.PLACED,
+          status: isRazorpay ? OrderStatus.CONFIRMED : OrderStatus.PLACED,
           paymentStatus: PaymentStatus.PENDING,
           paymentMethod: data.paymentMethod as PaymentMethod,
           subtotal,
@@ -147,21 +149,23 @@ export async function createOrder(rawData: CreateOrderInput) {
         })),
       });
 
-      await tx.table.update({
-        where: { id: table.id },
-        data: { status: TableStatus.OCCUPIED },
-      });
+      if (!isRazorpay) {
+        await tx.table.update({
+          where: { id: table.id },
+          data: { status: TableStatus.OCCUPIED },
+        });
 
-      await tx.notification.create({
-        data: {
-          title: `New Order! Table ${table.number}`,
-          message: `${data.customerName} placed an order for ₹${totalAmount}`,
-          type: NotificationType.NEW_ORDER,
-        },
-      });
+        await tx.notification.create({
+          data: {
+            title: `New Order! Table ${table.number}`,
+            message: `${data.customerName} placed an order for ₹${totalAmount}`,
+            type: NotificationType.NEW_ORDER,
+          },
+        });
+      }
 
       let razorpayOrder = null;
-      if (data.paymentMethod === PaymentMethod.RAZORPAY) {
+      if (isRazorpay) {
         try {
           const rzpOrder = await getRazorpayClient().orders.create({
             amount: Math.round(totalAmount * 100),
@@ -208,6 +212,33 @@ export async function createOrder(rawData: CreateOrderInput) {
     const message = error instanceof Error ? error.message : "Checkout failed.";
     console.error("createOrder error:", error);
     return { error: message };
+  }
+}
+
+/**
+ * Cancels an unpaid Razorpay order when the customer dismisses the payment modal.
+ * Only affects orders still in CONFIRMED status with PENDING payment.
+ */
+export async function cancelUnpaidOrder(orderId: string) {
+  if (!orderId || typeof orderId !== "string") return;
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      const order = await tx.order.findUnique({
+        where: { id: orderId },
+        select: { status: true, paymentStatus: true },
+      });
+
+      if (!order) return;
+      if (order.status !== OrderStatus.CONFIRMED) return;
+      if (order.paymentStatus !== PaymentStatus.PENDING) return;
+
+      await tx.orderItem.deleteMany({ where: { orderId } });
+      await tx.payment.deleteMany({ where: { orderId } });
+      await tx.order.delete({ where: { id: orderId } });
+    });
+  } catch (error: unknown) {
+    console.error("cancelUnpaidOrder error:", error);
   }
 }
 

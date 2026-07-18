@@ -1,10 +1,12 @@
 "use server";
 
+import { randomUUID } from "crypto";
 import prisma from "@/lib/prisma";
 import { getCurrentUser } from "./auth";
 import { revalidatePath } from "next/cache";
 import { createTableSchema } from "@/schemas";
 import QRCode from "qrcode";
+import { generateTableToken } from "@/lib/table-token";
 
 export async function getTables() {
   const user = await getCurrentUser();
@@ -23,14 +25,11 @@ export async function createTable(data: { number: string }) {
   const user = await getCurrentUser();
   if (!user) return { error: "Unauthorized" };
 
-  // Validate input
   const parsed = createTableSchema.safeParse(data);
   if (!parsed.success) {
     return { error: parsed.error.issues.map((e) => e.message).join(", ") };
   }
 
-  // Use the configured app URL — never derive the base URL from Host header
-  // to prevent host header injection attacks.
   const appUrl =
     process.env.NEXT_PUBLIC_APP_URL ||
     (process.env.NODE_ENV === "production" ? undefined : "http://localhost:3000");
@@ -40,7 +39,9 @@ export async function createTable(data: { number: string }) {
   }
 
   try {
-    const qrTargetUrl = `${appUrl}/menu/table-${parsed.data.number}`;
+    const tableId = randomUUID();
+    const token = generateTableToken(tableId);
+    const qrTargetUrl = `${appUrl}/menu/${token}`;
 
     const qrCodeDataUrl = await QRCode.toDataURL(qrTargetUrl, {
       errorCorrectionLevel: "H",
@@ -51,6 +52,7 @@ export async function createTable(data: { number: string }) {
 
     const table = await prisma.table.create({
       data: {
+        id: tableId,
         number: parsed.data.number,
         qrCodeUrl: qrCodeDataUrl,
       },

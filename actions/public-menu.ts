@@ -1,9 +1,11 @@
 "use server";
 
 import prisma from "@/lib/prisma";
+import { verifyTableToken } from "@/lib/table-token";
 
 export async function getPublicMenu(tableParam: string) {
-  const tableNumber = tableParam.replace(/^table-/, "");
+  const tableId = verifyTableToken(tableParam);
+  if (!tableId) return null;
 
   const settings = await prisma.settings.findUnique({
     where: { id: "singleton" },
@@ -23,7 +25,7 @@ export async function getPublicMenu(tableParam: string) {
   });
 
   const table = await prisma.table.findUnique({
-    where: { number: tableNumber },
+    where: { id: tableId },
   });
 
   if (!table) return null;

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { useCart } from "@/hooks/use-cart";
-import { createOrder } from "@/actions/orders";
+import { createOrder, cancelUnpaidOrder } from "@/actions/orders";
 import { validateOffer } from "@/actions/offers";
 import { formatCurrency } from "@/lib/format";
 import { Button } from "@/components/ui/button";
@@ -192,8 +192,9 @@ export function CartClient({
         prefill: { name: customerName, contact: customerPhone },
         theme: { color: primaryColor },
         modal: {
-          ondismiss: () => {
+          ondismiss: async () => {
             isSubmitting.current = false;
+            await cancelUnpaidOrder(result.orderId);
           },
         },
       };
