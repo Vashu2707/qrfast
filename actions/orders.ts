@@ -125,6 +125,8 @@ export async function createOrder(rawData: CreateOrderInput) {
           tableId: table.id,
           customerName: data.customerName,
           customerPhone: data.customerPhone ?? "",
+          // For Razorpay: keep as CONFIRMED until payment is verified.
+          // For Cash: immediate PLACED (customer pays at counter).
           status: isRazorpay ? OrderStatus.CONFIRMED : OrderStatus.PLACED,
           paymentStatus: PaymentStatus.PENDING,
           paymentMethod: data.paymentMethod as PaymentMethod,
@@ -149,6 +151,8 @@ export async function createOrder(rawData: CreateOrderInput) {
         })),
       });
 
+      // For Cash: occupy table and notify immediately.
+      // For Razorpay: defer until payment is confirmed in /api/payments/verify.
       if (!isRazorpay) {
         await tx.table.update({
           where: { id: table.id },

@@ -27,7 +27,7 @@ export default function KitchenPage() {
 
   const { data: orders = [], refetch, isLoading } = useQuery({
     queryKey: ["kitchen-orders"],
-    queryFn: getOrders,
+    queryFn: () => getOrders(),
     refetchInterval: 8000,
   });
 

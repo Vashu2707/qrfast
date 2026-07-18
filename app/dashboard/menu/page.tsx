@@ -81,11 +81,11 @@ export default function MenuPage() {
 
   const { data: items = [] } = useQuery({
     queryKey: ["menuItems"],
-    queryFn: getMenuItems,
+    queryFn: () => getMenuItems(),
   });
   const { data: categories = [] } = useQuery({
     queryKey: ["categories"],
-    queryFn: getCategories,
+    queryFn: () => getCategories(),
   });
 
   const resetForm = () => {

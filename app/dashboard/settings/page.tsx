@@ -15,7 +15,7 @@ export default function SettingsPage() {
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
 
-  const { data: settings } = useQuery({ queryKey: ["settings"], queryFn: getSettings });
+  const { data: settings } = useQuery({ queryKey: ["settings"], queryFn: () => getSettings() });
 
   const [form, setForm] = useState<Record<string, string>>({});
 

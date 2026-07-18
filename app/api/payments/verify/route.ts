@@ -69,6 +69,7 @@ export async function POST(request: Request) {
 
       if (!order) throw new Error("Order not found.");
 
+      // Finalize the order: move from CONFIRMED → PLACED, occupy table, notify kitchen
       if (order.status === OrderStatus.CONFIRMED) {
         await tx.order.update({
           where: { id: order.id },
@@ -91,6 +92,7 @@ export async function POST(request: Request) {
           },
         });
       } else {
+        // Order already processed (e.g. webhook arrived first) — just update payment status
         await tx.order.update({
           where: { id: order.id },
           data: { paymentStatus: PaymentStatus.SUCCESS },
