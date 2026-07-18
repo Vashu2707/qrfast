@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "crypto";
 import prisma from "@/lib/prisma";
 import { getCurrentUser } from "./auth";
 import { revalidatePath } from "next/cache";
@@ -40,7 +41,12 @@ export async function createTable(data: { number: string }) {
   }
 
   try {
-    const qrTargetUrl = `${appUrl}/menu/table-${parsed.data.number}`;
+    const table = await prisma.table.create({
+      data: { number: parsed.data.number },
+    });
+
+    const token = generateTableToken(table.id);
+    const qrTargetUrl = `${appUrl}/menu/${token}`;
 
     const qrCodeDataUrl = await QRCode.toDataURL(qrTargetUrl, {
       errorCorrectionLevel: "H",
@@ -49,11 +55,9 @@ export async function createTable(data: { number: string }) {
       color: { dark: "#000000", light: "#FFFFFF" },
     });
 
-    const table = await prisma.table.create({
-      data: {
-        number: parsed.data.number,
-        qrCodeUrl: qrCodeDataUrl,
-      },
+    const updatedTable = await prisma.table.update({
+      where: { id: table.id },
+      data: { qrCodeUrl: qrCodeDataUrl },
     });
 
     revalidatePath("/dashboard/tables");
