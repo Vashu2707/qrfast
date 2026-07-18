@@ -41,11 +41,6 @@ export async function createTable(data: { number: string }) {
   try {
     const tableId = randomUUID();
     const token = generateTableToken(tableId);
-    const table = await prisma.table.create({
-      data: { number: parsed.data.number },
-    });
-
-    const token = generateTableToken(table.id);
     const qrTargetUrl = `${appUrl}/menu/${token}`;
 
     const qrCodeDataUrl = await QRCode.toDataURL(qrTargetUrl, {
@@ -61,13 +56,10 @@ export async function createTable(data: { number: string }) {
         number: parsed.data.number,
         qrCodeUrl: qrCodeDataUrl,
       },
-    const updatedTable = await prisma.table.update({
-      where: { id: table.id },
-      data: { qrCodeUrl: qrCodeDataUrl },
     });
 
     revalidatePath("/dashboard/tables");
-    return { success: true, table: updatedTable };
+    return { success: true, table };
   } catch (error: unknown) {
     console.error("Table create failure:", error);
     return { error: "A table with this number already exists." };
