@@ -5,6 +5,7 @@ import { getCurrentUser } from "./auth";
 import { revalidatePath } from "next/cache";
 import { createTableSchema } from "@/schemas";
 import QRCode from "qrcode";
+import { generateTableToken } from "@/lib/table-token";
 
 export async function getTables() {
   const user = await getCurrentUser();
@@ -40,7 +41,12 @@ export async function createTable(data: { number: string }) {
   }
 
   try {
-    const qrTargetUrl = `${appUrl}/menu/table-${parsed.data.number}`;
+    const table = await prisma.table.create({
+      data: { number: parsed.data.number },
+    });
+
+    const token = generateTableToken(table.id);
+    const qrTargetUrl = `${appUrl}/menu/${token}`;
 
     const qrCodeDataUrl = await QRCode.toDataURL(qrTargetUrl, {
       errorCorrectionLevel: "H",
@@ -49,15 +55,13 @@ export async function createTable(data: { number: string }) {
       color: { dark: "#000000", light: "#FFFFFF" },
     });
 
-    const table = await prisma.table.create({
-      data: {
-        number: parsed.data.number,
-        qrCodeUrl: qrCodeDataUrl,
-      },
+    const updatedTable = await prisma.table.update({
+      where: { id: table.id },
+      data: { qrCodeUrl: qrCodeDataUrl },
     });
 
     revalidatePath("/dashboard/tables");
-    return { success: true, table };
+    return { success: true, table: updatedTable };
   } catch (error: unknown) {
     console.error("Table create failure:", error);
     return { error: "A table with this number already exists." };

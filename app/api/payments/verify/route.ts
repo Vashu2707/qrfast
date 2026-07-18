@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import prisma from "@/lib/prisma";
-import { PaymentStatus } from "@prisma/client";
+import { PaymentStatus, OrderStatus, TableStatus, NotificationType } from "@prisma/client";
 
 // Never cache payment endpoints
 export const dynamic = "force-dynamic";
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Transactionally update Payment and Order to SUCCESS
+    // Transactionally update Payment, Order, table, and notification
     await prisma.$transaction(async (tx) => {
       const payment = await tx.payment.findFirst({
         where: { transactionId: razorpay_order_id },
@@ -62,10 +62,42 @@ export async function POST(request: Request) {
         },
       });
 
-      await tx.order.update({
+      const order = await tx.order.findUnique({
         where: { id: payment.orderId },
-        data: { paymentStatus: PaymentStatus.SUCCESS },
+        select: { id: true, status: true, customerName: true, totalAmount: true, tableId: true, table: { select: { number: true } } },
       });
+
+      if (!order) throw new Error("Order not found.");
+
+      // Finalize the order: move from CONFIRMED → PLACED, occupy table, notify kitchen
+      if (order.status === OrderStatus.CONFIRMED) {
+        await tx.order.update({
+          where: { id: order.id },
+          data: {
+            paymentStatus: PaymentStatus.SUCCESS,
+            status: OrderStatus.PLACED,
+          },
+        });
+
+        await tx.table.update({
+          where: { id: order.tableId },
+          data: { status: TableStatus.OCCUPIED },
+        });
+
+        await tx.notification.create({
+          data: {
+            title: `New Order! Table ${order.table.number}`,
+            message: `${order.customerName} placed an order for ₹${order.totalAmount}`,
+            type: NotificationType.NEW_ORDER,
+          },
+        });
+      } else {
+        // Order already processed (e.g. webhook arrived first) — just update payment status
+        await tx.order.update({
+          where: { id: order.id },
+          data: { paymentStatus: PaymentStatus.SUCCESS },
+        });
+      }
     });
 
     return NextResponse.json(
