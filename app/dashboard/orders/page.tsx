@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { formatCurrency, formatDate, getOrderStatusColor, getOrderStatusLabel } from "@/lib/format";
 import { OrderStatus, PaymentStatus } from "@prisma/client";
 import { toast } from "sonner";
-import { Search, RefreshCw } from "lucide-react";
+import { Search, RefreshCw, FileText } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 export default function OrdersPage() {
@@ -136,6 +136,17 @@ export default function OrdersPage() {
                       {order.paymentStatus === PaymentStatus.PENDING && (
                         <Button size="sm" onClick={() => handlePaymentUpdate(order.id, PaymentStatus.SUCCESS)}>
                           Mark Paid
+                        </Button>
+                      )}
+                      {order.status === OrderStatus.COMPLETED && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1.5"
+                          onClick={() => window.open(`/api/bills/${order.id}`, "_blank")}
+                        >
+                          <FileText className="size-3.5" />
+                          View Bill
                         </Button>
                       )}
                     </div>
