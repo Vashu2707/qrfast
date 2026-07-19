@@ -38,6 +38,10 @@ export async function createTable(data: { number: string }) {
     return { error: "NEXT_PUBLIC_APP_URL is not configured." };
   }
 
+  if (!process.env.TABLE_TOKEN_SECRET || process.env.TABLE_TOKEN_SECRET.length < 16) {
+    return { error: "TABLE_TOKEN_SECRET is not configured on the server. Please add it to your environment variables." };
+  }
+
   try {
     const tableId = randomUUID();
     const token = generateTableToken(tableId);
@@ -61,8 +65,12 @@ export async function createTable(data: { number: string }) {
     revalidatePath("/dashboard/tables");
     return { success: true, table };
   } catch (error: unknown) {
-    console.error("Table create failure:", error);
-    return { error: "A table with this number already exists." };
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error("Table create failure:", msg);
+    if (msg.includes("Unique constraint")) {
+      return { error: "A table with this number already exists." };
+    }
+    return { error: `Failed to create table: ${msg}` };
   }
 }
 
