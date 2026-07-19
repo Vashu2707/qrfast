@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence, useMotionValue, useSpring, useTransform, animate } from "framer-motion";
+import { motion, AnimatePresence, useMotionValue, useSpring, useTransform, animate, useInView } from "framer-motion";
 import {
   Bell,
   ChefHat,
@@ -20,7 +20,7 @@ import {
 function CountUp({ value, prefix = "", suffix = "" }: { value: number; prefix?: string; suffix?: string }) {
   const motionValue = useMotionValue(0);
   const springValue = useSpring(motionValue, { stiffness: 60, damping: 15 });
-  const displayValue = useTransform(springValue, (latest) => 
+  const displayValue = useTransform(springValue, (latest) =>
     `${prefix}${Math.floor(latest).toLocaleString()}${suffix}`
   );
   const ref = useRef<HTMLSpanElement>(null);
@@ -94,15 +94,15 @@ function Laptop({ children }: { children: React.ReactNode }) {
       <div className="relative w-full aspect-[16/10] bg-[#1e293b] rounded-t-2xl p-[6px] border border-[#334155] shadow-lg flex flex-col">
         {/* Screen Bezel (Inner Border) */}
         <div className="relative w-full h-full bg-slate-950 rounded-[10px] overflow-hidden p-[3px] flex flex-col">
-          
+
           {/* Inner Display (the application UI) */}
           <div className="relative w-full h-full bg-white rounded-[7px] overflow-hidden flex flex-col shadow-[inset_0_1px_3px_rgba(0,0,0,0.2)]">
             {/* Webcam dot */}
             <div className="absolute top-1 left-1/2 -translate-x-1/2 size-1 bg-slate-900 rounded-full z-50" />
-            
+
             {/* Screen reflection */}
             <div className="absolute inset-0 pointer-events-none z-40 bg-gradient-to-tr from-transparent via-white/[0.03] to-white/[0.06]" />
-            
+
             {children}
           </div>
         </div>
@@ -115,7 +115,7 @@ function Laptop({ children }: { children: React.ReactNode }) {
       <div className="relative w-[105%] h-3 bg-black border-t border-[#f1f5f9] border-b border-[#cbd5e1] rounded-b-xl shadow-[0_12px_24px_rgba(15,23,42,0.08),0_24px_48px_rgba(15,23,42,0.06)] flex flex-col items-center">
         {/* Trackpad cut */}
         <div className="w-24 h-1.5 bg-[#cbd5e1] border border-t-[#b8c2cc] border-b-white rounded-b-sm" />
-        
+
         {/* Keyboard recess / hint */}
         <div className="absolute top-0.5 w-[90%] h-0.5 bg-[#94a3b8] opacity-50 rounded-full" />
       </div>
@@ -134,7 +134,7 @@ function Row1Mockup() {
     const interval = setInterval(() => {
       // 1. Scroll down
       setScrollOffset(-80);
-      
+
       // 2. Click "Add to Cart" & trigger fly animation
       setTimeout(() => {
         setIsClicked(true);
@@ -223,11 +223,10 @@ function Row1Mockup() {
                 <span className="text-xs font-bold text-slate-950">₹240</span>
                 <motion.button
                   animate={isClicked ? { scale: 0.85 } : { scale: 1 }}
-                  className={`size-6 rounded-full flex items-center justify-center border transition-all duration-300 ${
-                    cartCount > 0
-                      ? "bg-[#0f9f90] border-[#0f9f90] text-white"
-                      : "bg-white border-slate-200 text-slate-400"
-                  }`}
+                  className={`size-6 rounded-full flex items-center justify-center border transition-all duration-300 ${cartCount > 0
+                    ? "bg-[#0f9f90] border-[#0f9f90] text-white"
+                    : "bg-white border-slate-200 text-slate-400"
+                    }`}
                 >
                   {cartCount > 0 ? (
                     <motion.svg
@@ -388,7 +387,7 @@ function Row2Mockup() {
                           <span className="font-semibold text-slate-400">{t.table}</span>
                         </div>
                         <p className="text-[10px] font-medium text-slate-700 leading-tight">{t.item}</p>
-                        
+
                         <div className="space-y-1 pt-0.5">
                           <div className="flex justify-between text-[8px] text-slate-400 font-bold">
                             <span>Progress</span>
@@ -669,11 +668,10 @@ function Row5Mockup() {
           {[1, 2, 3, 4, 5].map((index) => (
             <Star
               key={index}
-              className={`size-6 transition-all duration-300 ${
-                index <= stars 
-                  ? "fill-yellow-400 text-yellow-400 scale-110" 
-                  : "text-slate-200"
-              }`}
+              className={`size-6 transition-all duration-300 ${index <= stars
+                ? "fill-yellow-400 text-yellow-400 scale-110"
+                : "text-slate-200"
+                }`}
             />
           ))}
         </div>
@@ -704,6 +702,34 @@ function Row5Mockup() {
         </button>
       </div>
     </Phone>
+  );
+}
+
+// --- Typewriter Component ---
+function Typewriter({ text, className }: { text: string; className?: string }) {
+  const ref = useRef<HTMLParagraphElement>(null);
+  const isInView = useInView(ref, { once: true, amount: 0.3 });
+  const [displayText, setDisplayText] = useState("");
+  const count = useMotionValue(0);
+
+  useEffect(() => {
+    if (!isInView) return;
+
+    const controls = animate(count, text.length, {
+      duration: Math.min(text.length * 0.015, 2.0), // Typing speed, max 2 seconds for long descriptions
+      ease: "linear",
+      onUpdate: (latest) => {
+        setDisplayText(text.slice(0, Math.round(latest)));
+      },
+    });
+
+    return () => controls.stop();
+  }, [isInView, text, count]);
+
+  return (
+    <p ref={ref} className={className}>
+      {displayText}
+    </p>
   );
 }
 
@@ -754,7 +780,7 @@ export default function ModernRestaurants() {
 
   return (
     <section className="select-none overflow-hidden border-t border-[#D8DEE8]/60">
-      
+
       {/* Section Header */}
       <div className="bg-[#FFFFFF] pt-24 pb-12">
         <div className="max-w-4xl px-4 text-center mx-auto">
@@ -764,9 +790,10 @@ export default function ModernRestaurants() {
           <h2 className="text-4xl font-bold leading-tight tracking-tight text-slate-900 sm:text-5xl mt-4">
             Everything working in one seamless platform
           </h2>
-          <p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed font-normal text-slate-500 sm:text-base">
-            From digital menus to kitchen operations, payments and analytics—everything works together in one seamless platform.
-          </p>
+          <Typewriter
+            text="From digital menus to kitchen operations, payments and analytics—everything works together in one seamless platform."
+            className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed font-normal text-slate-500 sm:text-base min-h-[40px]"
+          />
         </div>
       </div>
 
@@ -776,7 +803,7 @@ export default function ModernRestaurants() {
           const isEven = idx % 2 === 1;
           const bgClass = isEven ? "bg-[#F3f4f6]" : "bg-[#FFFFFF]";
           const isLaptop = row.id === "kitchen" || row.id === "analytics";
-          
+
           // Subtle layout offset: Phones shifted up (-16px), Laptops shifted down (+16px)
           const offsetClass = isLaptop ? "translate-y-[16px]" : "translate-y-[-16px]";
 
@@ -789,20 +816,20 @@ export default function ModernRestaurants() {
                 transition={{ duration: 0.5, ease: "easeOut" }}
                 className="w-[92%] max-w-6xl mx-auto"
               >
-                <div className={`flex flex-col lg:flex-row items-center justify-between gap-16 lg:gap-24 ${
-                  row.alignLeft ? "" : "lg:flex-row-reverse"
-                }`}>
+                <div className={`flex flex-col lg:flex-row items-center justify-between gap-16 lg:gap-24 ${row.alignLeft ? "" : "lg:flex-row-reverse"
+                  }`}>
                   {/* Text Side (width limited to max-w-md for comfortable reading) */}
                   <div className="flex-1 space-y-4 max-w-md">
                     <span className="text-[10px] font-bold text-[#0f9f90] bg-[#0f9f90]/10 px-2.5 py-1 rounded-full uppercase tracking-wider inline-block">
                       {row.badge}
                     </span>
-                    <h3 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight leading-tight">
+                    <h3 className="text-4xl sm:text-4xl font-bold text-slate-900 tracking-tight leading-tight">
                       {row.headline}
                     </h3>
-                    <p className="text-slate-500 text-sm leading-relaxed font-normal">
-                      {row.description}
-                    </p>
+                    <Typewriter
+                      text={row.description}
+                      className="text-slate-500 text-sm leading-relaxed font-normal min-h-[48px]"
+                    />
                   </div>
 
                   {/* Mockup Side */}

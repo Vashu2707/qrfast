@@ -16,7 +16,7 @@ const playfair = Playfair_Display({
 
 export default function Hero() {
   return (
-    <div className="relative min-h-screen flex flex-col justify-between">
+    <div className="relative min-h-screen flex flex-col justify-between font-system">
       {/* Background Image Container */}
       <div className="absolute inset-0 -z-10 overflow-hidden">
         <Image
