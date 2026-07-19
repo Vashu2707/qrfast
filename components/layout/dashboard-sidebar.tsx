@@ -28,7 +28,6 @@ const adminLinks = [
   { href: "/dashboard/menu", label: "Menu", icon: UtensilsCrossed },
   { href: "/dashboard/tables", label: "Tables", icon: Grid3X3 },
   { href: "/dashboard/offers", label: "Offers", icon: Ticket },
-  { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
 interface DashboardSidebarProps {
@@ -99,8 +98,20 @@ export function DashboardSidebar({ user, unreadCount = 0 }: DashboardSidebarProp
 
       </nav>
 
-      <div className="border-t border-border/60 p-4">
-        <div className="mb-3 flex items-center gap-2">
+      <div className="border-t border-border/60 p-4 space-y-3">
+        <Link
+          href="/dashboard/settings"
+          className={cn(
+            "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+            pathname.startsWith("/dashboard/settings")
+              ? "bg-primary text-primary-foreground"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+          )}
+        >
+          <Settings className="size-4" />
+          Settings
+        </Link>
+        <div className="flex items-center gap-2">
           <div className="flex size-8 items-center justify-center rounded-full bg-muted text-xs font-medium">
             {user.name?.[0]?.toUpperCase() || "U"}
           </div>
