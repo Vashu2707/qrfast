@@ -23,7 +23,7 @@ export default function OffersPage() {
   const [form, setForm] = useState(emptyOffer);
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  const { data: offers = [] } = useQuery({ queryKey: ["offers"], queryFn: () => getOffers() });
+  const { data: offers = [] } = useQuery({ queryKey: ["offers"], queryFn: () => getOffers(), refetchInterval: 15000 });
 
   const handleCreate = async () => {
     const result = await createOffer({

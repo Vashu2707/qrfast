@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { markNotificationRead, clearAllNotifications } from "@/actions/notifications";
 import { formatDate } from "@/lib/format";
 import { Bell, CheckCheck } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -19,7 +19,7 @@ type Notification = {
 };
 
 export function NotificationsPanel({ notifications }: { notifications: Notification[] }) {
-  const router = useRouter();
+  const queryClient = useQueryClient();
   const [clearing, setClearing] = useState(false);
 
   const handleRead = async (id: string) => {
@@ -29,7 +29,7 @@ export function NotificationsPanel({ notifications }: { notifications: Notificat
         toast.error(result.error);
         return;
       }
-      router.refresh();
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
     } catch {
       toast.error("Failed to mark notification as read.");
     }
@@ -44,7 +44,7 @@ export function NotificationsPanel({ notifications }: { notifications: Notificat
         return;
       }
       toast.success("All notifications cleared.");
-      router.refresh();
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
     } catch {
       toast.error("Failed to clear notifications.");
     } finally {

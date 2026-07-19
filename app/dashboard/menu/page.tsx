@@ -82,10 +82,12 @@ export default function MenuPage() {
   const { data: items = [] } = useQuery({
     queryKey: ["menuItems"],
     queryFn: () => getMenuItems(),
+    refetchInterval: 15000,
   });
   const { data: categories = [] } = useQuery({
     queryKey: ["categories"],
     queryFn: () => getCategories(),
+    refetchInterval: 15000,
   });
 
   const resetForm = () => {

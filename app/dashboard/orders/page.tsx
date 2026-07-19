@@ -22,7 +22,7 @@ export default function OrdersPage() {
   const { data: orders = [], isLoading, refetch } = useQuery({
     queryKey: ["orders"],
     queryFn: () => getOrders(),
-    refetchInterval: 15000,
+    refetchInterval: 10000,
   });
 
   const filtered = orders.filter((o) => {

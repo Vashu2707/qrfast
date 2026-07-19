@@ -14,9 +14,9 @@ export default function AppProviders({ children }: { children: React.ReactNode }
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: ONE_MINUTE,
+            staleTime: 10_000,
             gcTime: FIVE_MINUTES,
-            refetchOnWindowFocus: false,
+            refetchOnWindowFocus: true,
             retry: 2,
             retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
           },
