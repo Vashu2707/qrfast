@@ -14,6 +14,8 @@ import { getDefaultRouteForRole } from "@/lib/roles";
 import { toast } from "sonner";
 import { Loader2, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { motion } from "framer-motion";
+import Image from "next/image";
+import logoImage from "@/assets/images/QRFast_Logo-removebg-preview.png";
 
 const cardVariants = {
   hidden: { opacity: 0, y: 12 },
@@ -93,13 +95,13 @@ export default function LoginPage() {
         <div className="flex flex-col items-center text-center mb-10">
           {/* 1. Logo */}
           <motion.div variants={itemVariants} className="mb-2.5">
-            <Link href="/" className="flex items-center gap-2 group">
-              <div className="size-8 rounded-lg bg-gradient-to-br from-orange-600 to-amber-500 flex items-center justify-center text-white font-extrabold text-lg shadow-sm">
-                Q
-              </div>
-              <span className="text-lg font-bold tracking-tight text-slate-900">
-                QRFast
-              </span>
+            <Link href="/" className="flex items-center hover:opacity-90 transition-opacity">
+              <Image
+                src={logoImage}
+                alt="QRFast Logo"
+                height={36}
+                className="h-9 w-auto object-contain"
+              />
             </Link>
           </motion.div>
 

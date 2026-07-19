@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence, Variants } from "framer-motion";
 import Link from "next/link";
+import Image from "next/image";
+import logoImage from "@/assets/images/QRFast_Logo-removebg-preview.png";
 import {
   Calendar,
   Check,
@@ -287,11 +289,13 @@ export default function PricingPage() {
       {/* Premium Sticky Header */}
       <header className="sticky top-0 z-50 border-b border-slate-200/50 bg-[#F8FAFC]/80 backdrop-blur-md w-full select-none">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
-          <Link href="/" className="text-xl font-bold tracking-tight flex items-center gap-2 hover:opacity-90 transition-opacity text-slate-900">
-            <div className="size-8 rounded-lg bg-gradient-to-br from-orange-600 to-amber-500 flex items-center justify-center text-white font-extrabold text-lg">
-              Q
-            </div>
-            <span>QRFast</span>
+          <Link href="/" className="flex items-center hover:opacity-90 transition-opacity">
+            <Image
+              src={logoImage}
+              alt="QRFast Logo"
+              height={36}
+              className="h-9 w-auto object-contain"
+            />
           </Link>
           <nav className="hidden sm:flex items-center gap-8">
             <Link href="/#features" className="text-sm font-semibold text-slate-500 hover:text-slate-900 transition-colors">

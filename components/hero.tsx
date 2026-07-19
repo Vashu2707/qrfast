@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import bgImage from "@/assets/images/herobg.png";
+import logoImage from "@/assets/images/QRFast_Logo-removebg-preview.png";
 import { Outfit, Playfair_Display } from "next/font/google";
 
 const outfit = Outfit({
@@ -34,9 +35,13 @@ export default function Hero() {
 
       <header className="sticky top-0 z-50 border-b border-white/10 bg-[#021f24]/70 backdrop-blur-md w-full">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
-          <Link href="/" className="text-xl font-bold tracking-tight flex items-center gap-2 hover:opacity-90 transition-opacity text-white">
-            <div className="size-8 rounded-lg bg-gradient-to-br from-orange-600 to-amber-500 flex items-center justify-center text-white font-extrabold text-lg">Q</div>
-            <span>QRFast</span>
+          <Link href="/" className="flex items-center hover:opacity-90 transition-opacity">
+            <Image
+              src={logoImage}
+              alt="QRFast Logo"
+              height={36}
+              className="h-9 w-auto object-contain"
+            />
           </Link>
           <nav className="hidden sm:flex items-center gap-6">
             <Link href="#features" className="relative text-sm font-medium text-white transition-colors after:absolute after:bottom-[-4px] after:left-0 after:h-[2px] after:w-full after:scale-x-0 after:bg-white after:transition-transform after:duration-300 after:origin-left hover:after:scale-x-100">
