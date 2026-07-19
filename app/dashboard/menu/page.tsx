@@ -251,7 +251,7 @@ export default function MenuPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Discount Price (₹)</Label>
+                    <Label>Discounted Price (₹)</Label>
                     <Input
                       type="number"
                       min="0"
