@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getOffers, createOffer, deleteOffer, toggleOfferStatus } from "@/actions/offers";
+import { getOffers, createOffer, updateOffer, deleteOffer, toggleOfferStatus } from "@/actions/offers";
 import { StaffHeader } from "@/components/layout/dashboard-sidebar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { formatDate } from "@/lib/format";
 import { toast } from "sonner";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2 } from "lucide-react";
 
 const emptyOffer = { code: "", title: "", discountType: "PERCENTAGE", discountValue: "", minOrderAmount: "0", expiryDate: "", usageLimit: "" };
 
@@ -22,11 +22,14 @@ export default function OffersPage() {
   const queryClient = useQueryClient();
   const [form, setForm] = useState(emptyOffer);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
 
   const { data: offers = [] } = useQuery({ queryKey: ["offers"], queryFn: () => getOffers(), refetchInterval: 15000 });
 
-  const handleCreate = async () => {
-    const result = await createOffer({
+  const resetForm = () => { setForm(emptyOffer); setEditId(null); };
+
+  const handleSave = async () => {
+    const data = {
       code: form.code,
       title: form.title,
       discountType: form.discountType as "PERCENTAGE" | "FLAT",
@@ -35,24 +38,41 @@ export default function OffersPage() {
       expiryDate: form.expiryDate,
       usageLimit: form.usageLimit ? parseInt(form.usageLimit) : null,
       isActive: true,
-    });
+    };
+    const result = editId
+      ? await updateOffer(editId, data)
+      : await createOffer(data);
     if (result.error) toast.error(result.error);
     else {
-      toast.success("Offer created");
-      setForm(emptyOffer);
+      toast.success(editId ? "Offer updated" : "Offer created");
+      resetForm();
       setDialogOpen(false);
       queryClient.invalidateQueries({ queryKey: ["offers"] });
     }
+  };
+
+  const handleEdit = (offer: typeof offers[0]) => {
+    setEditId(offer.id);
+    setForm({
+      code: offer.code,
+      title: offer.title ?? "",
+      discountType: offer.discountType,
+      discountValue: String(offer.discountValue),
+      minOrderAmount: String(offer.minOrderAmount),
+      expiryDate: new Date(offer.expiryDate).toISOString().split("T")[0],
+      usageLimit: offer.usageLimit ? String(offer.usageLimit) : "",
+    });
+    setDialogOpen(true);
   };
 
   return (
     <div>
       <StaffHeader title="Offers" subtitle="Manage discount codes" />
       <div className="space-y-6 p-6">
-        <Button onClick={() => setDialogOpen(true)}><Plus className="mr-2 size-4" />Create Offer</Button>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <Button onClick={() => { resetForm(); setDialogOpen(true); }}><Plus className="mr-2 size-4" />Create Offer</Button>
+        <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) resetForm(); }}>
           <DialogContent>
-            <DialogHeader><DialogTitle>New Offer</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{editId ? "Edit Offer" : "New Offer"}</DialogTitle></DialogHeader>
             <div className="grid gap-4">
               <div className="space-y-2"><Label>Code</Label><Input value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })} placeholder="SAVE20" /></div>
               <div className="space-y-2"><Label>Title</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="20% Off" /></div>
@@ -74,7 +94,7 @@ export default function OffersPage() {
                 <div className="space-y-2"><Label>Expiry Date</Label><Input type="date" value={form.expiryDate} onChange={(e) => setForm({ ...form, expiryDate: e.target.value })} /></div>
                 <div className="space-y-2"><Label>Usage Limit</Label><Input type="number" value={form.usageLimit} onChange={(e) => setForm({ ...form, usageLimit: e.target.value })} placeholder="Unlimited" /></div>
               </div>
-              <Button onClick={handleCreate} disabled={!form.code || !form.discountValue || !form.expiryDate}>Create</Button>
+              <Button onClick={handleSave} disabled={!form.code || !form.discountValue || !form.expiryDate}>{editId ? "Update" : "Create"}</Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -85,9 +105,14 @@ export default function OffersPage() {
               <CardContent className="p-5">
                 <div className="flex items-center justify-between">
                   <Badge variant="default" className="text-base font-mono">{offer.code}</Badge>
-                  <Button variant="ghost" size="icon" onClick={async () => { if (confirm("Delete?")) { await deleteOffer(offer.id); queryClient.invalidateQueries({ queryKey: ["offers"] }); } }}>
-                    <Trash2 className="size-4 text-destructive" />
-                  </Button>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" onClick={() => handleEdit(offer)}>
+                      <Pencil className="size-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={async () => { if (confirm("Delete?")) { await deleteOffer(offer.id); queryClient.invalidateQueries({ queryKey: ["offers"] }); } }}>
+                      <Trash2 className="size-4 text-destructive" />
+                    </Button>
+                  </div>
                 </div>
                 {offer.title && <p className="mt-1 text-sm text-muted-foreground">{offer.title}</p>}
                 <p className="mt-1 text-sm">
