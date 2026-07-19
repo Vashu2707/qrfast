@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { OrderStatus } from "@prisma/client";
 import {
   CheckCircle2, Clock, ChefHat, Utensils, Star, Loader2,
-  ShoppingBag, XCircle, RefreshCw, ArrowRight,
+  ShoppingBag, XCircle, RefreshCw, ArrowRight, Download,
 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -361,6 +361,18 @@ export function OrderTrackingClient({
             </div>
           </CardContent>
         </Card>
+
+        {/* ─── Download Bill ─── */}
+        {isCompleted && (
+          <Button
+            variant="outline"
+            className="w-full h-11 gap-2"
+            onClick={() => window.open(`/api/bills/${orderId}`, "_blank")}
+          >
+            <Download className="size-4" />
+            Download Bill
+          </Button>
+        )}
 
         {/* ─── Order More ─── */}
         {tableParam && (

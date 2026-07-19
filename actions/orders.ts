@@ -284,6 +284,9 @@ export async function getCustomerOrder(id: string) {
         payments: {
           select: { id: true, status: true, method: true, amount: true, createdAt: true },
         },
+        invoices: {
+          select: { id: true, invoiceNumber: true, amount: true, createdAt: true },
+        },
       },
     });
   } catch {
@@ -376,6 +379,7 @@ export async function getOrders() {
         table: true,
         orderItems: { include: { menuItem: true } },
         payments: true,
+        invoices: true,
       },
       orderBy: { createdAt: "desc" },
     });
