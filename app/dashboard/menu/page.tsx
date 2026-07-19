@@ -273,13 +273,14 @@ export default function MenuPage() {
                     onValueChange={(v) =>
                       v && setItemForm({ ...itemForm, categoryId: v })
                     }
+                    items={categories.map((c) => ({ value: c.id, label: c.name }))}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
                       {categories.map((c) => (
-                        <SelectItem key={c.id} value={c.id} label={c.name}>
+                        <SelectItem key={c.id} value={c.id}>
                           {c.name}
                         </SelectItem>
                       ))}
