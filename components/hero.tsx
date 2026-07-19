@@ -28,9 +28,9 @@ export default function Hero() {
           placeholder="blur"
           className="object-cover object-center opacity-100 select-none pointer-events-none"
         />
-        {/* Subtle radial and linear gradients to blend the image beautifully */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#021f24]/90 via-[#021f24]/60 to-[#021f24]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.15),transparent_70%)]" />
+        {/* Subtle radial and linear gradients to blend the image beautifully (with decreased opacity) */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#021f24]/60 via-[#021f24]/30 to-[#021f24]/80 opacity-70" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.08),transparent_70%)]" />
       </div>
 
       <header className="sticky top-0 z-50 border-b border-white/10 bg-[#021f24]/70 backdrop-blur-md w-full">

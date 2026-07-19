@@ -17,8 +17,8 @@ export default function Features() {
 
   useEffect(() => {
     if (hasTriggered && step < 6) {
-      const delays = [500, 2500, 2000, 2000, 3500, 2000]; // timing for steps
-      const delay = delays[step] || 2000;
+      const delays = [200, 800, 600, 600, 1000, 600]; // timing for steps (completes under 4s)
+      const delay = delays[step] || 600;
       const timer = setTimeout(() => {
         setStep((prev) => prev + 1);
       }, delay);

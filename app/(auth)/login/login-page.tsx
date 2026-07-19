@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { Loader2, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { motion } from "framer-motion";
 import Image from "next/image";
-import logoImage from "@/assets/images/QRFast_Logo-removebg-preview.png";
+import faviconImage from "@/assets/images/QRFavicon.png";
 
 const cardVariants = {
   hidden: { opacity: 0, y: 12 },
@@ -97,10 +97,11 @@ export default function LoginPage() {
           <motion.div variants={itemVariants} className="mb-2.5">
             <Link href="/" className="flex items-center hover:opacity-90 transition-opacity">
               <Image
-                src={logoImage}
+                src={faviconImage}
                 alt="QRFast Logo"
+                width={36}
                 height={36}
-                className="h-9 w-auto object-contain"
+                className="size-9 object-contain"
               />
             </Link>
           </motion.div>
