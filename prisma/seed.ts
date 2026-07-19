@@ -56,13 +56,11 @@ async function main() {
   console.log("Creating admin users...");
   const adminId = "44906845-303e-4479-be34-7edd22c56581";
   const kitchenId = "96a5492c-5b02-418e-9d3d-868eb916af0d";
-  const cashierId = "fd7ab4ab-5c77-45d3-bb6b-4714ec594691";
 
   await prisma.adminUser.createMany({
     data: [
       { id: adminId, email: "admin@thebistro.com", name: "Chef Raymond", role: Role.ADMIN },
       { id: kitchenId, email: "kitchen@thebistro.com", name: "Kitchen Team A", role: Role.KITCHEN },
-      { id: cashierId, email: "cashier@thebistro.com", name: "Cashier Sarah", role: Role.CASHIER },
     ],
   });
 

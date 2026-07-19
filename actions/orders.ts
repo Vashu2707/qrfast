@@ -456,6 +456,31 @@ export async function updateOrderStatus(id: string, status: OrderStatus) {
             }
           }
         }
+      } else if (status === OrderStatus.CANCELLED) {
+        await tx.table.update({
+          where: { id: order.tableId },
+          data: { status: TableStatus.AVAILABLE },
+        });
+
+        if (order.paymentStatus === PaymentStatus.SUCCESS) {
+          await tx.payment.updateMany({
+            where: { orderId: id },
+            data: { status: PaymentStatus.REFUNDED },
+          });
+          await tx.order.update({
+            where: { id },
+            data: { paymentStatus: PaymentStatus.REFUNDED },
+          });
+        } else {
+          await tx.payment.updateMany({
+            where: { orderId: id },
+            data: { status: PaymentStatus.FAILED },
+          });
+          await tx.order.update({
+            where: { id },
+            data: { paymentStatus: PaymentStatus.FAILED },
+          });
+        }
       }
 
       return order;

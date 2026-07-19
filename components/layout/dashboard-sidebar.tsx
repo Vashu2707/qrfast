@@ -11,7 +11,7 @@ import {
   Settings,
   LogOut,
   ChefHat,
-  CreditCard,
+
   Bell,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { signOut } from "@/actions/auth";
 import { Role } from "@prisma/client";
-import { canAccessKitchen, canAccessCashier } from "@/lib/roles";
+import { canAccessKitchen } from "@/lib/roles";
 import { toast } from "sonner";
 
 const adminLinks = [
@@ -96,20 +96,7 @@ export function DashboardSidebar({ user, unreadCount = 0 }: DashboardSidebarProp
           </Link>
         )}
 
-        {canAccessCashier(user.role) && (
-          <Link
-            href="/cashier"
-            className={cn(
-              "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-              pathname.startsWith("/cashier")
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-            )}
-          >
-            <CreditCard className="size-4" />
-            Cashier
-          </Link>
-        )}
+
       </nav>
 
       <div className="border-t border-border/60 p-4">
