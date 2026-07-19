@@ -279,7 +279,7 @@ export default function MenuPage() {
                     </SelectTrigger>
                     <SelectContent>
                       {categories.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
+                        <SelectItem key={c.id} value={c.id} label={c.name}>
                           {c.name}
                         </SelectItem>
                       ))}
