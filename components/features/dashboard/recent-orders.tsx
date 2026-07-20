@@ -17,14 +17,14 @@ type Order = {
 
 export function RecentOrdersTable({ orders }: { orders: Order[] }) {
   return (
-    <Card className="border-border/60">
+    <Card className="border-border/60 h-full flex flex-col justify-start">
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-base">Recent Orders</CardTitle>
         <Link href="/dashboard/orders">
           <Button variant="outline" size="sm">View All</Button>
         </Link>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex-1">
         {orders.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">No orders yet</p>
         ) : (
