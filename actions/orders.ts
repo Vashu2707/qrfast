@@ -171,17 +171,27 @@ export async function createOrder(rawData: CreateOrderInput) {
       let razorpayOrder = null;
       if (isRazorpay) {
         try {
+          console.log("[createOrder] Creating Razorpay order:", {
+            orderId: order.id,
+            amount: totalAmount,
+            currency: settings.currency || "INR",
+          });
+
           const rzpOrder = await getRazorpayClient().orders.create({
             amount: Math.round(totalAmount * 100),
             currency: settings.currency || "INR",
             receipt: `rcpt_${order.id.substring(0, 14)}`,
             notes: { orderId: order.id },
+            payment: { capture: "automatic" },
           });
 
+          const rzpOrderData = rzpOrder as unknown as { id: string; amount: number; currency: string };
+          console.log("[createOrder] Razorpay order created:", rzpOrderData.id);
+
           razorpayOrder = {
-            id: rzpOrder.id,
-            amount: rzpOrder.amount,
-            currency: rzpOrder.currency,
+            id: rzpOrderData.id,
+            amount: rzpOrderData.amount,
+            currency: rzpOrderData.currency,
           };
 
           await tx.payment.create({

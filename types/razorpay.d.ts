@@ -15,13 +15,17 @@ interface RazorpayOptions {
   prefill: {
     name: string;
     contact: string;
+    email?: string;
   };
   theme: {
     color: string;
   };
   modal?: {
     ondismiss?: () => void;
+    confirm_close?: boolean;
+    escape?: boolean;
   };
+  notes?: Record<string, string>;
 }
 
 interface Window {
