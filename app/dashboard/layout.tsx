@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/actions/auth";
 import { getUnreadNotificationCount } from "@/actions/notifications";
-import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
+import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { canAccessDashboard } from "@/lib/roles";
 import { getDefaultRouteForRole } from "@/lib/roles";
 
@@ -17,9 +17,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (!canAccessDashboard(user.role)) redirect(getDefaultRouteForRole(user.role));
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      <DashboardSidebar user={user} unreadCount={unreadCount} />
-      <div className="flex-1 overflow-y-auto">{children}</div>
-    </div>
+    <DashboardShell user={user} unreadCount={unreadCount}>
+      {children}
+    </DashboardShell>
   );
 }

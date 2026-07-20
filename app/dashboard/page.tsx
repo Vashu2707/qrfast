@@ -43,7 +43,7 @@ export default function DashboardPage() {
       <StaffHeader title="Dashboard" subtitle="Overview of your restaurant today" />
       <div className="space-y-6 p-6">
         {statsLoading ? (
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
               <Skeleton key={i} className="h-24 rounded-xl" />
             ))}
