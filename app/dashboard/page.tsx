@@ -3,11 +3,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { getDashboardStats } from "@/actions/analytics";
 import { getOrders } from "@/actions/orders";
-import { getTables } from "@/actions/tables";
+import { getNotifications } from "@/actions/notifications";
 import { StaffHeader } from "@/components/layout/dashboard-sidebar";
 import { DashboardStats } from "@/components/features/dashboard/dashboard-stats";
 import { RecentOrdersTable } from "@/components/features/dashboard/recent-orders";
-import { LiveTables } from "@/components/features/dashboard/live-tables";
+import { NotificationsPanel } from "@/components/features/dashboard/notifications-panel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SalesChartWrapper } from "@/components/features/dashboard/sales-chart-wrapper";
 
@@ -24,9 +24,9 @@ export default function DashboardPage() {
     refetchInterval: 10000,
   });
 
-  const { data: tables = [], isLoading: tablesLoading } = useQuery({
-    queryKey: ["tables"],
-    queryFn: () => getTables(),
+  const { data: notifications = [], isLoading: notificationsLoading } = useQuery({
+    queryKey: ["notifications"],
+    queryFn: () => getNotifications(),
     refetchInterval: 10000,
   });
 
@@ -51,10 +51,10 @@ export default function DashboardPage() {
               <SalesChartWrapper data={stats.chartData} />
             ) : null}
           </div>
-          {tablesLoading || ordersLoading ? (
+          {notificationsLoading ? (
             <Skeleton className="h-[340px] w-full rounded-xl" />
           ) : (
-            <LiveTables tables={tables} orders={orders} />
+            <NotificationsPanel notifications={notifications.slice(0, 8)} />
           )}
         </div>
         {ordersLoading ? (
