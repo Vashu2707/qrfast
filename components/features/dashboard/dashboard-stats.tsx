@@ -17,15 +17,13 @@ interface Stats {
 export function DashboardStats({ stats }: { stats: Stats }) {
   const cards = [
     { label: "Today's Revenue", value: formatCurrency(stats.todayRevenue), icon: IndianRupee, color: "text-emerald-600" },
-    { label: "Today's Orders", value: stats.todayOrders, icon: ShoppingBag, color: "text-blue-600" },
     { label: "Pending Orders", value: stats.pendingOrders, icon: Clock, color: "text-amber-600" },
-    { label: "Completed Today", value: stats.completedToday, icon: CheckCircle, color: "text-green-600" },
+    { label: "Completed Orders", value: stats.completedToday, icon: CheckCircle, color: "text-green-600" },
     { label: "Tables Occupied", value: `${stats.occupiedTables}/${stats.totalTables}`, icon: Users, color: "text-purple-600" },
-    { label: "Avg Order Value", value: formatCurrency(stats.avgOrderValue), icon: Utensils, color: "text-rose-600" },
   ];
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {cards.map(({ label, value, icon: Icon, color }) => (
         <Card key={label} className="border-border/60">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
