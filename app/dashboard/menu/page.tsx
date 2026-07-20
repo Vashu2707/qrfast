@@ -251,7 +251,7 @@ export default function MenuPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Discount Price (₹)</Label>
+                    <Label>Discounted Price (₹)</Label>
                     <Input
                       type="number"
                       min="0"
@@ -273,6 +273,7 @@ export default function MenuPage() {
                     onValueChange={(v) =>
                       v && setItemForm({ ...itemForm, categoryId: v })
                     }
+                    items={categories.map((c) => ({ value: c.id, label: c.name }))}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select category" />

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { SingleImageUpload } from "@/components/ui/single-image-upload";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
@@ -78,8 +79,24 @@ export default function SettingsPage() {
               <div className="space-y-2"><Label>Phone</Label><Input value={form.phone || ""} onChange={(e) => update("phone", e.target.value)} /></div>
               <div className="space-y-2"><Label>Email</Label><Input value={form.email || ""} onChange={(e) => update("email", e.target.value)} /></div>
             </div>
-            <div className="space-y-2"><Label>Logo URL</Label><Input value={form.logo || ""} onChange={(e) => update("logo", e.target.value)} placeholder="https://..." /></div>
-            <div className="space-y-2"><Label>Banner URL</Label><Input value={form.banner || ""} onChange={(e) => update("banner", e.target.value)} placeholder="https://..." /></div>
+            <div className="space-y-2">
+              <Label>Logo</Label>
+              <SingleImageUpload
+                value={form.logo || ""}
+                onChange={(url) => update("logo", url)}
+                label="Upload logo"
+                aspectRatio="square"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Banner</Label>
+              <SingleImageUpload
+                value={form.banner || ""}
+                onChange={(url) => update("banner", url)}
+                label="Upload banner"
+                aspectRatio="banner"
+              />
+            </div>
           </CardContent>
         </Card>
 

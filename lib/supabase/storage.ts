@@ -1,6 +1,7 @@
 import { createClient as createServiceRoleClient } from "@supabase/supabase-js";
 
 export const MENU_IMAGES_BUCKET = "menu-images";
+export const SETTINGS_PREFIX = "settings";
 
 /**
  * Service-role Supabase client for server-side storage operations.
