@@ -129,7 +129,7 @@ export default function PricingPage() {
     {
       name: "QRFast for Restaurants",
       setupPrice: "₹11,999",
-      monthlyPrice: "₹1,499",
+      monthlyPrice: "₹499",
       description: "Everything your restaurant needs to go digital — one simple plan, no surprises.",
       highlights: [
         "1 QR Digital Menu",
