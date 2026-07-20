@@ -164,15 +164,15 @@ export function MenuItemDialog({ item, primaryColor, onClose }: Props) {
 
           <div className="flex items-center justify-between pt-2">
             <div className="flex items-center gap-3">
-              <Button variant="outline" size="icon" onClick={() => setQuantity(Math.max(1, quantity - 1))}>
-                <Minus className="size-4" />
+              <Button variant="outline" size="icon" className="size-10" onClick={() => setQuantity(Math.max(1, quantity - 1))}>
+                <Minus className="size-5" />
               </Button>
-              <span className="w-8 text-center font-semibold">{quantity}</span>
-              <Button variant="outline" size="icon" onClick={() => setQuantity(quantity + 1)}>
-                <Plus className="size-4" />
+              <span className="w-8 text-center font-semibold text-lg">{quantity}</span>
+              <Button variant="outline" size="icon" className="size-10" onClick={() => setQuantity(quantity + 1)}>
+                <Plus className="size-5" />
               </Button>
             </div>
-            <Button onClick={handleAdd} className="px-6" style={{ backgroundColor: primaryColor }}>
+            <Button onClick={handleAdd} className="h-11 px-6 text-base font-semibold" style={{ backgroundColor: primaryColor }}>
               Add · {formatCurrency(totalPrice)}
             </Button>
           </div>

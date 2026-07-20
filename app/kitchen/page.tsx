@@ -10,20 +10,25 @@ import { formatCurrency, getOrderStatusLabel } from "@/lib/format";
 import { OrderStatus } from "@prisma/client";
 import { toast } from "sonner";
 import { ChefHat, Clock, CheckCircle, RefreshCw, Volume2 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
 const KITCHEN_STATUSES = [
   OrderStatus.PLACED,
-  OrderStatus.CONFIRMED,
   OrderStatus.PREPARING,
+  OrderStatus.PREPARED,
   OrderStatus.READY,
 ];
+
+const NOTIFICATION_TONE = "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OSdTgwOUKzn8LZjHAY4kdfyzHksBSR3x/DdkEAKFF606euoVRQKRp/g8r5sIQUrgc7y2Yk2CBtpvfDknU4MDlCs5/C2YxwGOJHX8sx5LAUkd8fw3ZBAC";
 
 export default function KitchenPage() {
   const queryClient = useQueryClient();
   const [soundEnabled, setSoundEnabled] = useState(true);
   const prevOrderCount = useRef(0);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const audioBufferRef = useRef<AudioBuffer | null>(null);
+  const unlockedRef = useRef(false);
 
   const { data: orders = [], refetch, isLoading } = useQuery({
     queryKey: ["kitchen-orders"],
@@ -35,15 +40,43 @@ export default function KitchenPage() {
     KITCHEN_STATUSES.includes(o.status as typeof KITCHEN_STATUSES[number])
   );
 
-  useEffect(() => {
-    if (soundEnabled && kitchenOrders.length > prevOrderCount.current && prevOrderCount.current > 0) {
+  const unlockAudio = useCallback(async () => {
+    if (unlockedRef.current) return;
+    try {
+      const ctx = new AudioContext();
+      audioCtxRef.current = ctx;
+      if (ctx.state === "suspended") await ctx.resume();
+      const res = await fetch(NOTIFICATION_TONE);
+      const arrayBuf = await res.arrayBuffer();
+      audioBufferRef.current = await ctx.decodeAudioData(arrayBuf);
+      unlockedRef.current = true;
+    } catch {
+      // fallback: will try plain Audio below
+    }
+  }, []);
+
+  const playNotification = useCallback(() => {
+    const ctx = audioCtxRef.current;
+    const buffer = audioBufferRef.current;
+    if (ctx && buffer) {
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(ctx.destination);
+      source.start();
+    } else {
       try {
-        const audio = new Audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OSdTgwOUKzn8LZjHAY4kdfyzHksBSR3x/DdkEAKFF606euoVRQKRp/g8r5sIQUrgc7y2Yk2CBtpvfDknU4MDlCs5/C2YxwGOJHX8sx5LAUkd8fw3ZBAC");
+        const audio = new Audio(NOTIFICATION_TONE);
         audio.play().catch(() => {});
       } catch {}
     }
+  }, []);
+
+  useEffect(() => {
+    if (soundEnabled && kitchenOrders.length > prevOrderCount.current && prevOrderCount.current > 0) {
+      playNotification();
+    }
     prevOrderCount.current = kitchenOrders.length;
-  }, [kitchenOrders.length, soundEnabled]);
+  }, [kitchenOrders.length, soundEnabled, playNotification]);
 
   const handleStatusUpdate = async (id: string, status: OrderStatus) => {
     const result = await updateOrderStatus(id, status);
@@ -56,17 +89,17 @@ export default function KitchenPage() {
 
   const getNextStatus = (current: OrderStatus): OrderStatus | null => {
     const flow: Partial<Record<OrderStatus, OrderStatus>> = {
-      [OrderStatus.PLACED]: OrderStatus.CONFIRMED,
-      [OrderStatus.CONFIRMED]: OrderStatus.PREPARING,
-      [OrderStatus.PREPARING]: OrderStatus.READY,
+      [OrderStatus.PLACED]: OrderStatus.PREPARING,
+      [OrderStatus.PREPARING]: OrderStatus.PREPARED,
+      [OrderStatus.PREPARED]: OrderStatus.READY,
     };
     return flow[current] || null;
   };
 
   const columns = [
     { status: OrderStatus.PLACED, label: "New Orders", color: "border-blue-500" },
-    { status: OrderStatus.CONFIRMED, label: "Confirmed", color: "border-indigo-500" },
     { status: OrderStatus.PREPARING, label: "Preparing", color: "border-amber-500" },
+    { status: OrderStatus.PREPARED, label: "Prepared", color: "border-violet-500" },
     { status: OrderStatus.READY, label: "Ready", color: "border-emerald-500" },
   ];
 
@@ -76,6 +109,16 @@ export default function KitchenPage() {
       <div className="flex items-center gap-3 border-b border-border/60 px-6 py-3">
         <Button variant="outline" size="sm" onClick={() => refetch()}>
           <RefreshCw className="mr-2 size-4" />Refresh
+        </Button>
+        <Button
+          variant={soundEnabled ? "default" : "outline"}
+          size="sm"
+          onClick={() => {
+            if (!soundEnabled) unlockAudio();
+            setSoundEnabled(!soundEnabled);
+          }}
+        >
+          <Volume2 className="mr-2 size-4" />Sound {soundEnabled ? "On" : "Off"}
         </Button>
         <Button variant={soundEnabled ? "default" : "outline"} size="sm" onClick={() => setSoundEnabled(!soundEnabled)}>
           <Volume2 className="mr-2 size-4" />Sound {soundEnabled ? "On" : "Off"}
@@ -131,7 +174,15 @@ export default function KitchenPage() {
                             </Button>
                           )}
                           {order.status === OrderStatus.READY && (
-                            <p className="mt-2 text-center text-xs font-medium text-emerald-600">Ready to serve!</p>
+                            <Button
+                              className="mt-3 w-full"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleStatusUpdate(order.id, OrderStatus.SERVED)}
+                            >
+                              <CheckCircle className="mr-2 size-4" />
+                              Mark Served
+                            </Button>
                           )}
                         </CardContent>
                       </Card>

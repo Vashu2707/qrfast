@@ -191,7 +191,7 @@ export function MenuClient({ data, tableParam }: Props) {
   const isFiltering = search || activeCategory !== "all" || vegFilter !== "all";
 
   return (
-    <div className="min-h-screen bg-background pb-28">
+    <div className="min-h-dvh bg-background pb-28">
       {/* ──────────────── Hero Banner ──────────────── */}
       <div className="relative h-52 overflow-hidden sm:h-60">
         {restaurant.banner ? (
@@ -248,16 +248,16 @@ export function MenuClient({ data, tableParam }: Props) {
             <Star className="size-4 text-amber-500" />
             Popular
           </h2>
-          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none">
+          <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-none">
             {bestsellers.map((item, i) => (
               <button
                 key={item.id}
                 onClick={() => setSelectedItem(item)}
-                className="animate-fadeIn w-36 shrink-0 rounded-xl border border-border/60 bg-card p-2 text-left transition-shadow hover:shadow-md active:scale-[0.98]"
+                className="animate-fadeIn w-40 shrink-0 snap-start rounded-xl border border-border/60 bg-card p-2 text-left transition-shadow hover:shadow-md active:scale-[0.98]"
                 style={{ animationDelay: `${i * 0.04}s` }}
               >
                 {item.images[0] ? (
-                  <div className="relative mb-2 h-24 overflow-hidden rounded-lg">
+                  <div className="relative mb-2 h-28 overflow-hidden rounded-lg">
                     <Image src={item.images[0]} alt={item.name} fill className="object-cover" />
                     {item.isChefSpecial && (
                       <div className="absolute left-1 top-1">
@@ -268,7 +268,7 @@ export function MenuClient({ data, tableParam }: Props) {
                     )}
                   </div>
                 ) : (
-                  <div className="mb-2 flex h-24 items-center justify-center rounded-lg bg-muted text-3xl">
+                  <div className="mb-2 flex h-28 items-center justify-center rounded-lg bg-muted text-3xl">
                     🍽️
                   </div>
                 )}
@@ -292,16 +292,16 @@ export function MenuClient({ data, tableParam }: Props) {
             <Sparkles className="size-4 text-primary" />
             New on Menu
           </h2>
-          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none">
+          <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-none">
             {newItems.map((item, i) => (
               <button
                 key={item.id}
                 onClick={() => setSelectedItem(item)}
-                className="animate-fadeIn w-36 shrink-0 rounded-xl border border-primary/20 bg-primary/5 p-2 text-left transition-shadow hover:shadow-md active:scale-[0.98]"
+                className="animate-fadeIn w-40 shrink-0 snap-start rounded-xl border border-primary/20 bg-primary/5 p-2 text-left transition-shadow hover:shadow-md active:scale-[0.98]"
                 style={{ animationDelay: `${i * 0.04}s` }}
               >
                 {item.images[0] ? (
-                  <div className="relative mb-2 h-24 overflow-hidden rounded-lg">
+                  <div className="relative mb-2 h-28 overflow-hidden rounded-lg">
                     <Image src={item.images[0]} alt={item.name} fill className="object-cover" />
                     <div className="absolute right-1 top-1">
                       <Badge className="bg-primary text-primary-foreground text-[9px] px-1.5 py-0.5 font-bold">
@@ -310,7 +310,7 @@ export function MenuClient({ data, tableParam }: Props) {
                     </div>
                   </div>
                 ) : (
-                  <div className="mb-2 flex h-24 items-center justify-center rounded-lg bg-muted text-3xl">
+                  <div className="mb-2 flex h-28 items-center justify-center rounded-lg bg-muted text-3xl">
                     🆕
                   </div>
                 )}
@@ -328,7 +328,7 @@ export function MenuClient({ data, tableParam }: Props) {
       )}
 
       {/* ──────────────── Search & Filters ──────────────── */}
-      <div className="sticky top-0 z-20 space-y-3 border-b border-border/60 bg-background/95 px-4 py-3 backdrop-blur-md">
+      <div className="sticky top-0 z-20 space-y-3 border-b border-border/60 bg-background/95 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 backdrop-blur-md">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -418,7 +418,7 @@ export function MenuClient({ data, tableParam }: Props) {
               >
                 {/* Item image */}
                 {item.images[0] ? (
-                  <div className="relative size-24 shrink-0 overflow-hidden rounded-lg">
+                  <div className="relative size-28 shrink-0 overflow-hidden rounded-lg sm:size-24">
                     <Image src={item.images[0]} alt={item.name} fill className="object-cover" />
                     {item.isChefSpecial && (
                       <div className="absolute bottom-0 left-0 right-0 bg-amber-500/90 py-0.5 text-center text-[9px] font-bold text-white">
@@ -427,7 +427,7 @@ export function MenuClient({ data, tableParam }: Props) {
                     )}
                   </div>
                 ) : (
-                  <div className="flex size-24 shrink-0 items-center justify-center rounded-lg bg-muted text-2xl">
+                  <div className="flex size-28 shrink-0 items-center justify-center rounded-lg bg-muted text-2xl sm:size-24">
                     🍽️
                   </div>
                 )}
@@ -469,11 +469,11 @@ export function MenuClient({ data, tableParam }: Props) {
             <Star className="size-4 text-amber-500" />
             What Guests Say
           </h2>
-          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none">
+          <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-none">
             {reviews.map((review, i) => (
               <div
                 key={review.id}
-                className="animate-fadeIn w-64 shrink-0 rounded-xl border border-border/60 bg-card p-4"
+                className="animate-fadeIn w-64 shrink-0 snap-start rounded-xl border border-border/60 bg-card p-4"
                 style={{ animationDelay: `${i * 0.04}s` }}
               >
                 <div className="flex items-center justify-between mb-2">
@@ -509,7 +509,7 @@ export function MenuClient({ data, tableParam }: Props) {
 
       {/* ──────────────── Sticky Cart Bar ──────────────── */}
         {cartCount > 0 && (
-          <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border/60 bg-card/95 p-4 backdrop-blur-md">
+          <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border/60 bg-card/95 px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-md">
             <Link href={`/menu/${tableParam}/cart`}>
               <Button
                 className="w-full h-12 text-base font-semibold gap-2"

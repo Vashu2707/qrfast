@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function OrderLoading() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-dvh bg-background">
       <div className="border-b border-border/60 px-4 py-6 text-center">
         <Skeleton className="mx-auto h-7 w-40" />
         <Skeleton className="mx-auto mt-1 h-4 w-32" />
