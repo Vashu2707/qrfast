@@ -39,7 +39,7 @@ export function LiveTables({ tables, orders }: LiveTablesProps) {
         if (orderStatuses.some((s) => s === "PLACED" || s === "CONFIRMED")) {
           return { label: "Waiting", color: "bg-amber-500 text-amber-500" };
         }
-        if (orderStatuses.some((s) => s === "PREPARING" || s === "READY")) {
+        if (orderStatuses.some((s) => s === "PREPARING" || s === "PREPARED" || s === "READY")) {
           return { label: "Preparing", color: "bg-orange-500 text-orange-500" };
         }
       }

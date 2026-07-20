@@ -55,8 +55,8 @@ export default function OrdersPage() {
 
   const statusFlow: OrderStatus[] = [
     OrderStatus.PLACED,
-    OrderStatus.CONFIRMED,
     OrderStatus.PREPARING,
+    OrderStatus.PREPARED,
     OrderStatus.READY,
     OrderStatus.SERVED,
     OrderStatus.COMPLETED,

@@ -234,7 +234,7 @@ export function CartClient({
   // Show empty state briefly while redirect fires
   if (items.length === 0) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-6">
+      <div className="flex min-h-dvh flex-col items-center justify-center gap-4 p-6">
         <ShoppingBag className="size-12 text-muted-foreground" />
         <p className="text-muted-foreground">Your cart is empty</p>
         <Link href={`/menu/${tableParam}`}>
@@ -254,7 +254,7 @@ export function CartClient({
   const total = getTotalAmount(gstPercentage, serviceChargePercentage);
 
   return (
-    <div className="min-h-screen bg-background pb-8">
+    <div className="min-h-dvh bg-background pb-8">
       {/* ─── Header ─── */}
       <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-border/60 bg-background/95 px-4 py-4 backdrop-blur-md">
         <Link href={`/menu/${tableParam}`}>
@@ -341,32 +341,32 @@ export function CartClient({
 
                     {/* Quantity Controls */}
                     <div className="flex flex-col items-end gap-2">
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1.5">
                         <Button
                           variant="outline"
                           size="icon"
-                          className="size-7"
+                          className="size-9"
                           onClick={() => updateQuantity(item.id, item.quantity - 1)}
                         >
-                          <Minus className="size-3" />
+                          <Minus className="size-4" />
                         </Button>
-                        <span className="w-6 text-center text-sm font-medium">{item.quantity}</span>
+                        <span className="w-7 text-center text-sm font-semibold">{item.quantity}</span>
                         <Button
                           variant="outline"
                           size="icon"
-                          className="size-7"
+                          className="size-9"
                           onClick={() => updateQuantity(item.id, item.quantity + 1)}
                         >
-                          <Plus className="size-3" />
+                          <Plus className="size-4" />
                         </Button>
                       </div>
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="size-7"
+                        className="size-8"
                         onClick={() => removeItem(item.id)}
                       >
-                        <Trash2 className="size-3.5 text-destructive" />
+                        <Trash2 className="size-4 text-destructive" />
                       </Button>
                     </div>
                   </div>
