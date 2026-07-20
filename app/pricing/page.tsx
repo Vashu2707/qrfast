@@ -33,7 +33,7 @@ function FAQItem({ question, answer }: { question: string; answer: string }) {
     <div className="border-b border-slate-200/80 py-4 last:border-b-0">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between py-2 text-left font-semibold text-slate-800 hover:text-slate-950 transition-colors text-sm sm:text-base cursor-pointer select-none"
+        className="w-full flex items-center justify-between py-3 sm:py-2 text-left font-semibold text-slate-800 hover:text-slate-950 transition-colors text-sm sm:text-base cursor-pointer select-none min-h-[44px]"
       >
         <span>{question}</span>
         <span className="ml-4 text-slate-400">

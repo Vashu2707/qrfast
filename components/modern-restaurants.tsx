@@ -59,7 +59,7 @@ function Phone({ children }: { children: React.ReactNode }) {
         repeat: Infinity,
         ease: "easeInOut",
       }}
-      className="relative w-[295px] h-[608px] bg-[#1e293b] rounded-[42px] p-[5px] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_rgba(15,23,42,0.06),0_24px_48px_rgba(15,23,42,0.04)] border border-[#334155]/80 select-none flex flex-col"
+      className="relative w-[260px] sm:w-[295px] h-[536px] sm:h-[608px] bg-[#1e293b] rounded-[38px] sm:rounded-[42px] p-[4px] sm:p-[5px] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_rgba(15,23,42,0.06),0_24px_48px_rgba(15,23,42,0.04)] border border-[#334155]/80 select-none flex flex-col"
     >
       {/* Volume buttons (Left) */}
       <div className="absolute top-[90px] -left-[2px] w-[2px] h-10 bg-[#334155] rounded-l" />
@@ -823,7 +823,7 @@ export default function ModernRestaurants() {
                     <span className="text-[10px] font-bold text-[#0f9f90] bg-[#0f9f90]/10 px-2.5 py-1 rounded-full uppercase tracking-wider inline-block">
                       {row.badge}
                     </span>
-                    <h3 className="text-4xl sm:text-4xl font-bold text-slate-900 tracking-tight leading-tight">
+                    <h3 className="text-2xl sm:text-4xl font-bold text-slate-900 tracking-tight leading-tight">
                       {row.headline}
                     </h3>
                     <Typewriter

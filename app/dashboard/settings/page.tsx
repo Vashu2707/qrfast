@@ -75,7 +75,7 @@ export default function SettingsPage() {
           <CardContent className="grid gap-4">
             <div className="space-y-2"><Label>Name</Label><Input value={form.restaurantName || ""} onChange={(e) => update("restaurantName", e.target.value)} /></div>
             <div className="space-y-2"><Label>Address</Label><Input value={form.address || ""} onChange={(e) => update("address", e.target.value)} /></div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2"><Label>Phone</Label><Input value={form.phone || ""} onChange={(e) => update("phone", e.target.value)} /></div>
               <div className="space-y-2"><Label>Email</Label><Input value={form.email || ""} onChange={(e) => update("email", e.target.value)} /></div>
             </div>
@@ -104,11 +104,11 @@ export default function SettingsPage() {
           <CardHeader><CardTitle className="text-base">Tax & Billing</CardTitle></CardHeader>
           <CardContent className="grid gap-4">
             <div className="space-y-2"><Label>GST Number</Label><Input value={form.gstNumber || ""} onChange={(e) => update("gstNumber", e.target.value)} /></div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2"><Label>GST %</Label><Input type="number" value={form.gstPercentage || ""} onChange={(e) => update("gstPercentage", e.target.value)} /></div>
               <div className="space-y-2"><Label>Service Charge %</Label><Input type="number" value={form.serviceChargePercentage || ""} onChange={(e) => update("serviceChargePercentage", e.target.value)} /></div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2"><Label>Currency</Label><Input value={form.currency || ""} onChange={(e) => update("currency", e.target.value)} /></div>
               <div className="space-y-2"><Label>Primary Color</Label><Input type="color" value={form.primaryColor || "#E11D48"} onChange={(e) => update("primaryColor", e.target.value)} /></div>
             </div>
