@@ -35,7 +35,7 @@ async function main() {
       phone: "+919876543210",
       email: "info@thebistro.com",
       address: "123 Gourmet Boulevard, Food District, New Delhi - 110001",
-      primaryColor: "#E11D48",
+      primaryColor: "#DC2626",
       currency: "INR",
       timezone: "Asia/Kolkata",
       gstNumber: "07AAAAA1111A1Z1",
