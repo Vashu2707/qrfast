@@ -17,9 +17,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (!canAccessDashboard(user.role)) redirect(getDefaultRouteForRole(user.role));
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex h-screen overflow-hidden bg-background">
       <DashboardSidebar user={user} unreadCount={unreadCount} />
-      <div className="flex-1 overflow-auto">{children}</div>
+      <div className="flex-1 overflow-y-auto">{children}</div>
     </div>
   );
 }

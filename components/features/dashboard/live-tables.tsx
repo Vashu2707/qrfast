@@ -59,8 +59,8 @@ export function LiveTables({ tables, orders }: LiveTablesProps) {
         <CardTitle className="text-xl font-bold text-slate-900 tracking-tight">Live Tables</CardTitle>
         <p className="text-sm text-slate-400 font-normal">Current layout statuses</p>
       </CardHeader>
-      <CardContent className="pb-6">
-        <div className="max-h-[220px] overflow-y-auto pr-1">
+      <CardContent className="flex-1 flex flex-col min-h-0 pb-6">
+        <div className="flex-1 overflow-y-auto pr-1">
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
             {displayTables.map((table) => {
               const { label, color } = getTableStatus(table.id, table.status, table.number);

@@ -51,7 +51,7 @@ export function DashboardSidebar({ user, unreadCount = 0 }: DashboardSidebarProp
   };
 
   return (
-    <aside className="flex h-screen w-64 flex-col border-r border-border/60 bg-card/50 backdrop-blur-xl">
+    <aside className="flex h-screen w-58 flex-col border-r border-border/60 bg-card/50 backdrop-blur-xl">
       <div className="border-b border-border/60 p-5">
         <Link href="/dashboard" className="text-lg font-semibold tracking-tight">
           QRFast
