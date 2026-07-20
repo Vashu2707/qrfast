@@ -18,17 +18,35 @@ export async function getNotifications() {
   }
 }
 
-export async function markNotificationRead(id: string) {
+export async function markNotificationRead(id: string | string[]) {
   const user = await getCurrentUser();
   if (!user) return { error: "Unauthorized" };
 
   try {
-    await prisma.notification.update({
-      where: { id },
+    const ids = Array.isArray(id) ? id : [id];
+    await prisma.notification.updateMany({
+      where: { id: { in: ids } },
       data: { isRead: true },
     });
   } catch {
     return { error: "Failed to mark notification as read." };
+  }
+
+  revalidatePath("/dashboard");
+  return { success: true };
+}
+
+export async function deleteNotification(id: string | string[]) {
+  const user = await getCurrentUser();
+  if (!user) return { error: "Unauthorized" };
+
+  try {
+    const ids = Array.isArray(id) ? id : [id];
+    await prisma.notification.deleteMany({
+      where: { id: { in: ids } },
+    });
+  } catch {
+    return { error: "Failed to delete notification." };
   }
 
   revalidatePath("/dashboard");

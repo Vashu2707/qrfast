@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/format";
-import { ShoppingBag, Clock, CheckCircle, IndianRupee, Users, Utensils } from "lucide-react";
+import { ShoppingBag, Clock, CheckCircle, IndianRupee, Users } from "lucide-react";
 
 interface Stats {
   todayOrders: number;
@@ -21,11 +21,10 @@ export function DashboardStats({ stats }: { stats: Stats }) {
     { label: "Pending Orders", value: stats.pendingOrders, icon: Clock, color: "text-amber-600" },
     { label: "Completed Today", value: stats.completedToday, icon: CheckCircle, color: "text-green-600" },
     { label: "Tables Occupied", value: `${stats.occupiedTables}/${stats.totalTables}`, icon: Users, color: "text-purple-600" },
-    { label: "Avg Order Value", value: formatCurrency(stats.avgOrderValue), icon: Utensils, color: "text-rose-600" },
   ];
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
       {cards.map(({ label, value, icon: Icon, color }) => (
         <Card key={label} className="border-border/60">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
