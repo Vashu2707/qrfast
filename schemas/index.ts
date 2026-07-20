@@ -137,7 +137,7 @@ export const settingsSchema = z.object({
     .string()
     .regex(/^#[0-9A-Fa-f]{6}$/, "Invalid hex color")
     .optional()
-    .default("#E11D48"),
+    .default("#DC2626"),
   currency: z.string().length(3).optional().default("INR"),
   timezone: z.string().max(100).optional().default("Asia/Kolkata"),
   gstNumber: z.string().max(20).nullable().optional().or(z.literal("")),

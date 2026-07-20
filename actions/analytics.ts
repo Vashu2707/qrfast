@@ -28,7 +28,7 @@ export async function getDashboardStats() {
       }),
       prisma.order.count({
         where: {
-          status: { in: [OrderStatus.PLACED, OrderStatus.CONFIRMED, OrderStatus.PREPARING, OrderStatus.READY] },
+          status: { in: [OrderStatus.PLACED, OrderStatus.CONFIRMED, OrderStatus.PREPARING, OrderStatus.PREPARED, OrderStatus.READY] },
         },
       }),
       prisma.order.count({

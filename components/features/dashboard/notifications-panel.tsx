@@ -12,12 +12,15 @@ import {
   CheckCircle2,
   AlertCircle,
   RefreshCw,
-  Receipt
+  Receipt,
+  Volume2,
+  VolumeX
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
+import { unlockAudio, playDoorbell } from "@/lib/sound";
 
 type Notification = {
   id: string;
@@ -220,6 +223,20 @@ export function NotificationsPanel({ notifications }: { notifications: Notificat
   const [clearing, setClearing] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [timeTick, setTimeTick] = useState(0);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const prevCount = useRef(notifications.length);
+
+  const handleToggleSound = useCallback(async () => {
+    if (!soundEnabled) await unlockAudio();
+    setSoundEnabled((prev) => !prev);
+  }, [soundEnabled]);
+
+  useEffect(() => {
+    if (soundEnabled && notifications.length > prevCount.current && prevCount.current > 0) {
+      playDoorbell();
+    }
+    prevCount.current = notifications.length;
+  }, [notifications.length, soundEnabled]);
 
   useEffect(() => {
     setMounted(true);
@@ -231,6 +248,7 @@ export function NotificationsPanel({ notifications }: { notifications: Notificat
 
   const handleRead = async (ids: string[]) => {
     try {
+      await unlockAudio();
       const result = await markNotificationRead(ids);
       if (result?.error) {
         toast.error(result.error);
@@ -325,18 +343,29 @@ export function NotificationsPanel({ notifications }: { notifications: Notificat
           <Bell className="size-4 text-foreground/80" />
           Notifications
         </CardTitle>
-        {notifications.length > 0 && (
+        <div className="flex items-center gap-1">
           <Button
             variant="ghost"
-            size="sm"
-            className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer hover:bg-muted transition-all rounded-md"
-            onClick={handleClearAll}
-            disabled={clearing}
+            size="icon"
+            className="size-8 cursor-pointer rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-all"
+            onClick={handleToggleSound}
+            title={soundEnabled ? "Mute notifications" : "Unmute notifications"}
           >
-            <CheckCheck className="size-3.5" />
-            Clear all
+            {soundEnabled ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}
           </Button>
-        )}
+          {notifications.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer hover:bg-muted transition-all rounded-md"
+              onClick={handleClearAll}
+              disabled={clearing}
+            >
+              <CheckCheck className="size-3.5" />
+              Clear all
+            </Button>
+          )}
+        </div>
       </CardHeader>
 
       <CardContent className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 px-6 space-y-4 pr-3 custom-scrollbar">
@@ -385,9 +414,9 @@ export function NotificationsPanel({ notifications }: { notifications: Notificat
                     <div
                       onClick={() => !n.isRead && handleRead(n.ids)}
                       className={`group relative w-full rounded-2xl border text-left flex items-start p-4 transition-all duration-200 cursor-pointer select-none ${n.isRead
-                          ? "bg-card border-border/60 hover:shadow-md hover:-translate-y-[2px]"
-                          : `${colors.tintBg} ${colors.badgeBorder} border hover:shadow-md hover:-translate-y-[2px]`
-                        }`}
+                        ? "bg-card border-border/60 hover:shadow-md hover:-translate-y-[2px]"
+                        : `${colors.tintBg} ${colors.badgeBorder} border hover:shadow-md hover:-translate-y-[2px]`
+                      }`}
                     >
                       {/* Colored vertical accent bar */}
                       <div className={`absolute left-0 top-0 bottom-0 w-[4px] rounded-l-2xl ${colors.border}`} />

@@ -180,14 +180,37 @@ export function CartClient({
           razorpay_payment_id: string;
           razorpay_signature: string;
         }) => {
-          await fetch("/api/payments/verify", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(response),
-          });
-          clearCart();
-          toast.success("Payment successful! 🎉");
-          router.push(`/order/${result.orderId}`);
+          // Verify payment on backend before marking as successful
+          try {
+            const verifyRes = await fetch("/api/payments/verify", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(response),
+            });
+            const verifyData = await verifyRes.json();
+
+            if (!verifyRes.ok || !verifyData.success) {
+              console.error("Payment verification failed:", verifyData);
+              toast.error(
+                "Payment received but verification failed. Please contact support with your payment ID: " +
+                  response.razorpay_payment_id
+              );
+              // Don't clear cart or redirect — order stays CONFIRMED, webhook may still fix it
+              isSubmitting.current = false;
+              return;
+            }
+
+            // Verification succeeded — safe to proceed
+            clearCart();
+            toast.success("Payment successful!");
+            router.push(`/order/${result.orderId}`);
+          } catch (err) {
+            // Network error during verification — payment was made, webhook will handle it
+            console.error("Verification network error:", err);
+            toast.success("Payment received! Redirecting...");
+            clearCart();
+            router.push(`/order/${result.orderId}`);
+          }
         },
         prefill: { name: customerName, contact: customerPhone },
         theme: { color: primaryColor },
@@ -211,7 +234,7 @@ export function CartClient({
   // Show empty state briefly while redirect fires
   if (items.length === 0) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-6">
+      <div className="flex min-h-dvh flex-col items-center justify-center gap-4 p-6">
         <ShoppingBag className="size-12 text-muted-foreground" />
         <p className="text-muted-foreground">Your cart is empty</p>
         <Link href={`/menu/${tableParam}`}>
@@ -231,7 +254,7 @@ export function CartClient({
   const total = getTotalAmount(gstPercentage, serviceChargePercentage);
 
   return (
-    <div className="min-h-screen bg-background pb-8">
+    <div className="min-h-dvh bg-background pb-8">
       {/* ─── Header ─── */}
       <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-border/60 bg-background/95 px-4 py-4 backdrop-blur-md">
         <Link href={`/menu/${tableParam}`}>
@@ -318,32 +341,32 @@ export function CartClient({
 
                     {/* Quantity Controls */}
                     <div className="flex flex-col items-end gap-2">
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1.5">
                         <Button
                           variant="outline"
                           size="icon"
-                          className="size-7"
+                          className="size-9"
                           onClick={() => updateQuantity(item.id, item.quantity - 1)}
                         >
-                          <Minus className="size-3" />
+                          <Minus className="size-4" />
                         </Button>
-                        <span className="w-6 text-center text-sm font-medium">{item.quantity}</span>
+                        <span className="w-7 text-center text-sm font-semibold">{item.quantity}</span>
                         <Button
                           variant="outline"
                           size="icon"
-                          className="size-7"
+                          className="size-9"
                           onClick={() => updateQuantity(item.id, item.quantity + 1)}
                         >
-                          <Plus className="size-3" />
+                          <Plus className="size-4" />
                         </Button>
                       </div>
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="size-7"
+                        className="size-8"
                         onClick={() => removeItem(item.id)}
                       >
-                        <Trash2 className="size-3.5 text-destructive" />
+                        <Trash2 className="size-4 text-destructive" />
                       </Button>
                     </div>
                   </div>

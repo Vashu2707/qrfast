@@ -3,31 +3,44 @@ import crypto from "crypto";
 import prisma from "@/lib/prisma";
 import { PaymentStatus, OrderStatus, TableStatus, NotificationType } from "@prisma/client";
 
-// Never cache payment endpoints
 export const dynamic = "force-dynamic";
 
-const PAYMENT_NO_CACHE_HEADERS = {
+const NO_CACHE_HEADERS = {
   "Cache-Control": "no-store, no-cache, must-revalidate",
-  "Pragma": "no-cache",
+  Pragma: "no-cache",
 };
 
 export async function POST(request: Request) {
+  const startTime = Date.now();
+  console.log("[verify] Payment verification started");
+
   try {
     const body = await request.json();
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = body;
 
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+      console.warn("[verify] Missing parameters:", {
+        hasOrderId: !!razorpay_order_id,
+        hasPaymentId: !!razorpay_payment_id,
+        hasSignature: !!razorpay_signature,
+      });
       return NextResponse.json(
         { error: "Missing required verification parameters." },
-        { status: 400, headers: PAYMENT_NO_CACHE_HEADERS }
+        { status: 400, headers: NO_CACHE_HEADERS }
       );
     }
 
+    console.log("[verify] Verifying payment:", {
+      orderId: razorpay_order_id,
+      paymentId: razorpay_payment_id,
+    });
+
     const secret = process.env.RAZORPAY_KEY_SECRET;
     if (!secret) {
+      console.error("[verify] RAZORPAY_KEY_SECRET is not configured.");
       return NextResponse.json(
         { error: "Payment verification is not configured." },
-        { status: 500, headers: PAYMENT_NO_CACHE_HEADERS }
+        { status: 500, headers: NO_CACHE_HEADERS }
       );
     }
 
@@ -38,12 +51,17 @@ export async function POST(request: Request) {
       .digest("hex");
 
     if (hash !== razorpay_signature) {
-      console.warn("Razorpay verification failed: signature mismatch.");
+      console.warn("[verify] Signature mismatch!", {
+        orderId: razorpay_order_id,
+        paymentId: razorpay_payment_id,
+      });
       return NextResponse.json(
         { error: "Payment verification failed. Invalid signature." },
-        { status: 400, headers: PAYMENT_NO_CACHE_HEADERS }
+        { status: 400, headers: NO_CACHE_HEADERS }
       );
     }
+
+    console.log("[verify] Signature verified successfully");
 
     // Transactionally update Payment, Order, table, and notification
     await prisma.$transaction(async (tx) => {
@@ -51,7 +69,21 @@ export async function POST(request: Request) {
         where: { transactionId: razorpay_order_id },
       });
 
-      if (!payment) throw new Error("Local payment record not found.");
+      if (!payment) {
+        console.error("[verify] Payment record not found for orderId:", razorpay_order_id);
+        throw new Error("Local payment record not found.");
+      }
+
+      // Idempotent: if already SUCCESS, skip all updates
+      if (payment.status === PaymentStatus.SUCCESS) {
+        console.log("[verify] Payment already verified (idempotent), skipping");
+        return;
+      }
+
+      console.log("[verify] Updating payment record:", {
+        paymentId: payment.id,
+        currentStatus: payment.status,
+      });
 
       await tx.payment.update({
         where: { id: payment.id },
@@ -64,12 +96,24 @@ export async function POST(request: Request) {
 
       const order = await tx.order.findUnique({
         where: { id: payment.orderId },
-        select: { id: true, status: true, customerName: true, totalAmount: true, tableId: true, table: { select: { number: true } } },
+        select: {
+          id: true,
+          status: true,
+          customerName: true,
+          totalAmount: true,
+          tableId: true,
+          table: { select: { number: true } },
+        },
       });
 
       if (!order) throw new Error("Order not found.");
 
-      // Finalize the order: move from CONFIRMED → PLACED, occupy table, notify kitchen
+      console.log("[verify] Current order status:", {
+        orderId: order.id,
+        status: order.status,
+      });
+
+      // Finalize: CONFIRMED → PLACED, occupy table, notify kitchen
       if (order.status === OrderStatus.CONFIRMED) {
         await tx.order.update({
           where: { id: order.id },
@@ -91,26 +135,33 @@ export async function POST(request: Request) {
             type: NotificationType.NEW_ORDER,
           },
         });
+
+        console.log("[verify] Order confirmed → PLACED, table occupied, kitchen notified");
       } else {
-        // Order already processed (e.g. webhook arrived first) — just update payment status
+        // Order already processed (webhook arrived first) — just update payment status
         await tx.order.update({
           where: { id: order.id },
           data: { paymentStatus: PaymentStatus.SUCCESS },
         });
+        console.log("[verify] Order already in status", order.status, "— updated payment status only");
       }
     });
 
+    const elapsed = Date.now() - startTime;
+    console.log(`[verify] Payment verification completed in ${elapsed}ms`);
+
     return NextResponse.json(
       { success: true, message: "Payment verified successfully." },
-      { headers: PAYMENT_NO_CACHE_HEADERS }
+      { headers: NO_CACHE_HEADERS }
     );
   } catch (error: unknown) {
+    const elapsed = Date.now() - startTime;
     const message =
       error instanceof Error ? error.message : "Internal server error.";
-    console.error("Razorpay verify exception:", error);
+    console.error(`[verify] Exception after ${elapsed}ms:`, error);
     return NextResponse.json(
       { error: message },
-      { status: 500, headers: PAYMENT_NO_CACHE_HEADERS }
+      { status: 500, headers: NO_CACHE_HEADERS }
     );
   }
 }

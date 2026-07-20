@@ -35,7 +35,7 @@ export async function updateRestaurantSettings(rawData: SettingsInput) {
         address: data.address || null,
         phone: data.phone || null,
         email: data.email || null,
-        primaryColor: data.primaryColor ?? "#E11D48",
+        primaryColor: data.primaryColor ?? "#DC2626",
         currency: data.currency ?? "INR",
         timezone: data.timezone ?? "Asia/Kolkata",
         gstNumber: data.gstNumber || null,

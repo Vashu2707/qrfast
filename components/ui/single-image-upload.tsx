@@ -146,9 +146,9 @@ export function SingleImageUpload({
           )}
         >
           {error ? (
-            <div className="flex h-full flex-col items-center justify-center gap-1 bg-destructive/10 p-2 text-center">
-              <X className="size-4 text-destructive" />
-              <p className="text-[10px] leading-tight text-destructive line-clamp-2">{error}</p>
+            <div className="flex h-full flex-col items-center justify-center gap-1 bg-red-50 p-2 text-center">
+              <X className="size-4 text-red-600" />
+              <p className="text-[10px] leading-tight text-red-600 line-clamp-2">{error}</p>
               <button
                 type="button"
                 onClick={() => setError(null)}

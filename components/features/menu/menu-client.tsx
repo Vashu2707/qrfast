@@ -191,7 +191,7 @@ export function MenuClient({ data, tableParam }: Props) {
   const isFiltering = search || activeCategory !== "all" || vegFilter !== "all";
 
   return (
-    <div className="min-h-screen bg-background pb-28">
+    <div className="min-h-dvh bg-background pb-28">
       {/* ──────────────── Hero Banner ──────────────── */}
       <div className="relative h-52 overflow-hidden sm:h-60">
         {restaurant.banner ? (
@@ -231,12 +231,12 @@ export function MenuClient({ data, tableParam }: Props) {
 
       {/* ──────────────── Quick Actions ──────────────── */}
       <div className="flex gap-2 overflow-x-auto px-4 py-3">
-        <Button variant="outline" size="sm" onClick={() => handleService("CALL_WAITER")}>
-          <Bell className="mr-1.5 size-3.5" />
+        <Button variant="outline" size="default" className="min-h-11 px-4 text-sm" onClick={() => handleService("CALL_WAITER")}>
+          <Bell className="mr-1.5 size-4" />
           Call Waiter
         </Button>
-        <Button variant="outline" size="sm" onClick={() => handleService("REQUEST_BILL")}>
-          <Receipt className="mr-1.5 size-3.5" />
+        <Button variant="outline" size="default" className="min-h-11 px-4 text-sm" onClick={() => handleService("REQUEST_BILL")}>
+          <Receipt className="mr-1.5 size-4" />
           Request Bill
         </Button>
       </div>
@@ -248,16 +248,16 @@ export function MenuClient({ data, tableParam }: Props) {
             <Star className="size-4 text-amber-500" />
             Popular
           </h2>
-          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none">
+          <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-none">
             {bestsellers.map((item, i) => (
               <button
                 key={item.id}
                 onClick={() => setSelectedItem(item)}
-                className="animate-fadeIn w-36 shrink-0 rounded-xl border border-border/60 bg-card p-2 text-left transition-shadow hover:shadow-md active:scale-[0.98]"
+                className="animate-fadeIn w-40 shrink-0 snap-start rounded-xl border border-border/60 bg-card p-2 text-left transition-shadow hover:shadow-md active:scale-[0.98]"
                 style={{ animationDelay: `${i * 0.04}s` }}
               >
                 {item.images[0] ? (
-                  <div className="relative mb-2 h-24 overflow-hidden rounded-lg">
+                  <div className="relative mb-2 h-28 overflow-hidden rounded-lg">
                     <Image src={item.images[0]} alt={item.name} fill className="object-cover" />
                     {item.isChefSpecial && (
                       <div className="absolute left-1 top-1">
@@ -268,7 +268,7 @@ export function MenuClient({ data, tableParam }: Props) {
                     )}
                   </div>
                 ) : (
-                  <div className="mb-2 flex h-24 items-center justify-center rounded-lg bg-muted text-3xl">
+                  <div className="mb-2 flex h-28 items-center justify-center rounded-lg bg-muted text-3xl">
                     🍽️
                   </div>
                 )}
@@ -292,16 +292,16 @@ export function MenuClient({ data, tableParam }: Props) {
             <Sparkles className="size-4 text-primary" />
             New on Menu
           </h2>
-          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none">
+          <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-none">
             {newItems.map((item, i) => (
               <button
                 key={item.id}
                 onClick={() => setSelectedItem(item)}
-                className="animate-fadeIn w-36 shrink-0 rounded-xl border border-primary/20 bg-primary/5 p-2 text-left transition-shadow hover:shadow-md active:scale-[0.98]"
+                className="animate-fadeIn w-40 shrink-0 snap-start rounded-xl border border-primary/20 bg-primary/5 p-2 text-left transition-shadow hover:shadow-md active:scale-[0.98]"
                 style={{ animationDelay: `${i * 0.04}s` }}
               >
                 {item.images[0] ? (
-                  <div className="relative mb-2 h-24 overflow-hidden rounded-lg">
+                  <div className="relative mb-2 h-28 overflow-hidden rounded-lg">
                     <Image src={item.images[0]} alt={item.name} fill className="object-cover" />
                     <div className="absolute right-1 top-1">
                       <Badge className="bg-primary text-primary-foreground text-[9px] px-1.5 py-0.5 font-bold">
@@ -310,7 +310,7 @@ export function MenuClient({ data, tableParam }: Props) {
                     </div>
                   </div>
                 ) : (
-                  <div className="mb-2 flex h-24 items-center justify-center rounded-lg bg-muted text-3xl">
+                  <div className="mb-2 flex h-28 items-center justify-center rounded-lg bg-muted text-3xl">
                     🆕
                   </div>
                 )}
@@ -328,7 +328,7 @@ export function MenuClient({ data, tableParam }: Props) {
       )}
 
       {/* ──────────────── Search & Filters ──────────────── */}
-      <div className="sticky top-0 z-20 space-y-3 border-b border-border/60 bg-background/95 px-4 py-3 backdrop-blur-md">
+      <div className="sticky top-0 z-20 space-y-3 border-b border-border/60 bg-background/95 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 backdrop-blur-md">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -342,7 +342,7 @@ export function MenuClient({ data, tableParam }: Props) {
           <Filter className="size-4 shrink-0 text-muted-foreground" />
           <button
             onClick={() => setActiveCategory("all")}
-            className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+            className={`shrink-0 rounded-full px-3.5 py-2 min-h-9 text-xs font-medium transition-colors ${
               activeCategory === "all"
                 ? "bg-primary text-primary-foreground"
                 : "bg-muted text-muted-foreground hover:bg-muted/80"
@@ -354,7 +354,7 @@ export function MenuClient({ data, tableParam }: Props) {
             <button
               key={cat.id}
               onClick={() => setActiveCategory(cat.id)}
-              className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+              className={`shrink-0 rounded-full px-3.5 py-2 min-h-9 text-xs font-medium transition-colors ${
                 activeCategory === cat.id
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted text-muted-foreground hover:bg-muted/80"
@@ -365,7 +365,7 @@ export function MenuClient({ data, tableParam }: Props) {
           ))}
           <button
             onClick={() => setVegFilter(vegFilter === "VEG" ? "all" : "VEG")}
-            className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+            className={`shrink-0 rounded-full px-3.5 py-2 min-h-9 text-xs font-medium transition-colors ${
               vegFilter === "VEG" ? "bg-green-600 text-white" : "bg-muted text-muted-foreground"
             }`}
           >
@@ -373,7 +373,7 @@ export function MenuClient({ data, tableParam }: Props) {
           </button>
           <button
             onClick={() => setVegFilter(vegFilter === "NON_VEG" ? "all" : "NON_VEG")}
-            className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+            className={`shrink-0 rounded-full px-3.5 py-2 min-h-9 text-xs font-medium transition-colors ${
               vegFilter === "NON_VEG" ? "bg-red-600 text-white" : "bg-muted text-muted-foreground"
             }`}
           >
@@ -381,7 +381,7 @@ export function MenuClient({ data, tableParam }: Props) {
           </button>
           <button
             onClick={() => setVegFilter(vegFilter === "VEGAN" ? "all" : "VEGAN")}
-            className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+            className={`shrink-0 rounded-full px-3.5 py-2 min-h-9 text-xs font-medium transition-colors ${
               vegFilter === "VEGAN" ? "bg-emerald-600 text-white" : "bg-muted text-muted-foreground"
             }`}
           >
@@ -390,7 +390,7 @@ export function MenuClient({ data, tableParam }: Props) {
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-            className="shrink-0 rounded-full border-0 bg-muted px-3 py-1 text-xs text-muted-foreground"
+            className="shrink-0 rounded-full border-0 bg-muted px-3.5 py-2 min-h-9 text-xs text-muted-foreground"
           >
             <option value="name">A-Z</option>
             <option value="price-low">Price ↑</option>
@@ -400,7 +400,7 @@ export function MenuClient({ data, tableParam }: Props) {
       </div>
 
       {/* ──────────────── Menu Grid ──────────────── */}
-      <div className="grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
           {filteredItems.length === 0 ? (
             <p
               key="empty"
@@ -413,50 +413,55 @@ export function MenuClient({ data, tableParam }: Props) {
               <button
                 key={item.id}
                 onClick={() => setSelectedItem(item)}
-                className="animate-fadeIn flex gap-4 rounded-xl border border-border/60 bg-card p-3 text-left transition-all hover:shadow-md active:scale-[0.99]"
+                className="animate-fadeIn overflow-hidden rounded-xl border border-border/60 bg-card text-left transition-all hover:shadow-md active:scale-[0.98]"
                 style={{ animationDelay: `${i * 0.04}s` }}
               >
-                {/* Item image */}
-                {item.images[0] ? (
-                  <div className="relative size-24 shrink-0 overflow-hidden rounded-lg">
-                    <Image src={item.images[0]} alt={item.name} fill className="object-cover" />
-                    {item.isChefSpecial && (
-                      <div className="absolute bottom-0 left-0 right-0 bg-amber-500/90 py-0.5 text-center text-[9px] font-bold text-white">
-                        CHEF&apos;S SPECIAL
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="flex size-24 shrink-0 items-center justify-center rounded-lg bg-muted text-2xl">
-                    🍽️
-                  </div>
-                )}
+                {/* Mobile: stacked (image on top). sm+: side-by-side */}
+                <div className="flex flex-col sm:flex-row">
+                  {/* Item image */}
+                  {item.images[0] ? (
+                    <div className="relative h-44 w-full shrink-0 overflow-hidden sm:h-28 sm:w-28 lg:h-24 lg:w-24">
+                      <Image src={item.images[0]} alt={item.name} fill className="object-cover" />
+                      {item.isChefSpecial && (
+                        <div className="absolute bottom-0 left-0 right-0 bg-amber-500/90 py-0.5 text-center text-[9px] font-bold text-white">
+                          CHEF&apos;S SPECIAL
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex h-44 w-full items-center justify-center bg-muted text-3xl sm:h-28 sm:w-28 sm:text-2xl lg:h-24 lg:w-24">
+                      🍽️
+                    </div>
+                  )}
 
-                {/* Item info */}
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
-                    <FoodTypeIndicator foodType={item.foodType} />
-                    <SpicyLevel level={item.spicyLevel} />
-                    <span className="truncate font-semibold text-sm leading-tight">{item.name}</span>
-                  </div>
-                  {item.isChefSpecial && <ChefSpecialBadge />}
-                  <p className="mt-1 line-clamp-2 text-xs text-muted-foreground leading-relaxed">
-                    {item.description}
-                  </p>
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <span className="font-bold text-sm" style={{ color: restaurant.primaryColor }}>
-                      {formatCurrency(item.discountPrice ?? item.price)}
-                    </span>
-                    {item.discountPrice && (
-                      <span className="text-xs text-muted-foreground line-through">
-                        {formatCurrency(item.price)}
-                      </span>
-                    )}
-                    <span className="text-xs text-muted-foreground">· {item.preparationTime} min</span>
+                  {/* Item info */}
+                  <div className="flex min-w-0 flex-1 items-center gap-3 p-3 sm:p-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-0.5 flex flex-wrap items-center gap-1.5">
+                        <FoodTypeIndicator foodType={item.foodType} />
+                        <SpicyLevel level={item.spicyLevel} />
+                        <span className="line-clamp-2 font-semibold text-sm leading-tight">{item.name}</span>
+                      </div>
+                      {item.isChefSpecial && <ChefSpecialBadge />}
+                      <p className="mt-1 line-clamp-2 text-xs text-muted-foreground leading-relaxed">
+                        {item.description}
+                      </p>
+                      <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                        <span className="font-bold text-sm" style={{ color: restaurant.primaryColor }}>
+                          {formatCurrency(item.discountPrice ?? item.price)}
+                        </span>
+                        {item.discountPrice && (
+                          <span className="text-xs text-muted-foreground line-through">
+                            {formatCurrency(item.price)}
+                          </span>
+                        )}
+                        <span className="text-xs text-muted-foreground">· {item.preparationTime} min</span>
+                      </div>
+                    </div>
+
+                    <ChevronRight className="size-4 shrink-0 self-center text-muted-foreground" />
                   </div>
                 </div>
-
-                <ChevronRight className="size-4 shrink-0 self-center text-muted-foreground" />
               </button>
             ))
           )}
@@ -469,11 +474,11 @@ export function MenuClient({ data, tableParam }: Props) {
             <Star className="size-4 text-amber-500" />
             What Guests Say
           </h2>
-          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none">
+          <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-none">
             {reviews.map((review, i) => (
               <div
                 key={review.id}
-                className="animate-fadeIn w-64 shrink-0 rounded-xl border border-border/60 bg-card p-4"
+                className="animate-fadeIn w-64 shrink-0 snap-start rounded-xl border border-border/60 bg-card p-4"
                 style={{ animationDelay: `${i * 0.04}s` }}
               >
                 <div className="flex items-center justify-between mb-2">
@@ -509,7 +514,7 @@ export function MenuClient({ data, tableParam }: Props) {
 
       {/* ──────────────── Sticky Cart Bar ──────────────── */}
         {cartCount > 0 && (
-          <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border/60 bg-card/95 p-4 backdrop-blur-md">
+          <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border/60 bg-card/95 px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-md">
             <Link href={`/menu/${tableParam}/cart`}>
               <Button
                 className="w-full h-12 text-base font-semibold gap-2"

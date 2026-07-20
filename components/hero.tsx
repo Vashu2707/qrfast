@@ -54,16 +54,16 @@ export default function Hero() {
               Contact
             </Link>
           </nav>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <Link
               href="/login"
-              className="rounded-full bg-white px-4 py-2 text-sm font-medium text-slate-950 transition-all hover:opacity-90 hover:scale-105"
+              className="rounded-full bg-white px-3 py-2 text-xs font-medium text-slate-950 transition-all hover:opacity-90 hover:scale-105 sm:px-4 sm:text-sm"
             >
               Sign In
             </Link>
             <Link
               href="#get-started"
-              className="bg-transparent border-2 border-white px-4 py-2 text-sm font-medium text-white transition-all hover:bg-white/10 active:bg-white/20 whitespace-nowrap rounded-full hover:scale-105"
+              className="bg-transparent border-2 border-white px-3 py-2 text-xs font-medium text-white transition-all hover:bg-white/10 active:bg-white/20 whitespace-nowrap rounded-full hover:scale-105 sm:px-4 sm:text-sm"
             >
               Get Started
             </Link>
@@ -72,15 +72,15 @@ export default function Hero() {
       </header>
 
       <section className="mx-auto w-full max-w-7xl px-4 flex-1 flex flex-col justify-center text-left py-16">
-        <h1 className={`${outfit.className} text-5xl font-black tracking-tight sm:text-7xl max-w-3xl text-white leading-none`}>
+        <h1 className={`${outfit.className} text-3xl font-black tracking-tight sm:text-5xl lg:text-7xl max-w-3xl text-white leading-none`}>
           Let Customers Scan,
           <br />
           Order & Pay
-          <span className={`${playfair.className} block text-3xl sm:text-5xl font-semibold text-amber-300 mt-4 italic normal-case`}>
+          <span className={`${playfair.className} block text-xl sm:text-3xl lg:text-5xl font-semibold text-amber-300 mt-2 sm:mt-4 italic normal-case`}>
             Without Waiting for a Waiter.
           </span>
         </h1>
-        <p className="mt-6 max-w-2xl text-lg text-white/80">
+        <p className="mt-4 max-w-2xl text-sm text-white/80 sm:text-base lg:text-lg">
           Let your customers scan, order, and pay from their phone. No app download needed.
           Streamline your kitchen, reduce staff workload, and increase table turnover.
         </p>

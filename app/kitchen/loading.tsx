@@ -10,7 +10,7 @@ export default function KitchenLoading() {
       </div>
       <div className="grid gap-4 p-4 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="rounded-xl border-t-4 border-muted bg-card/50 p-3">
+          <div key={i} className="rounded-xl border-t-4 border-muted bg-card p-3">
             <Skeleton className="mb-3 h-5 w-28" />
             <div className="space-y-3">
               {Array.from({ length: 2 }).map((_, j) => (

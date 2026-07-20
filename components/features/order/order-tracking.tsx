@@ -26,8 +26,8 @@ interface OrderTrackingProps {
 
 const STATUS_STEPS: OrderStatus[] = [
   OrderStatus.PLACED,
-  OrderStatus.CONFIRMED,
   OrderStatus.PREPARING,
+  OrderStatus.PREPARED,
   OrderStatus.READY,
   OrderStatus.SERVED,
   OrderStatus.COMPLETED,
@@ -43,16 +43,16 @@ const STATUS_META: Record<
     desc: "Your order has been received.",
     estimatedMin: 2,
   },
-  CONFIRMED: {
-    icon: <CheckCircle2 className="size-5" />,
-    label: "Confirmed",
-    desc: "The kitchen has accepted your order.",
-    estimatedMin: 5,
-  },
   PREPARING: {
     icon: <ChefHat className="size-5" />,
     label: "Preparing",
     desc: "Our chefs are cooking your meal.",
+    estimatedMin: 5,
+  },
+  PREPARED: {
+    icon: <ChefHat className="size-5" />,
+    label: "Prepared",
+    desc: "Your food is prepared and ready to serve.",
   },
   READY: {
     icon: <Utensils className="size-5" />,
@@ -131,7 +131,7 @@ export function OrderTrackingClient({
 
   if (!order) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center">
+        <div className="flex min-h-dvh flex-col items-center justify-center gap-4 p-6 text-center">
         <XCircle className="size-12 text-muted-foreground" />
         <p className="font-medium">Order not found</p>
         <p className="text-sm text-muted-foreground">
@@ -155,8 +155,8 @@ export function OrderTrackingClient({
   // Estimated time remaining (rough based on status)
   const estimatedMinutes: Record<string, string> = {
     PLACED: "~20-25 min",
-    CONFIRMED: "~15-20 min",
-    PREPARING: "~10-15 min",
+    PREPARING: "~15-20 min",
+    PREPARED: "~5-10 min",
     READY: "Ready now!",
     SERVED: "Served",
     COMPLETED: "Done",
@@ -164,7 +164,7 @@ export function OrderTrackingClient({
   const eta = estimatedMinutes[order.status] ?? "";
 
   return (
-    <div className="min-h-screen bg-background pb-8">
+    <div className="min-h-dvh bg-background pb-8">
       {/* ─── Header ─── */}
       <div className="border-b border-border/60 bg-background/95 px-4 py-5 text-center backdrop-blur-sm">
         <h1 className="text-xl font-bold">Order Tracking</h1>
@@ -272,11 +272,11 @@ export function OrderTrackingClient({
 
         {/* ─── Cancelled state ─── */}
         {isCancelled && (
-          <Card className="border-destructive/30 bg-destructive/5">
+          <Card className="border-red-300 bg-red-50">
             <CardContent className="flex items-center gap-3 pt-4">
-              <XCircle className="size-6 text-destructive shrink-0" />
+              <XCircle className="size-6 text-red-600 shrink-0" />
               <div>
-                <p className="font-medium text-destructive">Order Cancelled</p>
+                <p className="font-medium text-red-700">Order Cancelled</p>
                 <p className="text-xs text-muted-foreground">
                   Please contact the staff for assistance.
                 </p>

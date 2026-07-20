@@ -193,9 +193,9 @@ export function ImageUpload({
             >
               {u.error ? (
                 // Error state
-                <div className="flex h-full flex-col items-center justify-center gap-1 bg-destructive/10 p-1 text-center">
-                  <X className="size-4 text-destructive" />
-                  <p className="text-[9px] leading-tight text-destructive line-clamp-2">
+                <div className="flex h-full flex-col items-center justify-center gap-1 bg-red-50 p-1 text-center">
+                  <X className="size-4 text-red-600" />
+                  <p className="text-[9px] leading-tight text-red-600 line-clamp-2">
                     {u.error}
                   </p>
                   <button

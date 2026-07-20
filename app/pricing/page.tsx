@@ -33,7 +33,7 @@ function FAQItem({ question, answer }: { question: string; answer: string }) {
     <div className="border-b border-slate-200/80 py-4 last:border-b-0">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between py-2 text-left font-semibold text-slate-800 hover:text-slate-950 transition-colors text-sm sm:text-base cursor-pointer select-none"
+        className="w-full flex items-center justify-between py-3 sm:py-2 text-left font-semibold text-slate-800 hover:text-slate-950 transition-colors text-sm sm:text-base cursor-pointer select-none min-h-[44px]"
       >
         <span>{question}</span>
         <span className="ml-4 text-slate-400">
@@ -129,7 +129,7 @@ export default function PricingPage() {
     {
       name: "QRFast for Restaurants",
       setupPrice: "₹11,999",
-      monthlyPrice: "₹1,499",
+      monthlyPrice: "₹499",
       description: "Everything your restaurant needs to go digital — one simple plan, no surprises.",
       highlights: [
         "1 QR Digital Menu",
@@ -234,7 +234,7 @@ export default function PricingPage() {
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-between selection:bg-[#0f9f90]/20 selection:text-[#0d8a7c]">
       
       {/* Premium Sticky Header */}
-      <header className="sticky top-0 z-50 border-b border-slate-200/50 bg-[#F8FAFC]/80 backdrop-blur-md w-full select-none">
+      <header className="sticky top-0 z-50 border-b border-slate-200/50 bg-[#F8FAFC] w-full select-none">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
           <Link href="/" className="flex items-center hover:opacity-90 transition-opacity">
             <Image

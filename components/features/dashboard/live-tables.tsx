@@ -39,7 +39,7 @@ export function LiveTables({ tables, orders }: LiveTablesProps) {
         if (orderStatuses.some((s) => s === "PLACED" || s === "CONFIRMED")) {
           return { label: "Waiting", color: "bg-amber-500 text-amber-500" };
         }
-        if (orderStatuses.some((s) => s === "PREPARING" || s === "READY")) {
+        if (orderStatuses.some((s) => s === "PREPARING" || s === "PREPARED" || s === "READY")) {
           return { label: "Preparing", color: "bg-orange-500 text-orange-500" };
         }
       }
@@ -72,7 +72,7 @@ export function LiveTables({ tables, orders }: LiveTablesProps) {
                   <span className="text-sm font-bold text-slate-800 tracking-tight">T{table.number}</span>
                   <div className="flex items-center gap-1 mt-1">
                     <span className={`size-1.5 rounded-full ${color.split(" ")[0]}`} />
-                    <span className="text-[10px] font-medium text-slate-500 tracking-wide">{label}</span>
+                    <span className="text-[10px] font-medium text-slate-500 tracking-wide sm:text-[10px]">{label}</span>
                   </div>
                 </div>
               );

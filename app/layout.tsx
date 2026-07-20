@@ -40,6 +40,7 @@ export default function RootLayout({
     <html lang="en" className={cn(geistSans.variable, geistMono.variable, "font-sans")} suppressHydrationWarning>
       <body
         className="antialiased"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         <ThemeProvider>
           <AppProviders>{children}</AppProviders>

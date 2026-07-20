@@ -51,7 +51,7 @@ export async function generateBillHtml(orderId: string): Promise<string | null> 
     gstPercentage: 5,
     serviceChargePercentage: 0,
     currency: "INR",
-    primaryColor: "#E11D48",
+      primaryColor: "#DC2626",
   };
 
   const invoice = order.invoices[0] ?? null;

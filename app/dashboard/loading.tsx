@@ -5,7 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function DashboardLoading() {
   return (
     <div>
-      <div className="flex items-center justify-between border-b border-border/60 bg-card/30 px-6 py-4 backdrop-blur-sm">
+      <div className="flex items-center justify-between border-b border-border bg-card px-6 py-4">
         <div>
           <Skeleton className="h-7 w-36" />
           <Skeleton className="mt-1 h-4 w-48" />

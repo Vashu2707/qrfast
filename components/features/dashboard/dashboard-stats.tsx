@@ -11,7 +11,6 @@ interface Stats {
   todayRevenue: number;
   totalTables: number;
   occupiedTables: number;
-  avgOrderValue: number;
 }
 
 export function DashboardStats({ stats }: { stats: Stats }) {
