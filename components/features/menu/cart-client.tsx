@@ -180,14 +180,37 @@ export function CartClient({
           razorpay_payment_id: string;
           razorpay_signature: string;
         }) => {
-          await fetch("/api/payments/verify", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(response),
-          });
-          clearCart();
-          toast.success("Payment successful! 🎉");
-          router.push(`/order/${result.orderId}`);
+          // Verify payment on backend before marking as successful
+          try {
+            const verifyRes = await fetch("/api/payments/verify", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(response),
+            });
+            const verifyData = await verifyRes.json();
+
+            if (!verifyRes.ok || !verifyData.success) {
+              console.error("Payment verification failed:", verifyData);
+              toast.error(
+                "Payment received but verification failed. Please contact support with your payment ID: " +
+                  response.razorpay_payment_id
+              );
+              // Don't clear cart or redirect — order stays CONFIRMED, webhook may still fix it
+              isSubmitting.current = false;
+              return;
+            }
+
+            // Verification succeeded — safe to proceed
+            clearCart();
+            toast.success("Payment successful!");
+            router.push(`/order/${result.orderId}`);
+          } catch (err) {
+            // Network error during verification — payment was made, webhook will handle it
+            console.error("Verification network error:", err);
+            toast.success("Payment received! Redirecting...");
+            clearCart();
+            router.push(`/order/${result.orderId}`);
+          }
         },
         prefill: { name: customerName, contact: customerPhone },
         theme: { color: primaryColor },
