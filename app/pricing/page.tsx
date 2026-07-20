@@ -234,7 +234,7 @@ export default function PricingPage() {
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-between selection:bg-[#0f9f90]/20 selection:text-[#0d8a7c]">
       
       {/* Premium Sticky Header */}
-      <header className="sticky top-0 z-50 border-b border-slate-200/50 bg-[#F8FAFC]/80 backdrop-blur-md w-full select-none">
+      <header className="sticky top-0 z-50 border-b border-slate-200/50 bg-[#F8FAFC] w-full select-none">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
           <Link href="/" className="flex items-center hover:opacity-90 transition-opacity">
             <Image
