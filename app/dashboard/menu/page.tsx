@@ -238,7 +238,7 @@ export default function MenuPage() {
                 </div>
 
                 {/* Price */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label>Price (₹) <span className="text-destructive">*</span></Label>
                     <Input
@@ -434,7 +434,7 @@ export default function MenuPage() {
                     queryClient.invalidateQueries({ queryKey: ["menuItems"] });
                   }
                 }}
-                className="hover:text-destructive"
+                className="inline-flex size-5 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
                 aria-label={`Delete category ${cat.name}`}
               >
                 ×

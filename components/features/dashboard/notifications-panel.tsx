@@ -61,7 +61,7 @@ export function NotificationsPanel({ notifications }: { notifications: Notificat
             Notifications
           </CardTitle>
           {notifications.length > 0 && (
-            <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs text-muted-foreground" onClick={handleClearAll} disabled={clearing}>
+            <Button variant="ghost" size="sm" className="h-9 gap-1.5 text-xs text-muted-foreground" onClick={handleClearAll} disabled={clearing}>
               <CheckCheck className="size-3.5" />
               Clear all
             </Button>

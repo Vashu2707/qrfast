@@ -73,12 +73,12 @@ export default function DecisionSection() {
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, amount: 0.2 }}
-        className="w-[85%] max-w-5xl mx-auto bg-white border border-[#D8DEE8] rounded-[32px] py-16 md:py-24 px-6 md:px-12 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_rgba(15,23,42,0.06),0_24px_48px_rgba(15,23,42,0.04)] flex flex-col items-center text-center relative"
+        className="w-[92%] max-w-5xl mx-auto bg-white border border-[#D8DEE8] rounded-[32px] py-12 md:py-24 px-5 md:px-12 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_rgba(15,23,42,0.06),0_24px_48px_rgba(15,23,42,0.04)] flex flex-col items-center text-center relative"
       >
         {/* Headline */}
         <motion.h2
           variants={itemVariants}
-          className="text-4xl font-bold leading-tight tracking-tight text-slate-900 sm:text-5xl max-w-2xl"
+          className="text-2xl sm:text-4xl font-bold leading-tight tracking-tight text-slate-900 sm:text-5xl max-w-2xl"
         >
           Ready to Transform Your Restaurant?
         </motion.h2>

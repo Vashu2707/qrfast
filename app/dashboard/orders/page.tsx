@@ -67,12 +67,12 @@ export default function OrdersPage() {
       <StaffHeader title="Orders" subtitle="Manage and track all orders" />
       <div className="space-y-4 p-6">
         <div className="flex flex-wrap gap-3">
-          <div className="relative flex-1 min-w-[200px]">
+          <div className="relative min-w-0 flex-1">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Search orders..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+            <Input placeholder="Search..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
           <Select value={statusFilter} onValueChange={(v) => v && setStatusFilter(v)}>
-            <SelectTrigger className="w-[160px]">
+            <SelectTrigger className="w-full sm:w-[160px]">
               <SelectValue placeholder="Filter status" />
             </SelectTrigger>
             <SelectContent>
@@ -82,7 +82,7 @@ export default function OrdersPage() {
               ))}
             </SelectContent>
           </Select>
-          <Button variant="outline" size="icon" onClick={() => refetch()}>
+          <Button variant="outline" size="icon" className="size-11 shrink-0" onClick={() => refetch()}>
             <RefreshCw className="size-4" />
           </Button>
         </div>
@@ -98,7 +98,7 @@ export default function OrdersPage() {
                 <CardContent className="p-5">
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-1.5">
                         <span className="font-semibold">{order.customerName}</span>
                         <Badge variant="outline">Table {order.table.number}</Badge>
                         <Badge className={getOrderStatusColor(order.status)} variant="secondary">
@@ -123,7 +123,7 @@ export default function OrdersPage() {
                         value={order.status}
                         onValueChange={(v) => v && handleStatusUpdate(order.id, v as OrderStatus)}
                       >
-                        <SelectTrigger className="w-[180px]">
+                        <SelectTrigger className="w-full sm:w-[180px]">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
