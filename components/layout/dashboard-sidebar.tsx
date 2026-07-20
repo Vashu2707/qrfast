@@ -51,7 +51,7 @@ export function DashboardSidebar({ user, unreadCount = 0 }: DashboardSidebarProp
   };
 
   return (
-    <aside className="flex h-screen w-58 flex-col border-r border-border/60 bg-card/50 backdrop-blur-xl">
+    <aside className="flex h-screen w-58 flex-col border-r border-border bg-card">
       <div className="border-b border-border/60 p-5">
         <Link href="/dashboard" className="text-lg font-semibold tracking-tight">
           QRFast
@@ -132,7 +132,7 @@ export function DashboardSidebar({ user, unreadCount = 0 }: DashboardSidebarProp
 
 export function StaffHeader({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
-    <div className="flex items-center justify-between border-b border-border/60 bg-card/30 px-4 py-4 backdrop-blur-sm sm:px-6">
+    <div className="flex items-center justify-between border-b border-border bg-card px-4 py-4 sm:px-6">
       <div className="min-w-0">
         <h1 className="truncate text-xl font-semibold tracking-tight">{title}</h1>
         {subtitle && <p className="truncate text-sm text-muted-foreground">{subtitle}</p>}

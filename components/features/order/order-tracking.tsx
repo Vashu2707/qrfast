@@ -272,11 +272,11 @@ export function OrderTrackingClient({
 
         {/* ─── Cancelled state ─── */}
         {isCancelled && (
-          <Card className="border-destructive/30 bg-destructive/5">
+          <Card className="border-red-300 bg-red-50">
             <CardContent className="flex items-center gap-3 pt-4">
-              <XCircle className="size-6 text-destructive shrink-0" />
+              <XCircle className="size-6 text-red-600 shrink-0" />
               <div>
-                <p className="font-medium text-destructive">Order Cancelled</p>
+                <p className="font-medium text-red-700">Order Cancelled</p>
                 <p className="text-xs text-muted-foreground">
                   Please contact the staff for assistance.
                 </p>

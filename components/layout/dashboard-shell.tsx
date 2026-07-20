@@ -48,7 +48,7 @@ export function DashboardShell({ children, user, unreadCount = 0 }: Props) {
       {/* Content */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Mobile header bar */}
-        <div className="flex items-center justify-between border-b border-border/60 bg-card/30 px-4 py-3 backdrop-blur-sm md:hidden">
+        <div className="flex items-center justify-between border-b border-border bg-card px-4 py-3 md:hidden">
           <Button
             variant="ghost"
             size="icon"

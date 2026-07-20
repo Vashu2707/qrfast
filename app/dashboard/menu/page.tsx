@@ -434,7 +434,7 @@ export default function MenuPage() {
                     queryClient.invalidateQueries({ queryKey: ["menuItems"] });
                   }
                 }}
-                className="inline-flex size-5 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                className="inline-flex size-5 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-600"
                 aria-label={`Delete category ${cat.name}`}
               >
                 ×

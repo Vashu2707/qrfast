@@ -99,7 +99,7 @@ export default function KitchenPage() {
           {columns.map(({ status, label, color }) => {
             const columnOrders = kitchenOrders.filter((o) => o.status === status);
             return (
-              <div key={status} className={`rounded-xl border-t-4 ${color} bg-card/50 p-3`}>
+              <div key={status} className={`rounded-xl border-t-4 ${color} bg-card p-3`}>
                 <h2 className="mb-3 flex items-center gap-2 font-semibold">
                   <ChefHat className="size-4" />
                   {label}
