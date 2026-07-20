@@ -127,57 +127,23 @@ export default function PricingPage() {
 
   const pricingTiers = [
     {
-      name: "Small Restaurants & Cafés",
-      setupPrice: "₹14,999",
+      name: "QRFast for Restaurants",
+      setupPrice: "₹11,999",
       monthlyPrice: "₹1,499",
-      description: "Perfect for small restaurants starting their digital journey.",
+      description: "Everything your restaurant needs to go digital — one simple plan, no surprises.",
       highlights: [
         "1 QR Digital Menu",
-        "Up to 15 Tables",
+        "Unlimited Menu Items & Updates",
         "QR Ordering Enabled",
-        "Basic Kitchen Screen",
+        "Kitchen Display System",
         "Direct UPI Integration",
-        "Restaurant Dashboard",
-        "Email Support",
+        "Restaurant Dashboard & Analytics",
+        "Free Custom Domain Setup",
+        "Premium Cloud Hosting & SSL",
+        "Automatic Nightly Backups",
+        "Ongoing Support & Maintenance",
       ],
-      ctaText: "Choose Starter",
-      featured: false,
-    },
-    {
-      name: "Growing Restaurants",
-      setupPrice: "₹29,999",
-      monthlyPrice: "₹2,999",
-      description: "Perfect for busy restaurants needing analytics, kitchen displays and advanced operations.",
-      highlights: [
-        "Everything in Small Restaurants plus...",
-        "Unlimited QR Menus & Tables",
-        "Kitchen Display System (KDS)",
-        "Live Analytics & Reports",
-        "Customer Reviews & Ratings",
-        "Waiter Calling Integration",
-        "Staff Management & Portal",
-        "Priority Support",
-      ],
-      ctaText: "Choose Growth",
-      featured: true,
-    },
-    {
-      name: "Multi-location Chains",
-      setupPrice: "Custom",
-      monthlyPrice: "Custom",
-      description: "For restaurant chains requiring multiple branches, custom integrations and dedicated support.",
-      highlights: [
-        "Everything in Growing Restaurants plus...",
-        "Multi-branch Dashboard",
-        "POS Integration",
-        "Inventory Sync",
-        "White Label Branding",
-        "API Access",
-        "Dedicated Account Manager",
-        "SLA Support & Staff Training",
-      ],
-      ctaText: "Talk to Sales",
-      featured: false,
+      ctaText: "Get Started",
     },
   ];
 
@@ -248,39 +214,20 @@ export default function PricingPage() {
     },
     {
       q: "Can I use my own domain?",
-      a: "Yes. With our Custom Domain add-on, we will map your digital menu to your restaurant's domain name (e.g., menu.yourname.com).",
+      a: "Yes. Your plan includes free custom domain setup. We will map your digital menu to your restaurant's domain name (e.g., menu.yourname.com).",
     },
     {
       q: "Is hosting included?",
-      a: "Yes. Premium cloud server hosting, SSL encryption certificates, and automatic data backups are fully covered in all our plan subscriptions.",
+      a: "Yes. Premium cloud server hosting, SSL encryption certificates, domain, and automatic data backups are fully covered in your monthly plan.",
     },
     {
       q: "Can I cancel the monthly plan?",
       a: "Yes. Our platform subscription is month-to-month. You are free to pause or cancel your subscription plan at any time without hidden fees.",
     },
     {
-      q: "Can I upgrade later?",
-      a: "Absolutely. You can start on the Small Restaurants tier and transition to the Growing Restaurants tier as your table counts or operations scale up.",
-    },
-    {
-      q: "Do you support multiple branches?",
-      a: "Yes. Our Multi-location plan allows you to manage menus, sales, and analytics for multiple branches from a single unified account.",
-    },
-    {
       q: "How long does setup take?",
       a: "Setup typically takes 3 to 5 business days. This includes digital menu design, custom QR code layout configuration, and terminal testing.",
     },
-  ];
-
-  const comparisonFeatures = [
-    { name: "QR Menu", starter: true, growth: true, enterprise: true },
-    { name: "Kitchen Display", starter: "Basic", growth: "Advanced", enterprise: "Custom" },
-    { name: "Analytics", starter: "Standard", growth: "Advanced", enterprise: "Custom Insights" },
-    { name: "Payment Integration", starter: "Direct UPI", growth: "Multi-UPI & Split", enterprise: "Custom Gateways" },
-    { name: "Unlimited Menus & Tables", starter: false, growth: true, enterprise: true },
-    { name: "Multi-location Support", starter: false, growth: false, enterprise: true },
-    { name: "POS Integration", starter: "Add-on", growth: "Add-on", enterprise: "Included" },
-    { name: "Priority Support", starter: "Email", growth: "24/7 Priority", enterprise: "Dedicated SLA" },
   ];
 
   return (
@@ -371,14 +318,9 @@ export default function PricingPage() {
 
       {/* SECTION 2: PRICING OVERVIEW */}
       <section className="pb-16 px-4">
-        <div className="w-[92%] max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
+        <div className="w-[92%] max-w-lg mx-auto flex justify-center">
           {pricingTiers.map((tier, idx) => {
-            const isFeatured = tier.featured;
-            
-            // Soft thinned featured border & deep layered shadow
-            const cardBorder = isFeatured 
-              ? "border border-[#0f9f90]/20 shadow-[0_1px_3px_rgba(15,23,42,0.03),0_16px_48px_rgba(15,23,42,0.08),0_48px_96px_rgba(15,23,42,0.04)]" 
-              : "border border-[#D8DEE8]/60 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_rgba(15,23,42,0.06),0_24px_48px_rgba(15,23,42,0.04)]";
+            const cardBorder = "border border-[#0f9f90]/20 shadow-[0_1px_3px_rgba(15,23,42,0.03),0_16px_48px_rgba(15,23,42,0.08),0_48px_96px_rgba(15,23,42,0.04)]";
             
             const hoverAnim = prefersReducedMotion 
               ? {} 
@@ -395,14 +337,8 @@ export default function PricingPage() {
                 viewport={{ once: true, amount: 0.15 }}
                 transition={{ duration: 0.5, delay: idx * 0.1 }}
                 whileHover={hoverAnim}
-                className={`bg-white rounded-[28px] p-8 flex flex-col justify-between relative transition-all duration-300 ${cardBorder}`}
+                className={`bg-white rounded-[28px] p-8 flex flex-col justify-between relative transition-all duration-300 w-full ${cardBorder}`}
               >
-                {isFeatured && (
-                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[8px] font-bold bg-[#0f9f90]/10 text-[#0f9f90] border border-[#0f9f90]/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                    Recommended
-                  </span>
-                )}
-
                 <div className="space-y-6">
                   <div className="pt-2">
                     <h3 className="text-lg font-bold text-slate-900">{tier.name}</h3>
@@ -414,75 +350,37 @@ export default function PricingPage() {
                   {/* Pricing Hierarchy Stacking */}
                   <div className="border-t border-b border-slate-100 py-6 space-y-4 text-center">
                     <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Starting at</span>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">One-time Setup</span>
                       <span className="text-3xl font-extrabold text-slate-950 block mt-1">{tier.setupPrice}</span>
-                      <span className="text-[10px] font-semibold text-slate-400 block mt-0.5">One-time Setup</span>
                     </div>
-                    {tier.monthlyPrice !== "Custom" ? (
-                      <div className="flex flex-col items-center">
-                        <span className="text-slate-300 font-medium text-xs my-0.5">+</span>
-                        <span className="text-xl font-bold text-[#0f9f90] block">{tier.monthlyPrice}/mo</span>
-                        <span className="text-[10px] font-semibold text-slate-400 block mt-0.5">Hosting, Updates & Support</span>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center">
-                        <span className="text-slate-300 font-medium text-xs my-0.5">+</span>
-                        <span className="text-xl font-bold text-[#0f9f90] block">Custom</span>
-                        <span className="text-[10px] font-semibold text-slate-400 block mt-0.5">Hosting, Updates & Support</span>
-                      </div>
-                    )}
+                    <div className="flex flex-col items-center">
+                      <span className="text-slate-300 font-medium text-xs my-0.5">+</span>
+                      <span className="text-xl font-bold text-[#0f9f90] block">{tier.monthlyPrice}/mo</span>
+                      <span className="text-[10px] font-semibold text-slate-400 block mt-0.5">Domain, Hosting & Maintenance</span>
+                    </div>
                   </div>
 
-                  {/* Highlights (limit to 7-8 rows) */}
+                  {/* Highlights */}
                   <div className="space-y-4">
                     <ul className="space-y-3 text-xs text-slate-600">
-                      {tier.highlights.map((highlight, hIdx) => {
-                        const isPlusTitle = hIdx === 0 && idx > 0;
-                        return (
-                          <li key={hIdx} className="flex items-start gap-2.5">
-                            {isPlusTitle ? (
-                              <div className="size-4 rounded-full bg-[#0f9f90]/10 flex items-center justify-center shrink-0 mt-0.5">
-                                <Plus className="size-2.5 text-[#0f9f90] stroke-[3]" />
-                              </div>
-                            ) : (
-                              <Check className="size-4 text-[#0f9f90] shrink-0 mt-0.5" />
-                            )}
-                            <span className={isPlusTitle ? "font-bold text-slate-800" : ""}>
-                              {highlight}
-                            </span>
-                          </li>
-                        );
-                      })}
+                      {tier.highlights.map((highlight, hIdx) => (
+                        <li key={hIdx} className="flex items-start gap-2.5">
+                          <Check className="size-4 text-[#0f9f90] shrink-0 mt-0.5" />
+                          <span>{highlight}</span>
+                        </li>
+                      ))}
                     </ul>
-
-                    {/* Anchor link comparison list */}
-                    <Link
-                      href="#comparison"
-                      className="text-[11px] font-semibold text-[#0f9f90] hover:text-[#0d8a7c] hover:underline block text-center pt-2"
-                    >
-                      View Full Feature Comparison →
-                    </Link>
                   </div>
                 </div>
 
                 <div className="pt-8">
-                  {isFeatured ? (
-                    <motion.button
-                      whileHover={prefersReducedMotion ? {} : { y: -2 }}
-                      transition={{ duration: 0.25, ease: "easeOut" }}
-                      className="w-full bg-[#0f9f90] hover:bg-[#0d8a7c] hover:shadow-md hover:shadow-[#0f9f90]/15 text-white py-3.5 rounded-2xl text-xs font-bold uppercase tracking-wider transition-all duration-250 cursor-pointer"
-                    >
-                      {tier.ctaText}
-                    </motion.button>
-                  ) : (
-                    <motion.button
-                      whileHover={prefersReducedMotion ? {} : { y: -2 }}
-                      transition={{ duration: 0.25, ease: "easeOut" }}
-                      className="w-full bg-white border border-[#D8DEE8] hover:bg-slate-50 hover:shadow-sm text-slate-700 py-3.5 rounded-2xl text-xs font-bold uppercase tracking-wider transition-all duration-250 cursor-pointer"
-                    >
-                      {tier.ctaText}
-                    </motion.button>
-                  )}
+                  <motion.button
+                    whileHover={prefersReducedMotion ? {} : { y: -2 }}
+                    transition={{ duration: 0.25, ease: "easeOut" }}
+                    className="w-full bg-[#0f9f90] hover:bg-[#0d8a7c] hover:shadow-md hover:shadow-[#0f9f90]/15 text-white py-3.5 rounded-2xl text-xs font-bold uppercase tracking-wider transition-all duration-250 cursor-pointer"
+                  >
+                    {tier.ctaText}
+                  </motion.button>
                 </div>
               </motion.div>
             );
@@ -581,67 +479,7 @@ export default function PricingPage() {
         </div>
       </section>
 
-      {/* SECTION 6: FEATURE COMPARISON TABLE */}
-      <section id="comparison" className="py-24 md:py-32 px-4 bg-white border-t border-b border-[#D8DEE8]/60 overflow-x-auto scroll-mt-20">
-        <div className="w-[85%] max-w-5xl mx-auto space-y-16">
-          <div className="text-center space-y-4">
-            <span className="text-xs font-bold text-[#0f9f90] bg-[#0f9f90]/10 px-3 py-1 rounded-full uppercase tracking-wider inline-block">
-              DETAILED ANALYSIS
-            </span>
-            <h2 className="text-3xl font-bold text-slate-900 tracking-tight">
-              Compare Platform Plans
-            </h2>
-          </div>
-
-          <table className="w-full border-collapse text-left text-sm mt-8 min-w-[650px]">
-            {/* Sticky Table Header */}
-            <thead>
-              <tr className="border-b border-slate-200 bg-white sticky top-16 z-20">
-                <th className="py-4 font-bold text-slate-900 w-2/5">Feature</th>
-                <th className="py-4 font-bold text-slate-900 text-center w-1/5">Small Restaurants</th>
-                <th className="py-4 font-bold text-slate-[#0f9f90] text-center w-1/5">Growing Restaurants</th>
-                <th className="py-4 font-bold text-slate-900 text-center w-1/5">Enterprise</th>
-              </tr>
-            </thead>
-            <tbody>
-              {comparisonFeatures.map((row, idx) => (
-                <tr key={idx} className="border-b border-slate-100/60 hover:bg-slate-50/50 transition-colors odd:bg-[#F8FAFC]/30">
-                  <td className="py-4 font-semibold text-slate-800">{row.name}</td>
-                  
-                  {/* Small Restaurants Column */}
-                  <td className="py-4 text-center text-slate-500">
-                    {typeof row.starter === "boolean" ? (
-                      row.starter ? <Check className="size-4 text-[#0f9f90] mx-auto" /> : <span className="text-slate-300">—</span>
-                    ) : (
-                      row.starter
-                    )}
-                  </td>
-                  
-                  {/* Growing Restaurants Column */}
-                  <td className="py-4 text-center font-medium text-slate-800 bg-[#0f9f90]/5">
-                    {typeof row.growth === "boolean" ? (
-                      row.growth ? <Check className="size-4 text-[#0f9f90] mx-auto" /> : <span className="text-slate-300">—</span>
-                    ) : (
-                      row.growth
-                    )}
-                  </td>
-                  
-                  {/* Enterprise Column */}
-                  <td className="py-4 text-center text-slate-500">
-                    {typeof row.enterprise === "boolean" ? (
-                      row.enterprise ? <Check className="size-4 text-[#0f9f90] mx-auto" /> : <span className="text-slate-300">—</span>
-                    ) : (
-                      row.enterprise
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      {/* SECTION 7: OPTIONAL ADD-ONS */}
+      {/* SECTION 6: OPTIONAL ADD-ONS */}
       <section className="py-24 md:py-32 px-4 bg-[#F8FAFC]">
         <div className="w-[85%] max-w-5xl mx-auto space-y-16">
           <div className="text-center space-y-4">
