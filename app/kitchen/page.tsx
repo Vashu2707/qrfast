@@ -9,9 +9,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { formatCurrency, getOrderStatusLabel } from "@/lib/format";
 import { OrderStatus } from "@prisma/client";
 import { toast } from "sonner";
-import { ChefHat, Clock, CheckCircle, RefreshCw, Volume2 } from "lucide-react";
+import { ChefHat, Clock, CheckCircle, RefreshCw, Volume2, VolumeX } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { unlockAudio, playNewOrder } from "@/lib/sound";
 
 const KITCHEN_STATUSES = [
   OrderStatus.PLACED,
@@ -20,15 +21,10 @@ const KITCHEN_STATUSES = [
   OrderStatus.READY,
 ];
 
-const NOTIFICATION_TONE = "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OSdTgwOUKzn8LZjHAY4kdfyzHksBSR3x/DdkEAKFF606euoVRQKRp/g8r5sIQUrgc7y2Yk2CBtpvfDknU4MDlCs5/C2YxwGOJHX8sx5LAUkd8fw3ZBAC";
-
 export default function KitchenPage() {
   const queryClient = useQueryClient();
   const [soundEnabled, setSoundEnabled] = useState(true);
   const prevOrderCount = useRef(0);
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const audioBufferRef = useRef<AudioBuffer | null>(null);
-  const unlockedRef = useRef(false);
 
   const { data: orders = [], refetch, isLoading } = useQuery({
     queryKey: ["kitchen-orders"],
@@ -40,43 +36,17 @@ export default function KitchenPage() {
     KITCHEN_STATUSES.includes(o.status as typeof KITCHEN_STATUSES[number])
   );
 
-  const unlockAudio = useCallback(async () => {
-    if (unlockedRef.current) return;
-    try {
-      const ctx = new AudioContext();
-      audioCtxRef.current = ctx;
-      if (ctx.state === "suspended") await ctx.resume();
-      const res = await fetch(NOTIFICATION_TONE);
-      const arrayBuf = await res.arrayBuffer();
-      audioBufferRef.current = await ctx.decodeAudioData(arrayBuf);
-      unlockedRef.current = true;
-    } catch {
-      // fallback: will try plain Audio below
-    }
-  }, []);
-
-  const playNotification = useCallback(() => {
-    const ctx = audioCtxRef.current;
-    const buffer = audioBufferRef.current;
-    if (ctx && buffer) {
-      const source = ctx.createBufferSource();
-      source.buffer = buffer;
-      source.connect(ctx.destination);
-      source.start();
-    } else {
-      try {
-        const audio = new Audio(NOTIFICATION_TONE);
-        audio.play().catch(() => {});
-      } catch {}
-    }
-  }, []);
+  const handleToggleSound = useCallback(async () => {
+    if (!soundEnabled) await unlockAudio();
+    setSoundEnabled((prev) => !prev);
+  }, [soundEnabled]);
 
   useEffect(() => {
     if (soundEnabled && kitchenOrders.length > prevOrderCount.current && prevOrderCount.current > 0) {
-      playNotification();
+      playNewOrder();
     }
     prevOrderCount.current = kitchenOrders.length;
-  }, [kitchenOrders.length, soundEnabled, playNotification]);
+  }, [kitchenOrders.length, soundEnabled]);
 
   const handleStatusUpdate = async (id: string, status: OrderStatus) => {
     const result = await updateOrderStatus(id, status);
@@ -106,31 +76,26 @@ export default function KitchenPage() {
   return (
     <div className="min-h-screen bg-background">
       <StaffHeader title="Kitchen Display" subtitle="Live order board" />
-      <div className="flex items-center gap-3 border-b border-border/60 px-6 py-3">
+      <div className="flex flex-wrap items-center gap-2 border-b border-border/60 px-4 py-3 sm:px-6">
         <Button variant="outline" size="sm" onClick={() => refetch()}>
           <RefreshCw className="mr-2 size-4" />Refresh
         </Button>
         <Button
           variant={soundEnabled ? "default" : "outline"}
           size="sm"
-          onClick={() => {
-            if (!soundEnabled) unlockAudio();
-            setSoundEnabled(!soundEnabled);
-          }}
+          onClick={handleToggleSound}
         >
-          <Volume2 className="mr-2 size-4" />Sound {soundEnabled ? "On" : "Off"}
-        </Button>
-        <Button variant={soundEnabled ? "default" : "outline"} size="sm" onClick={() => setSoundEnabled(!soundEnabled)}>
-          <Volume2 className="mr-2 size-4" />Sound {soundEnabled ? "On" : "Off"}
+          {soundEnabled ? <Volume2 className="mr-2 size-4" /> : <VolumeX className="mr-2 size-4" />}
+          Sound {soundEnabled ? "On" : "Off"}
         </Button>
         <Link href="/dashboard"><Button variant="ghost" size="sm">Admin Dashboard</Button></Link>
-        <Badge variant="secondary" className="ml-auto">{kitchenOrders.length} active orders</Badge>
+        <Badge variant="secondary" className="ml-auto">{kitchenOrders.length} active</Badge>
       </div>
 
       {isLoading ? (
         <p className="py-20 text-center text-muted-foreground">Loading orders...</p>
       ) : (
-        <div className="grid gap-4 p-4 lg:grid-cols-4">
+        <div className="grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-4">
           {columns.map(({ status, label, color }) => {
             const columnOrders = kitchenOrders.filter((o) => o.status === status);
             return (

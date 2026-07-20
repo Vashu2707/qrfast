@@ -4,10 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { markNotificationRead, clearAllNotifications } from "@/actions/notifications";
 import { formatDate } from "@/lib/format";
-import { Bell, CheckCheck } from "lucide-react";
+import { Bell, CheckCheck, Volume2, VolumeX } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { unlockAudio, playDoorbell } from "@/lib/sound";
 
 type Notification = {
   id: string;
@@ -21,9 +22,24 @@ type Notification = {
 export function NotificationsPanel({ notifications }: { notifications: Notification[] }) {
   const queryClient = useQueryClient();
   const [clearing, setClearing] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const prevCount = useRef(notifications.length);
+
+  const handleToggleSound = useCallback(async () => {
+    if (!soundEnabled) await unlockAudio();
+    setSoundEnabled((prev) => !prev);
+  }, [soundEnabled]);
+
+  useEffect(() => {
+    if (soundEnabled && notifications.length > prevCount.current && prevCount.current > 0) {
+      playDoorbell();
+    }
+    prevCount.current = notifications.length;
+  }, [notifications.length, soundEnabled]);
 
   const handleRead = async (id: string) => {
     try {
+      await unlockAudio();
       const result = await markNotificationRead(id);
       if (result?.error) {
         toast.error(result.error);
@@ -60,12 +76,23 @@ export function NotificationsPanel({ notifications }: { notifications: Notificat
             <Bell className="size-4" />
             Notifications
           </CardTitle>
-          {notifications.length > 0 && (
-            <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs text-muted-foreground" onClick={handleClearAll} disabled={clearing}>
-              <CheckCheck className="size-3.5" />
-              Clear all
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-8"
+              onClick={handleToggleSound}
+              title={soundEnabled ? "Mute notifications" : "Unmute notifications"}
+            >
+              {soundEnabled ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}
             </Button>
-          )}
+            {notifications.length > 0 && (
+              <Button variant="ghost" size="sm" className="h-9 gap-1.5 text-xs text-muted-foreground" onClick={handleClearAll} disabled={clearing}>
+                <CheckCheck className="size-3.5" />
+                Clear all
+              </Button>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="flex-1 overflow-y-auto min-h-0 space-y-3 pr-1">
