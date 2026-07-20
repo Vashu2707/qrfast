@@ -69,7 +69,7 @@ export function NotificationsPanel({ notifications }: { notifications: Notificat
   };
 
   return (
-    <Card className="border-border/60 h-full flex flex-col justify-start">
+    <Card className="border-border/60">
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-base">
@@ -95,7 +95,7 @@ export function NotificationsPanel({ notifications }: { notifications: Notificat
           </div>
         </div>
       </CardHeader>
-      <CardContent className="flex-1 overflow-y-auto min-h-0 space-y-3 pr-1">
+      <CardContent className="space-y-3">
         {notifications.length === 0 ? (
           <p className="py-4 text-center text-sm text-muted-foreground">No notifications</p>
         ) : (

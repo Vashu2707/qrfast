@@ -64,7 +64,7 @@ export default function DashboardPage() {
           {notificationsLoading ? (
             <Skeleton className="h-[340px] w-full rounded-xl" />
           ) : (
-            <NotificationsPanel notifications={notifications.slice(0, 8)} />
+            <NotificationsPanel notifications={notifications.slice(0, 5)} />
           )}
         </div>
 
