@@ -162,17 +162,17 @@ export function MenuItemDialog({ item, primaryColor, onClose }: Props) {
             <Textarea placeholder="No onions, extra spicy..." value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
           </div>
 
-          <div className="flex items-center justify-between pt-2">
-            <div className="flex items-center gap-3">
-              <Button variant="outline" size="icon" className="size-10" onClick={() => setQuantity(Math.max(1, quantity - 1))}>
+          <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center justify-center gap-3 sm:justify-start">
+              <Button variant="outline" size="icon" className="size-11" onClick={() => setQuantity(Math.max(1, quantity - 1))}>
                 <Minus className="size-5" />
               </Button>
               <span className="w-8 text-center font-semibold text-lg">{quantity}</span>
-              <Button variant="outline" size="icon" className="size-10" onClick={() => setQuantity(quantity + 1)}>
+              <Button variant="outline" size="icon" className="size-11" onClick={() => setQuantity(quantity + 1)}>
                 <Plus className="size-5" />
               </Button>
             </div>
-            <Button onClick={handleAdd} className="h-11 px-6 text-base font-semibold" style={{ backgroundColor: primaryColor }}>
+            <Button onClick={handleAdd} className="h-12 w-full px-6 text-base font-semibold sm:w-auto" style={{ backgroundColor: primaryColor }}>
               Add · {formatCurrency(totalPrice)}
             </Button>
           </div>

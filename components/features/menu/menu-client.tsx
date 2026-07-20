@@ -231,12 +231,12 @@ export function MenuClient({ data, tableParam }: Props) {
 
       {/* ──────────────── Quick Actions ──────────────── */}
       <div className="flex gap-2 overflow-x-auto px-4 py-3">
-        <Button variant="outline" size="sm" onClick={() => handleService("CALL_WAITER")}>
-          <Bell className="mr-1.5 size-3.5" />
+        <Button variant="outline" size="default" className="min-h-11 px-4 text-sm" onClick={() => handleService("CALL_WAITER")}>
+          <Bell className="mr-1.5 size-4" />
           Call Waiter
         </Button>
-        <Button variant="outline" size="sm" onClick={() => handleService("REQUEST_BILL")}>
-          <Receipt className="mr-1.5 size-3.5" />
+        <Button variant="outline" size="default" className="min-h-11 px-4 text-sm" onClick={() => handleService("REQUEST_BILL")}>
+          <Receipt className="mr-1.5 size-4" />
           Request Bill
         </Button>
       </div>
@@ -342,7 +342,7 @@ export function MenuClient({ data, tableParam }: Props) {
           <Filter className="size-4 shrink-0 text-muted-foreground" />
           <button
             onClick={() => setActiveCategory("all")}
-            className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+            className={`shrink-0 rounded-full px-3.5 py-2 min-h-9 text-xs font-medium transition-colors ${
               activeCategory === "all"
                 ? "bg-primary text-primary-foreground"
                 : "bg-muted text-muted-foreground hover:bg-muted/80"
@@ -354,7 +354,7 @@ export function MenuClient({ data, tableParam }: Props) {
             <button
               key={cat.id}
               onClick={() => setActiveCategory(cat.id)}
-              className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+              className={`shrink-0 rounded-full px-3.5 py-2 min-h-9 text-xs font-medium transition-colors ${
                 activeCategory === cat.id
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted text-muted-foreground hover:bg-muted/80"
@@ -365,7 +365,7 @@ export function MenuClient({ data, tableParam }: Props) {
           ))}
           <button
             onClick={() => setVegFilter(vegFilter === "VEG" ? "all" : "VEG")}
-            className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+            className={`shrink-0 rounded-full px-3.5 py-2 min-h-9 text-xs font-medium transition-colors ${
               vegFilter === "VEG" ? "bg-green-600 text-white" : "bg-muted text-muted-foreground"
             }`}
           >
@@ -373,7 +373,7 @@ export function MenuClient({ data, tableParam }: Props) {
           </button>
           <button
             onClick={() => setVegFilter(vegFilter === "NON_VEG" ? "all" : "NON_VEG")}
-            className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+            className={`shrink-0 rounded-full px-3.5 py-2 min-h-9 text-xs font-medium transition-colors ${
               vegFilter === "NON_VEG" ? "bg-red-600 text-white" : "bg-muted text-muted-foreground"
             }`}
           >
@@ -381,7 +381,7 @@ export function MenuClient({ data, tableParam }: Props) {
           </button>
           <button
             onClick={() => setVegFilter(vegFilter === "VEGAN" ? "all" : "VEGAN")}
-            className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+            className={`shrink-0 rounded-full px-3.5 py-2 min-h-9 text-xs font-medium transition-colors ${
               vegFilter === "VEGAN" ? "bg-emerald-600 text-white" : "bg-muted text-muted-foreground"
             }`}
           >
@@ -390,7 +390,7 @@ export function MenuClient({ data, tableParam }: Props) {
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-            className="shrink-0 rounded-full border-0 bg-muted px-3 py-1 text-xs text-muted-foreground"
+            className="shrink-0 rounded-full border-0 bg-muted px-3.5 py-2 min-h-9 text-xs text-muted-foreground"
           >
             <option value="name">A-Z</option>
             <option value="price-low">Price ↑</option>
@@ -400,7 +400,7 @@ export function MenuClient({ data, tableParam }: Props) {
       </div>
 
       {/* ──────────────── Menu Grid ──────────────── */}
-      <div className="grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
           {filteredItems.length === 0 ? (
             <p
               key="empty"
@@ -413,50 +413,55 @@ export function MenuClient({ data, tableParam }: Props) {
               <button
                 key={item.id}
                 onClick={() => setSelectedItem(item)}
-                className="animate-fadeIn flex gap-4 rounded-xl border border-border/60 bg-card p-3 text-left transition-all hover:shadow-md active:scale-[0.99]"
+                className="animate-fadeIn overflow-hidden rounded-xl border border-border/60 bg-card text-left transition-all hover:shadow-md active:scale-[0.98]"
                 style={{ animationDelay: `${i * 0.04}s` }}
               >
-                {/* Item image */}
-                {item.images[0] ? (
-                  <div className="relative size-28 shrink-0 overflow-hidden rounded-lg sm:size-24">
-                    <Image src={item.images[0]} alt={item.name} fill className="object-cover" />
-                    {item.isChefSpecial && (
-                      <div className="absolute bottom-0 left-0 right-0 bg-amber-500/90 py-0.5 text-center text-[9px] font-bold text-white">
-                        CHEF&apos;S SPECIAL
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="flex size-28 shrink-0 items-center justify-center rounded-lg bg-muted text-2xl sm:size-24">
-                    🍽️
-                  </div>
-                )}
+                {/* Mobile: stacked (image on top). sm+: side-by-side */}
+                <div className="flex flex-col sm:flex-row">
+                  {/* Item image */}
+                  {item.images[0] ? (
+                    <div className="relative h-44 w-full shrink-0 overflow-hidden sm:h-28 sm:w-28 lg:h-24 lg:w-24">
+                      <Image src={item.images[0]} alt={item.name} fill className="object-cover" />
+                      {item.isChefSpecial && (
+                        <div className="absolute bottom-0 left-0 right-0 bg-amber-500/90 py-0.5 text-center text-[9px] font-bold text-white">
+                          CHEF&apos;S SPECIAL
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex h-44 w-full items-center justify-center bg-muted text-3xl sm:h-28 sm:w-28 sm:text-2xl lg:h-24 lg:w-24">
+                      🍽️
+                    </div>
+                  )}
 
-                {/* Item info */}
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
-                    <FoodTypeIndicator foodType={item.foodType} />
-                    <SpicyLevel level={item.spicyLevel} />
-                    <span className="truncate font-semibold text-sm leading-tight">{item.name}</span>
-                  </div>
-                  {item.isChefSpecial && <ChefSpecialBadge />}
-                  <p className="mt-1 line-clamp-2 text-xs text-muted-foreground leading-relaxed">
-                    {item.description}
-                  </p>
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <span className="font-bold text-sm" style={{ color: restaurant.primaryColor }}>
-                      {formatCurrency(item.discountPrice ?? item.price)}
-                    </span>
-                    {item.discountPrice && (
-                      <span className="text-xs text-muted-foreground line-through">
-                        {formatCurrency(item.price)}
-                      </span>
-                    )}
-                    <span className="text-xs text-muted-foreground">· {item.preparationTime} min</span>
+                  {/* Item info */}
+                  <div className="flex min-w-0 flex-1 items-center gap-3 p-3 sm:p-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-0.5 flex flex-wrap items-center gap-1.5">
+                        <FoodTypeIndicator foodType={item.foodType} />
+                        <SpicyLevel level={item.spicyLevel} />
+                        <span className="line-clamp-2 font-semibold text-sm leading-tight">{item.name}</span>
+                      </div>
+                      {item.isChefSpecial && <ChefSpecialBadge />}
+                      <p className="mt-1 line-clamp-2 text-xs text-muted-foreground leading-relaxed">
+                        {item.description}
+                      </p>
+                      <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                        <span className="font-bold text-sm" style={{ color: restaurant.primaryColor }}>
+                          {formatCurrency(item.discountPrice ?? item.price)}
+                        </span>
+                        {item.discountPrice && (
+                          <span className="text-xs text-muted-foreground line-through">
+                            {formatCurrency(item.price)}
+                          </span>
+                        )}
+                        <span className="text-xs text-muted-foreground">· {item.preparationTime} min</span>
+                      </div>
+                    </div>
+
+                    <ChevronRight className="size-4 shrink-0 self-center text-muted-foreground" />
                   </div>
                 </div>
-
-                <ChevronRight className="size-4 shrink-0 self-center text-muted-foreground" />
               </button>
             ))
           )}
