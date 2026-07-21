@@ -264,6 +264,14 @@ export default function MenuPage() {
 
   const flatCategories = useMemo(() => flattenTreeForSelect(categoryTree), [categoryTree]);
 
+  const selectedCategoryName = useMemo(() => {
+    if (!itemForm.categoryId) return null;
+    const found = flatCategories.find((c) => c.id === itemForm.categoryId);
+    if (found) return null;
+    const item = items.find((i) => i.categoryId === itemForm.categoryId);
+    return item?.category?.name ?? null;
+  }, [itemForm.categoryId, flatCategories, items]);
+
   // Auto-select first category
   useEffect(() => {
     if (categoryTree.length > 0 && (!activeCategoryId || !findTreeNode(categoryTree, activeCategoryId))) {
@@ -912,6 +920,11 @@ export default function MenuPage() {
                             {item.name}
                           </h3>
                         </div>
+                        {item.category?.name && (
+                          <span className="inline-block text-[10px] font-semibold text-blue-600 bg-blue-50 dark:bg-blue-950/30 dark:text-blue-400 px-1.5 py-0.5 rounded-md">
+                            {item.category.name}
+                          </span>
+                        )}
                         <p className="text-xs text-gray-500 line-clamp-2 h-8 leading-relaxed">
                           {item.description}
                         </p>
@@ -1021,6 +1034,11 @@ export default function MenuPage() {
                             >
                               {item.foodType}
                             </Badge>
+                            {item.category?.name && (
+                              <span className="text-[9px] font-semibold text-blue-600 bg-blue-50 dark:bg-blue-950/30 dark:text-blue-400 px-1 py-0.1 rounded shrink-0 pointer-events-none scale-90">
+                                {item.category.name}
+                              </span>
+                            )}
                             {item.isBestSeller && (
                               <Badge className="bg-amber-500 text-white text-[8px] font-black scale-90">Best</Badge>
                             )}
@@ -1144,6 +1162,11 @@ export default function MenuPage() {
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
+                  {selectedCategoryName && itemForm.categoryId && (
+                    <SelectItem key={itemForm.categoryId} value={itemForm.categoryId}>
+                      {selectedCategoryName}
+                    </SelectItem>
+                  )}
                   {flatCategories.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
                       {c.depth > 0 ? "\u00A0\u00A0".repeat(c.depth) + "└ " : ""}{c.label}
