@@ -61,6 +61,7 @@ import {
   FolderTree,
 } from "lucide-react";
 import Image from "next/image";
+import { ImportDialog } from "@/components/menu-import/import-dialog";
 
 // ── Form state ───────────────────────────────────────────────────────────────
 
@@ -228,6 +229,7 @@ export default function MenuPage() {
   const [catName, setCatName] = useState("");
   const [catParentId, setCatParentId] = useState<string>("__root__");
   const [catDialogOpen, setCatDialogOpen] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   const [activeCategoryId, setActiveCategoryId] = useState<string>("");
   const [filterTab, setFilterTab] = useState<"all" | "available" | "unavailable" | "bestseller">("all");
@@ -607,7 +609,11 @@ export default function MenuPage() {
             />
           </div>
 
-          <div className="flex size-9 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 relative cursor-pointer hover:bg-gray-200">
+          <div
+            className="flex size-9 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 relative cursor-pointer hover:bg-gray-200"
+            onClick={() => setImportDialogOpen(true)}
+            title="AI Menu Import"
+          >
             <Sparkles className="size-4" />
           </div>
 
@@ -1326,6 +1332,9 @@ export default function MenuPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* ── AI Menu Import Dialog ── */}
+      <ImportDialog open={importDialogOpen} onOpenChange={setImportDialogOpen} />
     </div>
   );
 }
