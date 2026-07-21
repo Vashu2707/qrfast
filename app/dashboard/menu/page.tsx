@@ -264,14 +264,6 @@ export default function MenuPage() {
 
   const flatCategories = useMemo(() => flattenTreeForSelect(categoryTree), [categoryTree]);
 
-  const selectedCategoryName = useMemo(() => {
-    if (!itemForm.categoryId) return null;
-    const found = flatCategories.find((c) => c.id === itemForm.categoryId);
-    if (found) return null;
-    const item = items.find((i) => i.categoryId === itemForm.categoryId);
-    return item?.category?.name ?? null;
-  }, [itemForm.categoryId, flatCategories, items]);
-
   // Auto-select first category
   useEffect(() => {
     if (categoryTree.length > 0 && (!activeCategoryId || !findTreeNode(categoryTree, activeCategoryId))) {
@@ -757,7 +749,12 @@ export default function MenuPage() {
                 <Select value={sortBy} onValueChange={(v) => setSortBy(v as any)}>
                   <SelectTrigger className="h-8 text-xs border-gray-200 rounded-lg w-28 bg-gray-50/50">
                     <ArrowUpDown className="size-3 text-gray-400 mr-1.5" />
-                    <SelectValue placeholder="Sort" />
+                    <SelectValue placeholder="Sort">
+                      {(value: any) => {
+                        const labels: Record<string, string> = { name: "A\u2013Z", "price-low": "Price: Low\u2013High", "price-high": "Price: High\u2013Low" };
+                        return labels[value] || value;
+                      }}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="name">A-Z</SelectItem>
@@ -1159,14 +1156,18 @@ export default function MenuPage() {
                 onValueChange={(v) => v && setItemForm({ ...itemForm, categoryId: v })}
               >
                 <SelectTrigger className="h-9 border-gray-200 text-xs">
-                  <SelectValue placeholder="Select category" />
+                  <SelectValue placeholder="Select category">
+                    {(value: any) => {
+                      if (!value) return null;
+                      const cat = flatCategories.find((c) => c.id === value);
+                      if (cat) return `${cat.depth > 0 ? "\u00A0\u00A0".repeat(cat.depth) + "└ " : ""}${cat.label}`;
+                      const item = items.find((i) => i.categoryId === value);
+                      if (item?.category?.name) return item.category.name;
+                      return value;
+                    }}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {selectedCategoryName && itemForm.categoryId && (
-                    <SelectItem key={itemForm.categoryId} value={itemForm.categoryId}>
-                      {selectedCategoryName}
-                    </SelectItem>
-                  )}
                   {flatCategories.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
                       {c.depth > 0 ? "\u00A0\u00A0".repeat(c.depth) + "└ " : ""}{c.label}
@@ -1235,7 +1236,14 @@ export default function MenuPage() {
               <div className="space-y-2">
                 <Label className="text-xs font-bold text-gray-700">Spicy Level</Label>
                 <Select value={itemForm.spicyLevel} onValueChange={(v) => v && setItemForm({ ...itemForm, spicyLevel: v })}>
-                  <SelectTrigger className="h-9 border-gray-200 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-9 border-gray-200 text-xs">
+                    <SelectValue>
+                      {(value: any) => {
+                        const labels: Record<string, string> = { "0": "0 — Not spicy", "1": "1 — Mild 🌶️", "2": "2 — Medium 🌶️🌶️", "3": "3 — Hot 🌶️🌶️🌶️" };
+                        return labels[value] || value;
+                      }}
+                    </SelectValue>
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="0">0 — Not spicy</SelectItem>
                     <SelectItem value="1">1 — Mild 🌶️</SelectItem>
@@ -1283,7 +1291,14 @@ export default function MenuPage() {
               <Label className="text-xs font-bold text-gray-700">Parent Category</Label>
               <Select value={catParentId} onValueChange={(v) => setCatParentId(v ?? "__root__")}>
                 <SelectTrigger className="h-9 border-gray-200 text-xs">
-                  <SelectValue placeholder="Top level" />
+                  <SelectValue placeholder="Top level">
+                    {(value: any) => {
+                      if (value === "__root__") return "— Top Level —";
+                      const cat = flatCategories.find((c) => c.id === value);
+                      if (cat) return `${cat.depth > 0 ? "\u00A0\u00A0".repeat(cat.depth) + "└ " : ""}${cat.label}`;
+                      return value;
+                    }}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__root__">— Top Level —</SelectItem>
