@@ -47,4 +47,3 @@ next-env.d.ts
 
 .dockerignore
 
-/menu_ocr_ai_integration_guide.md
