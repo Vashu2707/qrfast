@@ -1,7 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 
-const PRIMARY_MODEL = "gemini-2.5-flash";
-const FALLBACK_MODEL = "gemini-1.5-flash";
+const MODEL_CHAIN = ["gemini-1.5-flash"];
 
 function getClient(): GoogleGenAI {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -102,18 +101,17 @@ export async function analyzeMenuImage(
   base64Data: string,
   mimeType: string
 ): Promise<unknown> {
-  try {
-    return await callGemini(base64Data, mimeType, PRIMARY_MODEL);
-  } catch (primaryError) {
-    const primaryMsg = primaryError instanceof Error ? primaryError.message : String(primaryError);
-    console.warn(`[gemini] Primary model (${PRIMARY_MODEL}) failed:`, primaryMsg);
+  let lastError: unknown;
 
+  for (const model of MODEL_CHAIN) {
     try {
-      return await callGemini(base64Data, mimeType, FALLBACK_MODEL);
-    } catch (fallbackError) {
-      const fallbackMsg = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
-      console.error(`[gemini] Fallback model (${FALLBACK_MODEL}) also failed:`, fallbackMsg);
-      throw primaryError;
+      return await callGemini(base64Data, mimeType, model);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(`[gemini] Model ${model} failed: ${msg}`);
+      lastError = err;
     }
   }
+
+  throw lastError;
 }
