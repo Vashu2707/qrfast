@@ -159,7 +159,7 @@ export function MenuClient({ data, tableParam }: Props) {
 
   const allItems = useMemo(() => {
     return categories.flatMap((c) =>
-      c.menuItems.map((item) => ({ ...item, categoryName: c.name, categoryId: c.id }))
+      c.menuItems.map((item) => ({ ...item, categoryName: c.name.includes(" > ") ? c.name.split(" > ").pop() : c.name, categoryId: c.id }))
     );
   }, [categories]);
 
@@ -360,7 +360,7 @@ export function MenuClient({ data, tableParam }: Props) {
                   : "bg-muted text-muted-foreground hover:bg-muted/80"
               }`}
             >
-              {cat.name}
+              {cat.name.includes(" > ") ? cat.name.split(" > ").pop() : cat.name}
             </button>
           ))}
           <button

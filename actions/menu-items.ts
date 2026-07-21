@@ -42,6 +42,8 @@ export async function createMenuItem(rawData: MenuItemInput) {
           allergens: data.allergens ?? [],
           nutrition: data.nutrition != null ? (data.nutrition as Prisma.InputJsonValue) : Prisma.JsonNull,
           categoryId: data.categoryId,
+          isChefSpecial: data.isChefSpecial ?? false,
+          isBestSeller: data.isBestSeller ?? false,
         },
       });
 
@@ -105,6 +107,8 @@ export async function updateMenuItem(id: string, rawData: MenuItemInput) {
           allergens: data.allergens ?? [],
           nutrition: data.nutrition != null ? (data.nutrition as Prisma.InputJsonValue) : Prisma.JsonNull,
           categoryId: data.categoryId,
+          isChefSpecial: data.isChefSpecial ?? false,
+          isBestSeller: data.isBestSeller ?? false,
         },
       });
 
