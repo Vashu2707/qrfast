@@ -5,7 +5,7 @@ import { getStorageClient, getPublicUrl } from "@/lib/supabase/storage";
 import { getCurrentUser } from "./auth";
 import { revalidatePath } from "next/cache";
 
-const IMAGE_SEARCH_MODEL = "gemini-3.5-flash";
+const IMAGE_SEARCH_MODEL = "gemini-3.5-flash-lite";
 
 function getClient(): GoogleGenAI {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -17,38 +17,68 @@ function getClient(): GoogleGenAI {
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function findImageForDish(dishName: string): Promise<string | null> {
-  const ai = getClient();
+async function findWikimediaImage(dishName: string): Promise<string | null> {
+  const url = `https://en.wikipedia.org/w/api.php?action=query&format=json&prop=pageimages&generator=search&piprop=original&gsrsearch=${encodeURIComponent(dishName + " food")}&gsrlimit=1&origin=*`;
   
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    
+    const pages = data?.query?.pages;
+    if (!pages) return null;
+    
+    for (const key of Object.keys(pages)) {
+      const imgUrl = pages[key]?.original?.source;
+      if (imgUrl) return imgUrl;
+    }
+    return null;
+  } catch (error) {
+    console.error("[image-search] Wikimedia fetch error:", error);
+    return null;
+  }
+}
+
+async function simplifyDishName(dishName: string): Promise<string> {
+  const ai = getClient();
   try {
     const response = await ai.models.generateContent({
       model: IMAGE_SEARCH_MODEL,
-      contents: `Find a single high-quality, appetizing food photo URL for "${dishName}". Return ONLY the direct image URL (starting with http), nothing else.`,
-      config: {
-        tools: [{ googleSearch: {} }],
-        temperature: 0.1,
-      },
+      contents: `Identify the main generic edible item or dish in this name: "${dishName}". 
+Return ONLY the short, common, search-friendly name of the dish (e.g., if input is "Chef Special Spicy Tandoori Chicken Tikka", return "Tandoori Chicken"). 
+Do not include adjectives like "special", "chef", "spicy", "hot", or restaurant names. 
+Return ONLY the clean dish name, nothing else.`
     });
+    
+    return response.text?.trim() || dishName;
+  } catch (err) {
+    console.error("[image-search] Gemini name simplification error:", err);
+    return dishName;
+  }
+}
 
-    const text = response.text;
-    if (!text) return null;
-
-    // Extract URL from response - look for http/https URLs
-    const urlMatch = text.match(/https?:\/\/[^\s<>"{}|\\^`\[\]]+\.(jpg|jpeg|png|webp)/i);
-    if (urlMatch) {
-      return urlMatch[0];
+async function findImageForDish(dishName: string): Promise<string | null> {
+  try {
+    // 1. Try full name search
+    let url = await findWikimediaImage(dishName);
+    if (url) {
+      return url;
     }
-
-    // Try to find any URL
-    const anyUrlMatch = text.match(/https?:\/\/[^\s<>"{}|\\^`\[\]]+/);
-    if (anyUrlMatch) {
-      return anyUrlMatch[0];
+    
+    // 2. Simplify name using Gemini
+    const simplified = await simplifyDishName(dishName);
+    
+    // 3. Try simplified search
+    url = await findWikimediaImage(simplified);
+    if (url) {
+      return url;
     }
-
-    return null;
+    
+    // 4. Return a generic high-quality food image as a fallback
+    return "https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=600&q=80";
   } catch (error) {
     console.error(`[image-search] Failed for "${dishName}":`, error);
-    return null;
+    return "https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=600&q=80";
   }
 }
 
