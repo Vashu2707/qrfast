@@ -1,6 +1,11 @@
 import { GoogleGenAI } from "@google/genai";
 
-const MODEL_CHAIN = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-3.5-flash"];
+const MODEL_CHAIN = [
+  "gemini-2.5-flash",
+  "gemini-2.0-flash",
+  "gemini-2.0-flash-lite",
+  "gemini-1.5-flash"
+];
 
 function getClient(): GoogleGenAI {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -58,6 +63,8 @@ const JSON_SCHEMA_INSTRUCTION = `Respond with a JSON object matching this exact 
   ]
 }`;
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 async function callGemini(
   base64Data: string,
   mimeType: string,
@@ -104,12 +111,35 @@ export async function analyzeMenuImage(
   let lastError: unknown;
 
   for (const model of MODEL_CHAIN) {
-    try {
-      return await callGemini(base64Data, mimeType, model);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.warn(`[gemini] Model ${model} failed: ${msg}`);
-      lastError = err;
+    const maxRetries = 3;
+    const baseDelay = 1000; // 1 second
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await callGemini(base64Data, mimeType, model);
+      } catch (err) {
+        lastError = err;
+        const msg = err instanceof Error ? err.message : String(err);
+        const errLower = msg.toLowerCase();
+        
+        const isTransient = 
+          errLower.includes("503") || 
+          errLower.includes("unavailable") || 
+          errLower.includes("429") || 
+          errLower.includes("resource_exhausted") ||
+          errLower.includes("high demand") || 
+          errLower.includes("temporary");
+
+        if (isTransient && attempt < maxRetries) {
+          const delay = baseDelay * Math.pow(2, attempt - 1);
+          console.warn(`[gemini] Model ${model} transient error: ${msg}. Retrying in ${delay}ms (Attempt ${attempt}/${maxRetries})...`);
+          await sleep(delay);
+        } else {
+          // Non-transient error or max retries exceeded, break retry loop to try next model in chain
+          console.warn(`[gemini] Model ${model} failed: ${msg}. Trying next model...`);
+          break;
+        }
+      }
     }
   }
 
