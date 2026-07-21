@@ -15,11 +15,22 @@ export async function getPublicMenu(tableParam: string) {
 
   const categories = await prisma.category.findMany({
     orderBy: { sortOrder: "asc" },
+    where: { parentId: null },
     include: {
       menuItems: {
         where: { isAvailable: true },
         include: { variants: true, addons: true },
         orderBy: { name: "asc" },
+      },
+      children: {
+        orderBy: { sortOrder: "asc" },
+        include: {
+          menuItems: {
+            where: { isAvailable: true },
+            include: { variants: true, addons: true },
+            orderBy: { name: "asc" },
+          },
+        },
       },
     },
   });

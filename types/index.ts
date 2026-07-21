@@ -59,6 +59,8 @@ export type MenuItemWithRelations = MenuItem & {
 
 export type CategoryWithItems = Category & {
   menuItems: MenuItemWithRelations[];
+  parentId?: string | null;
+  children?: CategoryWithItems[];
 };
 
 export type OrderWithRelations = Order & {

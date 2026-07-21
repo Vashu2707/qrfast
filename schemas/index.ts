@@ -91,6 +91,7 @@ export const categorySchema = z.object({
   name: z.string().min(1).max(100),
   description: z.string().max(500).optional().or(z.literal("")),
   sortOrder: z.coerce.number().int().min(0).optional().default(0),
+  parentId: z.string().nullable().optional().default(null),
 });
 
 export type CategoryInput = z.infer<typeof categorySchema>;
