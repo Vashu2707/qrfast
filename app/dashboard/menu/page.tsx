@@ -780,9 +780,11 @@ export default function MenuPage() {
                   />
                 </div>
               </div>
-            </div>
 
-            {/* Display list of Items */}
+              {/* Separator Divider Line between Filters and Items */}
+              <div className="border-t border-gray-100 dark:border-gray-900 pt-1" />
+
+              {/* Display list of Items */}
             {displayedItems.length === 0 ? (
               <Card className="border-0 shadow-sm bg-white dark:bg-gray-950 py-16">
                 <CardContent className="flex flex-col items-center justify-center text-center space-y-3">
@@ -1052,6 +1054,7 @@ export default function MenuPage() {
                 ))}
               </div>
             )}
+            </div> {/* End parent card container */}
           </div>
         </div>
       </div>
