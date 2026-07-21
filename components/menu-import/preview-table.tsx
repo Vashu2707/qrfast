@@ -5,7 +5,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, ImageIcon, Loader2 } from "lucide-react";
 import type { MenuImportItem } from "@/types/menu-import";
 import type { FoodType } from "@prisma/client";
 
@@ -86,6 +86,24 @@ function ItemCard({
           aria-label={`Select ${item.name}`}
         />
 
+        {/* Image Thumbnail */}
+        {item.imageUrl ? (
+          <div className="shrink-0 size-9 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-800">
+            <img
+              src={item.imageUrl}
+              alt={item.name}
+              className="size-full object-cover"
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+              }}
+            />
+          </div>
+        ) : (
+          <div className="shrink-0 size-9 rounded-lg border border-dashed border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+            <ImageIcon className="size-3.5 text-gray-300 dark:text-gray-700" />
+          </div>
+        )}
+
         {/* Food Type Indicator */}
         <div className="shrink-0">
           <FoodTypeDot type={item.foodType} />
@@ -155,6 +173,32 @@ function ItemCard({
       {/* Expanded Details */}
       {expanded && (
         <div className="px-3 pb-3 pt-1 border-t border-gray-50 dark:border-gray-900 space-y-2.5">
+          {/* Image Section */}
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+              Image
+            </label>
+            {item.imageUrl ? (
+              <div className="relative size-20 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-800">
+                <img
+                  src={item.imageUrl}
+                  alt={item.name}
+                  className="size-full object-cover"
+                />
+                <button
+                  onClick={() => onUpdate({ imageUrl: null })}
+                  className="absolute top-0.5 right-0.5 size-4 rounded-full bg-black/50 text-white flex items-center justify-center text-[10px] hover:bg-black/70"
+                >
+                  ×
+                </button>
+              </div>
+            ) : (
+              <div className="size-20 rounded-lg border border-dashed border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+                <ImageIcon className="size-5 text-gray-300 dark:text-gray-700" />
+              </div>
+            )}
+          </div>
+
           {/* Description */}
           <div className="space-y-1">
             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">

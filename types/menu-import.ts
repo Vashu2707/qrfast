@@ -35,6 +35,7 @@ export interface MenuImportItem {
   categoryId: string;
   categoryName: string;
   selected: boolean;
+  imageUrl?: string | null;
 }
 
 export interface SaveMenuItemsResponse {

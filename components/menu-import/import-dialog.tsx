@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getCategories } from "@/actions/categories";
 import { useMenuImport } from "@/hooks/use-menu-import";
@@ -21,8 +21,11 @@ import {
   AlertCircle,
   ArrowLeft,
   ScanLine,
+  ImageIcon,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { generateMenuImages } from "@/actions/generate-menu-images";
 
 interface ImportDialogProps {
   open: boolean;
@@ -51,6 +54,8 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
     reset,
   } = useMenuImport();
 
+  const [generatingImages, setGeneratingImages] = useState(false);
+
   const { data: categories = [] } = useQuery({
     queryKey: ["categories"],
     queryFn: () => getCategories(),
@@ -76,6 +81,51 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
       toast.success(`Successfully imported ${importedCount} menu items.`);
     }
   }, [step, importedCount]);
+
+  const handleGenerateImages = useCallback(async () => {
+    const selectedItems = items.filter((i) => i.selected && !i.imageUrl);
+    if (selectedItems.length === 0) {
+      toast.info("No items need images.");
+      return;
+    }
+
+    setGeneratingImages(true);
+    toast.info(`Finding images for ${selectedItems.length} items...`);
+
+    try {
+      const result = await generateMenuImages(
+        selectedItems.map((i) => i.name)
+      );
+
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+
+      let foundCount = 0;
+      for (const { dishName, imageUrl } of result.results) {
+        if (imageUrl) {
+          const item = items.find(
+            (i) => i.name === dishName && i.selected && !i.imageUrl
+          );
+          if (item) {
+            updateItem(item.id, { imageUrl });
+            foundCount++;
+          }
+        }
+      }
+
+      if (foundCount > 0) {
+        toast.success(`Found images for ${foundCount} items.`);
+      } else {
+        toast.warning("Could not find images for any items.");
+      }
+    } catch (err) {
+      toast.error("Failed to generate images. Please try again.");
+    } finally {
+      setGeneratingImages(false);
+    }
+  }, [items, updateItem]);
 
   const hasMissingCategories =
     step === "preview" &&
@@ -184,6 +234,26 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
                   categories={categories}
                   onBulkSelect={setBulkCategory}
                 />
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleGenerateImages}
+                  disabled={generatingImages || selectedCount === 0}
+                  className="text-xs font-bold h-7"
+                >
+                  {generatingImages ? (
+                    <>
+                      <Loader2 className="mr-1 size-3 animate-spin" />
+                      Finding Images...
+                    </>
+                  ) : (
+                    <>
+                      <ImageIcon className="mr-1 size-3" />
+                      Generate Images
+                    </>
+                  )}
+                </Button>
               </div>
 
               {error && <ErrorBanner message={error} />}

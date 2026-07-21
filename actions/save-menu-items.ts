@@ -14,6 +14,7 @@ interface MenuItemToSave {
   ingredients: string[];
   allergens: string[];
   categoryId: string;
+  imageUrl?: string | null;
 }
 
 export async function saveMenuItems(
@@ -64,7 +65,7 @@ export async function saveMenuItems(
         foodType: item.foodType,
         spicyLevel: item.spicyLevel,
         preparationTime: 15,
-        images: [],
+        images: item.imageUrl ? [item.imageUrl] : [],
         ingredients: item.ingredients,
         allergens: item.allergens,
         categoryId: item.categoryId,

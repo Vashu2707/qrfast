@@ -143,6 +143,7 @@ export function useMenuImport() {
           ingredients: i.ingredients,
           allergens: i.allergens,
           categoryId: i.categoryId,
+          imageUrl: i.imageUrl,
         }))
       );
 
