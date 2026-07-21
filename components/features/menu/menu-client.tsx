@@ -75,7 +75,28 @@ interface MenuData {
     name: string;
     parentId: string | null;
     description: string | null;
-    children?: Array<{ id: string; name: string }>;
+    children?: Array<{
+      id: string;
+      name: string;
+      parentId: string | null;
+      description: string | null;
+      menuItems: Array<{
+        id: string;
+        name: string;
+        description: string | null;
+        price: number;
+        discountPrice: number | null;
+        foodType: "VEG" | "NON_VEG" | "VEGAN";
+        spicyLevel: number;
+        preparationTime: number;
+        images: string[];
+        ingredients: string[];
+        allergens: string[];
+        isChefSpecial?: boolean;
+        variants: { id: string; name: string; price: number }[];
+        addons: { id: string; name: string; price: number; isVeg: boolean }[];
+      }>;
+    }>;
     menuItems: Array<{
       id: string;
       name: string;
@@ -160,9 +181,18 @@ export function MenuClient({ data, tableParam }: Props) {
   }, [table.id, table.number, setTable]);
 
   const allItems = useMemo(() => {
-    return categories.flatMap((c) =>
-      c.menuItems.map((item) => ({ ...item, categoryName: c.name, categoryId: c.id }))
-    );
+    const collectItems = (cats: typeof categories, parentName?: string): any[] =>
+      cats.flatMap((c) => {
+        const displayName = parentName ? `${parentName} > ${c.name}` : c.name;
+        const directItems = c.menuItems.map((item) => ({
+          ...item,
+          categoryName: displayName,
+          categoryId: c.id,
+        }));
+        const childItems = c.children ? collectItems(c.children, displayName) : [];
+        return [...directItems, ...childItems];
+      });
+    return collectItems(categories);
   }, [categories]);
 
   // Build parent -> children mapping and collect all descendant IDs for filtering
