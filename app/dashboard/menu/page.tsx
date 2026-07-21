@@ -663,115 +663,122 @@ export default function MenuPage() {
 
           {/* Right: Items Workspace */}
           <div className="col-span-12 lg:col-span-9 space-y-4">
-            {/* Breadcrumb & Title */}
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white dark:bg-gray-950 p-4 rounded-xl border border-gray-100 dark:border-gray-900 shadow-sm">
-              <div className="space-y-1">
-                <div className="flex items-center gap-1 text-[10px] text-gray-400 font-bold uppercase tracking-wider">
-                  <Leaf className="size-3 text-green-500 mr-0.5" />
-                  {activeCategoryPath.split(" > ").map((p, idx, arr) => (
-                    <span key={p} className="flex items-center">
-                      {p}
-                      {idx < arr.length - 1 && <ChevronRight className="size-3 mx-1 text-gray-300" />}
-                    </span>
-                  ))}
-                </div>
-                <h2 className="text-lg font-black text-gray-900 dark:text-white">
-                  {activeCategoryPath.split(" > ").pop()} Dishes
-                </h2>
-                <p className="text-xs text-gray-500">
-                  {displayedItems.length} items • Rich and delicious specialties under this category
-                </p>
-              </div>
-
-              <div className="flex items-center flex-wrap gap-2">
-                <Select value={sortBy} onValueChange={(v) => setSortBy(v as any)}>
-                  <SelectTrigger className="h-8 text-xs border-gray-200 rounded-lg w-28 bg-gray-50/50">
-                    <ArrowUpDown className="size-3 text-gray-400 mr-1.5" />
-                    <SelectValue placeholder="Sort" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="name">A-Z</SelectItem>
-                    <SelectItem value="price-low">Price: Low-High</SelectItem>
-                    <SelectItem value="price-high">Price: High-Low</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <div className="flex items-center border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden h-8 bg-gray-50/50">
-                  <button
-                    onClick={() => setLayoutView("grid")}
-                    className={cn(
-                      "p-1.5 text-gray-500 hover:text-gray-700",
-                      layoutView === "grid" && "bg-white dark:bg-gray-900 text-blue-600 shadow-sm font-bold"
-                    )}
-                  >
-                    <Grid className="size-4" />
-                  </button>
-                  <button
-                    onClick={() => setLayoutView("list")}
-                    className={cn(
-                      "p-1.5 text-gray-500 hover:text-gray-700",
-                      layoutView === "list" && "bg-white dark:bg-gray-900 text-blue-600 shadow-sm font-bold"
-                    )}
-                  >
-                    <List className="size-4" />
-                  </button>
+            {/* Unified Header & Filter Layout */}
+            <div className="bg-white dark:bg-gray-950 p-4 rounded-xl border border-gray-100 dark:border-gray-900 shadow-sm space-y-4">
+              {/* Top part: Breadcrumb, Title & Controls */}
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1 text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                    <Leaf className="size-3 text-green-500 mr-0.5" />
+                    {activeCategoryPath.split(" > ").map((p, idx, arr) => (
+                      <span key={p} className="flex items-center">
+                        {p}
+                        {idx < arr.length - 1 && <ChevronRight className="size-3 mx-1 text-gray-300" />}
+                      </span>
+                    ))}
+                  </div>
+                  <h2 className="text-lg font-black text-gray-900 dark:text-white">
+                    {activeCategoryPath.split(" > ").pop()} Dishes
+                  </h2>
+                  <p className="text-xs text-gray-500">
+                    {displayedItems.length} items • Rich and delicious specialties under this category
+                  </p>
                 </div>
 
-                <Button
-                  onClick={() => {
-                    resetForm();
-                    // Auto-fill category if active node is a leaf
-                    const matchingCat = categories.find(c => c.name === activeCategoryPath);
-                    if (matchingCat) {
-                      setItemForm(prev => ({ ...prev, categoryId: matchingCat.id }));
-                    }
-                    setItemDialogOpen(true);
-                  }}
-                  size="sm"
-                  className="h-8 text-xs font-bold rounded-lg px-3 bg-gray-900 text-white hover:bg-gray-800 dark:bg-blue-600 dark:hover:bg-blue-700"
-                >
-                  <Plus className="mr-1 size-3.5" />
-                  Add Item
-                </Button>
-              </div>
-            </div>
+                <div className="flex items-center flex-wrap gap-2">
+                  <Select value={sortBy} onValueChange={(v) => setSortBy(v as any)}>
+                    <SelectTrigger className="h-8 text-xs border-gray-200 rounded-lg w-28 bg-gray-50/50">
+                      <ArrowUpDown className="size-3 text-gray-400 mr-1.5" />
+                      <SelectValue placeholder="Sort" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="name">A-Z</SelectItem>
+                      <SelectItem value="price-low">Price: Low-High</SelectItem>
+                      <SelectItem value="price-high">Price: High-Low</SelectItem>
+                    </SelectContent>
+                  </Select>
 
-            {/* Filter Pills & Mini Search */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white dark:bg-gray-950 p-3 rounded-xl border border-gray-100 dark:border-gray-900 shadow-sm">
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
-                {[
-                  { id: "all", label: `All (${displayedItems.length})` },
-                  { id: "available", label: "Available" },
-                  { id: "unavailable", label: "Unavailable" },
-                  { id: "bestseller", label: "Bestseller" },
-                ].map((tab) => {
-                  const isActive = filterTab === tab.id;
-                  return (
+                  <div className="flex items-center border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden h-8 bg-gray-50/50">
                     <button
-                      key={tab.id}
-                      onClick={() => setFilterTab(tab.id as any)}
+                      onClick={() => setLayoutView("grid")}
                       className={cn(
-                        "px-3 py-1 text-xs font-bold rounded-full border transition-colors shrink-0",
-                        isActive
-                          ? "bg-gray-900 border-gray-900 text-white dark:bg-blue-600 dark:border-blue-600"
-                          : "border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:border-gray-800 dark:text-gray-300 dark:hover:bg-gray-800"
+                        "p-1.5 text-gray-500 hover:text-gray-700",
+                        layoutView === "grid" && "bg-white dark:bg-gray-900 text-blue-600 shadow-sm font-bold"
                       )}
                     >
-                      {tab.label}
+                      <Grid className="size-4" />
                     </button>
-                  );
-                })}
+                    <button
+                      onClick={() => setLayoutView("list")}
+                      className={cn(
+                        "p-1.5 text-gray-500 hover:text-gray-700",
+                        layoutView === "list" && "bg-white dark:bg-gray-900 text-blue-600 shadow-sm font-bold"
+                      )}
+                    >
+                      <List className="size-4" />
+                    </button>
+                  </div>
+
+                  <Button
+                    onClick={() => {
+                      resetForm();
+                      // Auto-fill category if active node is a leaf
+                      const matchingCat = categories.find(c => c.name === activeCategoryPath);
+                      if (matchingCat) {
+                        setItemForm(prev => ({ ...prev, categoryId: matchingCat.id }));
+                      }
+                      setItemDialogOpen(true);
+                    }}
+                    size="sm"
+                    className="h-8 text-xs font-bold rounded-lg px-3 bg-gray-900 text-white hover:bg-gray-800 dark:bg-blue-600 dark:hover:bg-blue-700"
+                  >
+                    <Plus className="mr-1 size-3.5" />
+                    Add Item
+                  </Button>
+                </div>
               </div>
 
-              <div className="relative w-full sm:w-56 shrink-0">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3 text-gray-400" />
-                <Input
-                  type="text"
-                  placeholder={`Search in ${activeCategoryPath.split(" > ").pop()?.toLowerCase()}...`}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8 h-7.5 text-xs bg-gray-50/50 border-gray-200 rounded-lg dark:bg-gray-900/50"
-                />
+              {/* Separator Divider Line */}
+              <div className="border-t border-gray-100 dark:border-gray-900" />
+
+              {/* Bottom part: Filter Pills & Search */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+                  {[
+                    { id: "all", label: `All (${items.filter(i => activeCategoryIds.includes(i.categoryId)).length})`, icon: null },
+                    { id: "available", label: `Available (${items.filter(i => activeCategoryIds.includes(i.categoryId) && i.isAvailable).length})`, icon: <span className="size-1.5 rounded-full bg-green-500 shrink-0" /> },
+                    { id: "unavailable", label: `Unavailable (${items.filter(i => activeCategoryIds.includes(i.categoryId) && !i.isAvailable).length})`, icon: <span className="size-1.5 rounded-full bg-red-500 shrink-0" /> },
+                    { id: "bestseller", label: `Bestseller (${items.filter(i => activeCategoryIds.includes(i.categoryId) && i.isBestSeller).length})`, icon: <span className="text-[10px] shrink-0">⭐</span> },
+                  ].map((tab) => {
+                    const isActive = filterTab === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        onClick={() => setFilterTab(tab.id as any)}
+                        className={cn(
+                          "px-3 py-1 text-xs font-bold rounded-full border transition-colors shrink-0 flex items-center gap-1.5",
+                          isActive
+                            ? "bg-gray-900 border-gray-900 text-white dark:bg-blue-600 dark:border-blue-600"
+                            : "border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:border-gray-800 dark:text-gray-300 dark:hover:bg-gray-800"
+                        )}
+                      >
+                        {tab.icon}
+                        {tab.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="relative w-full sm:w-56 shrink-0">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3 text-gray-400" />
+                  <Input
+                    type="text"
+                    placeholder={`Search in ${activeCategoryPath.split(" > ").pop()?.toLowerCase()}...`}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-8 h-7.5 text-xs bg-gray-50/50 border-gray-200 rounded-lg dark:bg-gray-900/50"
+                  />
+                </div>
               </div>
             </div>
 
