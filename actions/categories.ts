@@ -17,6 +17,7 @@ export async function createCategory(data: {
   name: string;
   description?: string;
   sortOrder?: number;
+  parentId?: string | null;
 }) {
   const user = await getCurrentUser();
   if (!user) return { error: "Unauthorized" };
@@ -27,34 +28,44 @@ export async function createCategory(data: {
         name: data.name,
         description: data.description,
         sortOrder: data.sortOrder ?? 0,
+        parentId: data.parentId || null,
       },
     });
     revalidatePath("/dashboard/menu");
     return { success: true, category };
   } catch (error: any) {
-    return { error: "A category with this name already exists." };
+    if (error.code === "P2002") {
+      return { error: "A category with this name already exists in this location." };
+    }
+    return { error: error.message };
   }
 }
 
 export async function updateCategory(
   id: string,
-  data: { name: string; description?: string; sortOrder?: number }
+  data: { name?: string; description?: string; sortOrder?: number; parentId?: string | null }
 ) {
   const user = await getCurrentUser();
   if (!user) return { error: "Unauthorized" };
 
   try {
+    if (data.parentId === id) return { error: "A category cannot be its own parent." };
+
     const category = await prisma.category.update({
       where: { id },
       data: {
-        name: data.name,
-        description: data.description,
-        sortOrder: data.sortOrder ?? 0,
+        ...(data.name !== undefined && { name: data.name }),
+        ...(data.description !== undefined && { description: data.description }),
+        ...(data.sortOrder !== undefined && { sortOrder: data.sortOrder }),
+        ...(data.parentId !== undefined && { parentId: data.parentId || null }),
       },
     });
     revalidatePath("/dashboard/menu");
     return { success: true, category };
   } catch (error: any) {
+    if (error.code === "P2002") {
+      return { error: "A category with this name already exists in this location." };
+    }
     return { error: error.message };
   }
 }

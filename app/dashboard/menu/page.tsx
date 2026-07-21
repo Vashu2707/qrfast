@@ -58,6 +58,7 @@ import {
   AlertCircle,
   Eye,
   Check,
+  FolderTree,
 } from "lucide-react";
 import Image from "next/image";
 
@@ -97,14 +98,125 @@ const emptyItem: ItemFormState = {
   calories: "",
 };
 
-// ── Tree Interface ──────────────────────────────────────────────────────────
+// ── Tree Node ────────────────────────────────────────────────────────────────
 
-interface CategoryNode {
-  id?: string;
-  name: string; // leaf node name, e.g. "Paneer"
-  fullName: string; // full path, e.g. "Vegetarian > Main Course > Paneer"
+interface CategoryTreeNode {
+  id: string;
+  name: string;
+  description: string | null;
+  sortOrder: number;
+  parentId: string | null;
+  children: CategoryTreeNode[];
   itemCount: number;
-  children: Record<string, CategoryNode>;
+}
+
+// ── Helper: build tree from flat list ────────────────────────────────────────
+
+function buildCategoryTree(
+  categories: Array<{ id: string; name: string; parentId: string | null; sortOrder: number; description?: string | null; children?: any[] }>,
+  itemCounts: Record<string, number>,
+): CategoryTreeNode[] {
+  const map = new Map<string, CategoryTreeNode>();
+  const roots: CategoryTreeNode[] = [];
+
+  categories.forEach((cat) => {
+    map.set(cat.id, {
+      id: cat.id,
+      name: cat.name,
+      description: cat.description ?? null,
+      sortOrder: cat.sortOrder,
+      parentId: cat.parentId,
+      children: [],
+      itemCount: 0,
+    });
+  });
+
+  categories.forEach((cat) => {
+    const node = map.get(cat.id)!;
+    if (cat.parentId && map.has(cat.parentId)) {
+      map.get(cat.parentId)!.children.push(node);
+    } else {
+      roots.push(node);
+    }
+  });
+
+  const calculateCounts = (node: CategoryTreeNode): number => {
+    let count = itemCounts[node.id] || 0;
+    node.children.forEach((child) => {
+      count += calculateCounts(child);
+    });
+    node.itemCount = count;
+    return count;
+  };
+
+  roots.forEach(calculateCounts);
+  roots.sort((a, b) => a.sortOrder - b.sortOrder);
+  return roots;
+}
+
+// ── Helper: flatten tree for category select ─────────────────────────────────
+
+function flattenTreeForSelect(
+  nodes: CategoryTreeNode[],
+  depth = 0,
+): Array<{ id: string; label: string; depth: number }> {
+  const result: Array<{ id: string; label: string; depth: number }> = [];
+  nodes.forEach((node) => {
+    result.push({ id: node.id, label: node.name, depth });
+    if (node.children.length > 0) {
+      result.push(...flattenTreeForSelect(node.children, depth + 1));
+    }
+  });
+  return result;
+}
+
+// ── Helper: find breadcrumb path from tree ───────────────────────────────────
+
+function findBreadcrumbPath(
+  nodes: CategoryTreeNode[],
+  targetId: string,
+  path: CategoryTreeNode[] = [],
+): CategoryTreeNode[] | null {
+  for (const node of nodes) {
+    if (node.id === targetId) return [...path, node];
+    const result = findBreadcrumbPath(node.children, targetId, [...path, node]);
+    if (result) return result;
+  }
+  return null;
+}
+
+// ── Helper: collect all descendant IDs ───────────────────────────────────────
+
+function collectAllIds(node: CategoryTreeNode): string[] {
+  const ids = [node.id];
+  node.children.forEach((child) => ids.push(...collectAllIds(child)));
+  return ids;
+}
+
+// ── Helper: get tree node by ID ──────────────────────────────────────────────
+
+function findTreeNode(nodes: CategoryTreeNode[], id: string): CategoryTreeNode | null {
+  for (const node of nodes) {
+    if (node.id === id) return node;
+    const found = findTreeNode(node.children, id);
+    if (found) return found;
+  }
+  return null;
+}
+
+// ── Helper: get category full path name ──────────────────────────────────────
+
+function getCategoryPathName(
+  nodes: CategoryTreeNode[],
+  targetId: string,
+  parts: string[] = [],
+): string | null {
+  for (const node of nodes) {
+    if (node.id === targetId) return [...parts, node.name].join(" > ");
+    const result = getCategoryPathName(node.children, targetId, [...parts, node.name]);
+    if (result) return result;
+  }
+  return null;
 }
 
 export default function MenuPage() {
@@ -114,22 +226,17 @@ export default function MenuPage() {
   const [itemDialogOpen, setItemDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [catName, setCatName] = useState("");
+  const [catParentId, setCatParentId] = useState<string>("__root__");
   const [catDialogOpen, setCatDialogOpen] = useState(false);
 
-  // Redesign state
-  const [activeCategoryPath, setActiveCategoryPath] = useState<string>("Vegetarian > Main Course > Paneer");
+  const [activeCategoryId, setActiveCategoryId] = useState<string>("");
   const [filterTab, setFilterTab] = useState<"all" | "available" | "unavailable" | "bestseller">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [globalSearch, setGlobalSearch] = useState("");
   const [layoutView, setLayoutView] = useState<"grid" | "list">("grid");
   const [sortBy, setSortBy] = useState<"name" | "price-low" | "price-high">("name");
-  
-  // Keep track of which categories are expanded in the sidebar
-  const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({
-    "Vegetarian": true,
-    "Vegetarian > Main Course": true,
-    "Non-Vegetarian": true,
-  });
+
+  const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({});
 
   const { data: items = [] } = useQuery({
     queryKey: ["menuItems"],
@@ -142,17 +249,61 @@ export default function MenuPage() {
     refetchInterval: 15000,
   });
 
-  // Automatically select the first leaf category if active path not found
-  useEffect(() => {
-    if (categories.length > 0 && !categories.some(c => c.name === activeCategoryPath)) {
-      const firstWithLeaf = categories.sort((a, b) => a.sortOrder - b.sortOrder)[0];
-      if (firstWithLeaf) {
-        setActiveCategoryPath(firstWithLeaf.name);
-      }
-    }
-  }, [categories, activeCategoryPath]);
+  // Build tree
+  const categoryItemCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    items.forEach((item) => {
+      counts[item.categoryId] = (counts[item.categoryId] || 0) + 1;
+    });
+    return counts;
+  }, [items]);
 
-  // Compute dynamic stats
+  const categoryTree = useMemo(() => {
+    return buildCategoryTree(categories, categoryItemCounts);
+  }, [categories, categoryItemCounts]);
+
+  const flatCategories = useMemo(() => flattenTreeForSelect(categoryTree), [categoryTree]);
+
+  // Auto-select first category
+  useEffect(() => {
+    if (categoryTree.length > 0 && (!activeCategoryId || !findTreeNode(categoryTree, activeCategoryId))) {
+      setActiveCategoryId(categoryTree[0].id);
+    }
+  }, [categoryTree, activeCategoryId]);
+
+  // Auto-expand root nodes
+  useEffect(() => {
+    if (categoryTree.length > 0) {
+      setExpandedNodes((prev) => {
+        const next = { ...prev };
+        categoryTree.forEach((node) => {
+          if (node.children.length > 0 && next[node.id] === undefined) {
+            next[node.id] = true;
+          }
+        });
+        return next;
+      });
+    }
+  }, [categoryTree]);
+
+  // Breadcrumb for active category
+  const activeBreadcrumb = useMemo(() => {
+    if (!activeCategoryId || categoryTree.length === 0) return [];
+    return findBreadcrumbPath(categoryTree, activeCategoryId) || [];
+  }, [categoryTree, activeCategoryId]);
+
+  // Active category node
+  const activeNode = useMemo(() => {
+    if (!activeCategoryId || categoryTree.length === 0) return null;
+    return findTreeNode(categoryTree, activeCategoryId);
+  }, [categoryTree, activeCategoryId]);
+
+  // All category IDs under the active selection (for item filtering)
+  const activeCategoryIds = useMemo(() => {
+    if (!activeNode) return [];
+    return collectAllIds(activeNode);
+  }, [activeNode]);
+
   const stats = useMemo(() => {
     const total = items.length;
     const veg = items.filter(i => i.foodType === "VEG" || i.foodType === "VEGAN").length;
@@ -161,96 +312,19 @@ export default function MenuPage() {
     return { total, veg, nonVeg, unavailable };
   }, [items]);
 
-  // Build the hierarchical tree of categories
-  const categoryTree = useMemo(() => {
-    const root: Record<string, CategoryNode> = {};
-
-    categories.forEach((cat) => {
-      const parts = cat.name.split(" > ");
-      let current = root;
-      let currentPath = "";
-
-      parts.forEach((part, idx) => {
-        currentPath = currentPath ? `${currentPath} > ${part}` : part;
-
-        if (!current[part]) {
-          current[part] = {
-            name: part,
-            fullName: currentPath,
-            itemCount: 0,
-            children: {},
-          };
-        }
-
-        if (idx === parts.length - 1) {
-          current[part].id = cat.id;
-        }
-
-        current = current[part].children;
-      });
-    });
-
-    // Populate item counts recursively
-    const categoryItemCounts: Record<string, number> = {};
-    items.forEach((item) => {
-      categoryItemCounts[item.categoryId] = (categoryItemCounts[item.categoryId] || 0) + 1;
-    });
-
-    const calculateCounts = (node: CategoryNode): number => {
-      let count = 0;
-      if (node.id) {
-        count += categoryItemCounts[node.id] || 0;
-      }
-      Object.values(node.children).forEach((child) => {
-        count += calculateCounts(child);
-      });
-      node.itemCount = count;
-      return count;
-    };
-
-    Object.values(root).forEach((node) => {
-      calculateCounts(node);
-    });
-
-    return root;
-  }, [categories, items]);
-
-  // Find all category IDs under the selected path
-  const activeCategoryIds = useMemo(() => {
-    const ids: string[] = [];
-    const traverse = (node: CategoryNode) => {
-      if (node.fullName === activeCategoryPath || node.fullName.startsWith(activeCategoryPath + " > ")) {
-        if (node.id) ids.push(node.id);
-      }
-      Object.values(node.children).forEach(traverse);
-    };
-
-    Object.values(categoryTree).forEach(traverse);
-    return ids;
-  }, [categoryTree, activeCategoryPath]);
-
-  // Filter and sort items to display in the right panel
   const displayedItems = useMemo(() => {
     let result = items;
-
-    // Filter by active category tree selection
-    if (activeCategoryPath) {
+    if (activeCategoryId) {
       result = result.filter(i => activeCategoryIds.includes(i.categoryId));
     }
-
-    // Filter by top search bar (if any query)
     if (globalSearch.trim()) {
       const q = globalSearch.toLowerCase();
       result = result.filter(i => i.name.toLowerCase().includes(q) || i.description?.toLowerCase().includes(q));
     }
-
-    // Filter by right panel filter search bar
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter(i => i.name.toLowerCase().includes(q) || i.description?.toLowerCase().includes(q));
     }
-
-    // Filter by availability/bestseller tabs
     if (filterTab === "available") {
       result = result.filter(i => i.isAvailable);
     } else if (filterTab === "unavailable") {
@@ -258,18 +332,16 @@ export default function MenuPage() {
     } else if (filterTab === "bestseller") {
       result = result.filter(i => i.isBestSeller);
     }
-
-    // Sorting
     return [...result].sort((a, b) => {
-      if (sortBy === "price-low") {
-        return (a.discountPrice ?? a.price) - (b.discountPrice ?? b.price);
-      }
-      if (sortBy === "price-high") {
-        return (b.discountPrice ?? b.price) - (a.discountPrice ?? a.price);
-      }
+      if (sortBy === "price-low") return (a.discountPrice ?? a.price) - (b.discountPrice ?? b.price);
+      if (sortBy === "price-high") return (b.discountPrice ?? b.price) - (a.discountPrice ?? a.price);
       return a.name.localeCompare(b.name);
     });
-  }, [items, activeCategoryPath, activeCategoryIds, globalSearch, searchQuery, filterTab, sortBy]);
+  }, [items, activeCategoryIds, activeCategoryId, globalSearch, searchQuery, filterTab, sortBy]);
+
+  const activeCategoryName = activeBreadcrumb.length > 0
+    ? activeBreadcrumb[activeBreadcrumb.length - 1].name
+    : "All";
 
   const resetForm = () => {
     setItemForm(emptyItem);
@@ -384,18 +456,22 @@ export default function MenuPage() {
   };
 
   const handleCreateCategory = async () => {
-    const result = await createCategory({ name: catName });
+    const result = await createCategory({
+      name: catName,
+      parentId: catParentId === "__root__" ? null : catParentId,
+    });
     if (result.error) toast.error(result.error);
     else {
       toast.success("Category created");
       setCatName("");
+      setCatParentId("__root__");
       setCatDialogOpen(false);
       queryClient.invalidateQueries({ queryKey: ["categories"] });
     }
   };
 
-  const handleDeleteCategory = async (cat: typeof categories[0]) => {
-    if (confirm(`Delete category "${cat.name.split(" > ").pop()}"? This will also delete all of its items.`)) {
+  const handleDeleteCategory = async (cat: CategoryTreeNode) => {
+    if (confirm(`Delete "${cat.name}"? All items in this category and its subcategories will be deleted.`)) {
       const result = await deleteCategory(cat.id);
       if (result.error) toast.error(result.error);
       else {
@@ -406,129 +482,108 @@ export default function MenuPage() {
     }
   };
 
-  // Tree nodes rendering logic
-  const renderTreeNodes = (nodes: Record<string, CategoryNode>, level = 0) => {
-    return Object.values(nodes)
-      .sort((a, b) => {
-        const catA = categories.find((c) => c.name === a.fullName);
-        const catB = categories.find((c) => c.name === b.fullName);
-        return (catA?.sortOrder ?? 0) - (catB?.sortOrder ?? 0);
-      })
-      .map((node) => {
-        const hasChildren = Object.keys(node.children).length > 0;
-        const isExpanded = expandedNodes[node.fullName];
-        const isSelected = activeCategoryPath === node.fullName;
+  // Category icons for root nodes
+  const categoryIcons: Record<string, { icon: typeof Leaf; bg: string }> = {
+    "vegetarian": { icon: Leaf, bg: "bg-green-50 text-green-600 border-green-100 dark:bg-green-950/30 dark:text-green-400 dark:border-green-900/50" },
+    "non-vegetarian": { icon: Flame, bg: "bg-orange-50 text-orange-600 border-orange-100 dark:bg-orange-950/30 dark:text-orange-400 dark:border-orange-900/50" },
+    "non veg": { icon: Flame, bg: "bg-orange-50 text-orange-600 border-orange-100 dark:bg-orange-950/30 dark:text-orange-400 dark:border-orange-900/50" },
+    "beverages": { icon: Coffee, bg: "bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900/50" },
+    "desserts": { icon: Cake, bg: "bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-900/50" },
+    "soups & salads": { icon: Soup, bg: "bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/50" },
+  };
 
-        // Determine Level 0 icons
-        let IconComponent = UtensilsCrossed;
-        let iconBg = "bg-gray-50 text-gray-500 border-gray-100";
-        if (node.fullName === "Vegetarian") {
-          IconComponent = Leaf;
-          iconBg = "bg-green-50 text-green-600 border-green-100 dark:bg-green-950/30 dark:text-green-400 dark:border-green-900/50";
-        } else if (node.fullName === "Non-Vegetarian") {
-          IconComponent = Flame;
-          iconBg = "bg-orange-50 text-orange-600 border-orange-100 dark:bg-orange-950/30 dark:text-orange-400 dark:border-orange-900/50";
-        } else if (node.fullName === "Beverages") {
-          IconComponent = Coffee;
-          iconBg = "bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900/50";
-        } else if (node.fullName === "Desserts") {
-          IconComponent = Cake;
-          iconBg = "bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-900/50";
-        } else if (node.fullName === "Soups & Salads") {
-          IconComponent = Soup;
-          iconBg = "bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/50";
-        }
+  const renderTreeNodes = (nodes: CategoryTreeNode[], level = 0) => {
+    return nodes.map((node) => {
+      const hasChildren = node.children.length > 0;
+      const isExpanded = expandedNodes[node.id] ?? false;
+      const isSelected = activeCategoryId === node.id;
+      const isRoot = level === 0;
+      const iconInfo = isRoot ? categoryIcons[node.name.toLowerCase()] : undefined;
+      const IconComponent = iconInfo?.icon ?? UtensilsCrossed;
+      const iconBg = iconInfo?.bg ?? "bg-gray-50 text-gray-500 border-gray-100";
 
-        const isArrowLevel = level === 0 || level === 1;
-
-        return (
-          <div key={node.fullName} className="select-none">
-            <div
-              className={cn(
-                "group flex items-center gap-2 rounded-lg px-2 py-1 cursor-pointer transition-all duration-150 my-0.5",
-                isSelected
-                  ? "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-450 font-bold"
-                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-100/80 dark:hover:bg-gray-800/80"
-              )}
-              style={{ paddingLeft: `${level * 14 + 6}px` }}
-              onClick={() => setActiveCategoryPath(node.fullName)}
-            >
-              {/* Left Arrow button / spacer */}
-              {isArrowLevel ? (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setExpandedNodes((prev) => ({
-                      ...prev,
-                      [node.fullName]: !prev[node.fullName],
-                    }));
-                  }}
-                  className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400 shrink-0 cursor-pointer"
-                >
-                  {isExpanded ? (
-                    <ChevronDown className={cn("size-3.5", isSelected && "text-blue-700 dark:text-blue-450")} />
-                  ) : (
-                    <ChevronRight className={cn("size-3.5", isSelected && "text-blue-700 dark:text-blue-450")} />
-                  )}
-                </button>
-              ) : isSelected ? (
-                <ChevronRight className="size-3.5 text-blue-700 dark:text-blue-450 shrink-0" />
-              ) : (
-                <span className="w-4.5 shrink-0" />
-              )}
-
-              {/* Level 0 Icon */}
-              {level === 0 && (
-                <div className={cn("size-7 rounded-full flex items-center justify-center border shrink-0", iconBg)}>
-                  <IconComponent className="size-3.5" />
-                </div>
-              )}
-
-              {/* Node Name */}
-              <span className={cn(
-                "truncate flex-1",
-                level === 2 ? "text-[11px] font-medium" : "text-xs font-bold"
-              )}>
-                {node.name}
-              </span>
-
-              {/* Badge & delete button */}
-              <div className="flex items-center gap-1.5 shrink-0">
-                <span
-                  className={cn(
-                    "text-[10px] px-1.5 py-0.2 rounded-full font-bold",
-                    isSelected
-                      ? "bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300"
-                      : "bg-gray-100 dark:bg-gray-805 text-gray-500"
-                  )}
-                >
-                  {node.itemCount}
-                </span>
-
-                {node.id && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      const dbCat = categories.find(c => c.id === node.id);
-                      if (dbCat) handleDeleteCategory(dbCat);
-                    }}
-                    className="opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-700 p-0.5 text-xs font-bold"
-                    title="Delete Category"
-                  >
-                    ×
-                  </button>
+      return (
+        <div key={node.id} className="select-none">
+          <div
+            className={cn(
+              "group flex items-center gap-2 rounded-lg px-2 py-1 cursor-pointer transition-all duration-150 my-0.5",
+              isSelected
+                ? "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-450 font-bold"
+                : "text-gray-700 dark:text-gray-300 hover:bg-gray-100/80 dark:hover:bg-gray-800/80"
+            )}
+            style={{ paddingLeft: `${level * 14 + 6}px` }}
+            onClick={() => setActiveCategoryId(node.id)}
+          >
+            {hasChildren ? (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setExpandedNodes((prev) => ({ ...prev, [node.id]: !prev[node.id] }));
+                }}
+                className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400 shrink-0 cursor-pointer"
+              >
+                {isExpanded ? (
+                  <ChevronDown className={cn("size-3.5", isSelected && "text-blue-700 dark:text-blue-450")} />
+                ) : (
+                  <ChevronRight className={cn("size-3.5", isSelected && "text-blue-700 dark:text-blue-450")} />
                 )}
-              </div>
-            </div>
+              </button>
+            ) : isSelected ? (
+              <ChevronRight className="size-3.5 text-blue-700 dark:text-blue-450 shrink-0" />
+            ) : (
+              <span className="w-4.5 shrink-0" />
+            )}
 
-            {hasChildren && isExpanded && (
-              <div className="mt-0.5 border-l border-gray-100 dark:border-gray-800 ml-3.5 pl-1">
-                {renderTreeNodes(node.children, level + 1)}
+            {isRoot && (
+              <div className={cn("size-7 rounded-full flex items-center justify-center border shrink-0", iconBg)}>
+                <IconComponent className="size-3.5" />
               </div>
             )}
+
+            {!isRoot && level === 1 && (
+              <FolderTree className="size-3.5 text-gray-400 shrink-0" />
+            )}
+
+            <span className={cn(
+              "truncate flex-1",
+              level >= 2 ? "text-[11px] font-medium" : "text-xs font-bold"
+            )}>
+              {node.name}
+            </span>
+
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span
+                className={cn(
+                  "text-[10px] px-1.5 py-0.2 rounded-full font-bold",
+                  isSelected
+                    ? "bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300"
+                    : "bg-gray-100 dark:bg-gray-805 text-gray-500"
+                )}
+              >
+                {node.itemCount}
+              </span>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteCategory(node);
+                }}
+                className="opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-700 p-0.5 text-xs font-bold"
+                title="Delete Category"
+              >
+                ×
+              </button>
+            </div>
           </div>
-        );
-      });
+
+          {hasChildren && isExpanded && (
+            <div className="mt-0.5 border-l border-gray-100 dark:border-gray-800 ml-3.5 pl-1">
+              {renderTreeNodes(node.children, level + 1)}
+            </div>
+          )}
+        </div>
+      );
+    });
   };
 
   return (
@@ -581,7 +636,6 @@ export default function MenuPage() {
             {
               title: "Total Items",
               valueText: String(stats.total),
-              sub: "138 seeded",
               trend: "+12%",
               trendColor: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400",
               icon: UtensilsCrossed,
@@ -590,7 +644,6 @@ export default function MenuPage() {
             {
               title: "Vegetarian",
               valueText: `${stats.veg} items`,
-              sub: "Leaf & Vegan",
               trend: "+8%",
               trendColor: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400",
               icon: Leaf,
@@ -599,7 +652,6 @@ export default function MenuPage() {
             {
               title: "Non-Vegetarian",
               valueText: `${stats.nonVeg} items`,
-              sub: "42 seeded",
               trend: "+15%",
               trendColor: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400",
               icon: Flame,
@@ -608,7 +660,6 @@ export default function MenuPage() {
             {
               title: "Unavailable",
               valueText: `${stats.unavailable} items`,
-              sub: "Out of stock",
               trend: "-3%",
               trendColor: "bg-rose-50 text-rose-700 dark:bg-rose-950/20 dark:text-rose-400",
               icon: AlertCircle,
@@ -632,7 +683,6 @@ export default function MenuPage() {
                   <span className={cn("text-[9px] px-1.5 py-0.2 rounded font-extrabold flex items-center gap-0.5", item.trendColor)}>
                     {item.trend.startsWith("+") ? "↗" : "↘"} {item.trend.replace("+", "").replace("-", "")}
                   </span>
-                  <span className="text-[9px] text-gray-400 font-medium scale-90 origin-right">{item.sub}</span>
                 </div>
               </CardContent>
             </Card>
@@ -657,7 +707,11 @@ export default function MenuPage() {
             </div>
 
             <div className="overflow-y-auto max-h-[60vh] pr-1">
-              {renderTreeNodes(categoryTree)}
+              {categoryTree.length > 0 ? (
+                renderTreeNodes(categoryTree)
+              ) : (
+                <p className="text-xs text-gray-400 text-center py-4">No categories yet. Click Add to create one.</p>
+              )}
             </div>
           </div>
 
@@ -668,18 +722,26 @@ export default function MenuPage() {
               <div className="space-y-1">
                 <div className="flex items-center gap-1 text-[10px] text-gray-400 font-bold uppercase tracking-wider">
                   <Leaf className="size-3 text-green-500 mr-0.5" />
-                  {activeCategoryPath.split(" > ").map((p, idx, arr) => (
-                    <span key={p} className="flex items-center">
-                      {p}
-                      {idx < arr.length - 1 && <ChevronRight className="size-3 mx-1 text-gray-300" />}
+                  {activeBreadcrumb.map((node, idx) => (
+                    <span key={node.id} className="flex items-center">
+                      <button
+                        onClick={() => setActiveCategoryId(node.id)}
+                        className={cn(
+                          "hover:underline",
+                          idx === activeBreadcrumb.length - 1 ? "text-gray-700 dark:text-gray-300" : "text-gray-400"
+                        )}
+                      >
+                        {node.name}
+                      </button>
+                      {idx < activeBreadcrumb.length - 1 && <ChevronRight className="size-3 mx-1 text-gray-300" />}
                     </span>
                   ))}
                 </div>
                 <h2 className="text-lg font-black text-gray-900 dark:text-white">
-                  {activeCategoryPath.split(" > ").pop()} Dishes
+                  {activeCategoryName} Dishes
                 </h2>
                 <p className="text-xs text-gray-500">
-                  {displayedItems.length} items • Rich and delicious specialties under this category
+                  {displayedItems.length} items
                 </p>
               </div>
 
@@ -720,10 +782,8 @@ export default function MenuPage() {
                 <Button
                   onClick={() => {
                     resetForm();
-                    // Auto-fill category if active node is a leaf
-                    const matchingCat = categories.find(c => c.name === activeCategoryPath);
-                    if (matchingCat) {
-                      setItemForm(prev => ({ ...prev, categoryId: matchingCat.id }));
+                    if (activeNode) {
+                      setItemForm(prev => ({ ...prev, categoryId: activeNode.id }));
                     }
                     setItemDialogOpen(true);
                   }}
@@ -767,7 +827,7 @@ export default function MenuPage() {
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3 text-gray-400" />
                 <Input
                   type="text"
-                  placeholder={`Search in ${activeCategoryPath.split(" > ").pop()?.toLowerCase()}...`}
+                  placeholder={`Search in ${activeCategoryName.toLowerCase()}...`}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-8 h-7.5 text-xs bg-gray-50/50 border-gray-200 rounded-lg dark:bg-gray-900/50"
@@ -798,7 +858,6 @@ export default function MenuPage() {
                       !item.isAvailable && "opacity-75"
                     )}
                   >
-                    {/* Image Block */}
                     <div className="relative aspect-[4/3] w-full overflow-hidden bg-gray-150">
                       {item.images[0] ? (
                         <Image
@@ -814,7 +873,6 @@ export default function MenuPage() {
                         </div>
                       )}
 
-                      {/* Overlaid badges */}
                       <div className="absolute inset-x-2 top-2 flex items-center justify-between pointer-events-none">
                         {item.isBestSeller ? (
                           <Badge className="bg-amber-500 hover:bg-amber-600 text-white font-black text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-lg border-0 shadow">
@@ -847,7 +905,6 @@ export default function MenuPage() {
                       </div>
                     </div>
 
-                    {/* Content Block */}
                     <CardContent className="p-4 flex-1 flex flex-col justify-between space-y-3">
                       <div className="space-y-1">
                         <div className="flex items-start justify-between gap-2">
@@ -884,7 +941,6 @@ export default function MenuPage() {
                         </div>
                       </div>
 
-                      {/* Footer Actions */}
                       <div className="flex items-center justify-between border-t border-gray-50 dark:border-gray-900 pt-2.5">
                         <div className="flex items-center gap-2">
                           <Switch
@@ -933,7 +989,6 @@ export default function MenuPage() {
                 ))}
               </div>
             ) : (
-              // List View Redesign
               <div className="space-y-3">
                 {displayedItems.map((item) => (
                   <Card
@@ -944,28 +999,18 @@ export default function MenuPage() {
                     )}
                   >
                     <CardContent className="p-3 flex items-center justify-between gap-4">
-                      {/* Left: Thumbnail & Name Info */}
                       <div className="flex items-center gap-3 min-w-0 flex-1">
                         <div className="relative size-14 shrink-0 rounded-lg overflow-hidden bg-gray-100">
                           {item.images[0] ? (
-                            <Image
-                              src={item.images[0]}
-                              alt={item.name}
-                              fill
-                              className="object-cover"
-                            />
+                            <Image src={item.images[0]} alt={item.name} fill className="object-cover" />
                           ) : (
-                            <div className="absolute inset-0 flex items-center justify-center bg-gray-100 text-lg">
-                              🍽️
-                            </div>
+                            <div className="absolute inset-0 flex items-center justify-center bg-gray-100 text-lg">🍽️</div>
                           )}
                         </div>
 
                         <div className="min-w-0 flex-1 space-y-1">
                           <div className="flex items-center gap-2">
-                            <h3 className="font-extrabold text-sm text-gray-900 dark:text-white truncate">
-                              {item.name}
-                            </h3>
+                            <h3 className="font-extrabold text-sm text-gray-900 dark:text-white truncate">{item.name}</h3>
                             <Badge
                               className={cn(
                                 "text-[9px] font-extrabold px-1 py-0.1 border-0 shadow-none shrink-0 pointer-events-none scale-90",
@@ -976,29 +1021,21 @@ export default function MenuPage() {
                             >
                               {item.foodType}
                             </Badge>
-
                             {item.isBestSeller && (
-                              <Badge className="bg-amber-500 text-white text-[8px] font-black scale-90">
-                                Best
-                              </Badge>
+                              <Badge className="bg-amber-500 text-white text-[8px] font-black scale-90">Best</Badge>
                             )}
                           </div>
-                          <p className="text-xs text-gray-500 line-clamp-1 leading-relaxed">
-                            {item.description}
-                          </p>
+                          <p className="text-xs text-gray-500 line-clamp-1 leading-relaxed">{item.description}</p>
                         </div>
                       </div>
 
-                      {/* Right Side: Price, Status & Actions */}
                       <div className="flex items-center gap-6 shrink-0">
                         <div className="text-right">
                           <p className="font-black text-sm text-gray-900 dark:text-white">
                             {formatCurrency(item.discountPrice ?? item.price)}
                           </p>
                           {item.discountPrice && (
-                            <p className="text-[10px] text-gray-400 line-through">
-                              {formatCurrency(item.price)}
-                            </p>
+                            <p className="text-[10px] text-gray-400 line-through">{formatCurrency(item.price)}</p>
                           )}
                         </div>
 
@@ -1014,28 +1051,13 @@ export default function MenuPage() {
                         </div>
 
                         <div className="flex items-center gap-0.5 border-l border-gray-100 pl-3">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="size-7 text-gray-400 hover:text-gray-900 hover:bg-gray-100"
-                            onClick={() => handleEdit(item)}
-                          >
+                          <Button variant="ghost" size="icon" className="size-7 text-gray-400 hover:text-gray-900 hover:bg-gray-100" onClick={() => handleEdit(item)}>
                             <Pencil className="size-3.5" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="size-7 text-gray-400 hover:text-gray-900 hover:bg-gray-100"
-                            onClick={() => handleDuplicate(item)}
-                          >
+                          <Button variant="ghost" size="icon" className="size-7 text-gray-400 hover:text-gray-900 hover:bg-gray-100" onClick={() => handleDuplicate(item)}>
                             <Copy className="size-3.5" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="size-7 text-red-400 hover:text-red-700 hover:bg-red-50"
-                            onClick={() => handleDelete(item.id)}
-                          >
+                          <Button variant="ghost" size="icon" className="size-7 text-red-400 hover:text-red-700 hover:bg-red-50" onClick={() => handleDelete(item.id)}>
                             <Trash2 className="size-3.5" />
                           </Button>
                         </div>
@@ -1063,7 +1085,6 @@ export default function MenuPage() {
           </DialogHeader>
 
           <div className="grid gap-4 py-2">
-            {/* Name */}
             <div className="space-y-2">
               <Label className="text-xs font-bold text-gray-700">Name <span className="text-destructive">*</span></Label>
               <Input
@@ -1074,21 +1095,17 @@ export default function MenuPage() {
               />
             </div>
 
-            {/* Description */}
             <div className="space-y-2">
               <Label className="text-xs font-bold text-gray-700">Description</Label>
               <Textarea
                 value={itemForm.description}
-                onChange={(e) =>
-                  setItemForm({ ...itemForm, description: e.target.value })
-                }
+                onChange={(e) => setItemForm({ ...itemForm, description: e.target.value })}
                 placeholder="Short description of the dish"
                 rows={2}
                 className="border-gray-200 text-xs"
               />
             </div>
 
-            {/* Price & Discount */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label className="text-xs font-bold text-gray-700">Price (₹) <span className="text-destructive">*</span></Label>
@@ -1109,38 +1126,33 @@ export default function MenuPage() {
                   min="0"
                   step="0.01"
                   value={itemForm.discountPrice}
-                  onChange={(e) =>
-                    setItemForm({ ...itemForm, discountPrice: e.target.value })
-                  }
+                  onChange={(e) => setItemForm({ ...itemForm, discountPrice: e.target.value })}
                   placeholder="149"
                   className="h-9 border-gray-200 text-xs"
                 />
               </div>
             </div>
 
-            {/* Category */}
+            {/* Category — hierarchical select */}
             <div className="space-y-2">
               <Label className="text-xs font-bold text-gray-700">Category <span className="text-destructive">*</span></Label>
               <Select
                 value={itemForm.categoryId}
-                onValueChange={(v) =>
-                  v && setItemForm({ ...itemForm, categoryId: v })
-                }
+                onValueChange={(v) => v && setItemForm({ ...itemForm, categoryId: v })}
               >
                 <SelectTrigger className="h-9 border-gray-200 text-xs">
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
-                  {categories.map((c) => (
+                  {flatCategories.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
-                      {c.name}
+                      {c.depth > 0 ? "\u00A0\u00A0".repeat(c.depth) + "└ " : ""}{c.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
-            {/* Images */}
             <div className="space-y-2">
               <Label className="text-xs font-bold text-gray-700">Images</Label>
               <ImageUpload
@@ -1150,7 +1162,6 @@ export default function MenuPage() {
               />
             </div>
 
-            {/* Food Type Selector */}
             <div className="space-y-2">
               <Label className="text-xs font-bold text-gray-700">Food Type <span className="text-destructive">*</span></Label>
               <div className="flex gap-2">
@@ -1166,9 +1177,7 @@ export default function MenuPage() {
                     type="button"
                     onClick={() => setItemForm({ ...itemForm, foodType: value })}
                     className={`flex flex-1 items-center justify-center gap-2 rounded-lg border-2 py-2 text-xs font-bold transition-colors ${
-                      itemForm.foodType === value
-                        ? active
-                        : "border-gray-200 text-gray-500 hover:border-gray-400"
+                      itemForm.foodType === value ? active : "border-gray-200 text-gray-500 hover:border-gray-400"
                     }`}
                   >
                     <span className={`size-3 rounded-sm border-2 ${itemForm.foodType === value ? dot.replace("bg-", "border-") : "border-gray-400"} flex items-center justify-center`}>
@@ -1180,48 +1189,30 @@ export default function MenuPage() {
               </div>
             </div>
 
-            {/* Highlights (Bestseller & Chef's Special) */}
             <div className="flex items-center gap-6 border border-gray-150 rounded-lg p-3 bg-gray-50/50">
               <div className="flex items-center gap-2">
                 <Checkbox
                   id="isBestSeller"
                   checked={itemForm.isBestSeller}
-                  onCheckedChange={(checked) =>
-                    setItemForm({ ...itemForm, isBestSeller: !!checked })
-                  }
+                  onCheckedChange={(checked) => setItemForm({ ...itemForm, isBestSeller: !!checked })}
                 />
-                <Label htmlFor="isBestSeller" className="text-xs font-bold cursor-pointer text-gray-700">
-                  Mark Bestseller
-                </Label>
+                <Label htmlFor="isBestSeller" className="text-xs font-bold cursor-pointer text-gray-700">Mark Bestseller</Label>
               </div>
-
               <div className="flex items-center gap-2">
                 <Checkbox
                   id="isChefSpecial"
                   checked={itemForm.isChefSpecial}
-                  onCheckedChange={(checked) =>
-                    setItemForm({ ...itemForm, isChefSpecial: !!checked })
-                  }
+                  onCheckedChange={(checked) => setItemForm({ ...itemForm, isChefSpecial: !!checked })}
                 />
-                <Label htmlFor="isChefSpecial" className="text-xs font-bold cursor-pointer text-gray-700">
-                  Mark Chef&apos;s Special
-                </Label>
+                <Label htmlFor="isChefSpecial" className="text-xs font-bold cursor-pointer text-gray-700">Mark Chef&apos;s Special</Label>
               </div>
             </div>
 
-            {/* Spicy Level & Prep Time */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <div className="space-y-2">
                 <Label className="text-xs font-bold text-gray-700">Spicy Level</Label>
-                <Select
-                  value={itemForm.spicyLevel}
-                  onValueChange={(v) =>
-                    v && setItemForm({ ...itemForm, spicyLevel: v })
-                  }
-                >
-                  <SelectTrigger className="h-9 border-gray-200 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
+                <Select value={itemForm.spicyLevel} onValueChange={(v) => v && setItemForm({ ...itemForm, spicyLevel: v })}>
+                  <SelectTrigger className="h-9 border-gray-200 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="0">0 — Not spicy</SelectItem>
                     <SelectItem value="1">1 — Mild 🌶️</SelectItem>
@@ -1230,67 +1221,28 @@ export default function MenuPage() {
                   </SelectContent>
                 </Select>
               </div>
-
               <div className="space-y-2">
                 <Label className="text-xs font-bold text-gray-700">Prep Time (min)</Label>
-                <Input
-                  type="number"
-                  min="1"
-                  value={itemForm.preparationTime}
-                  onChange={(e) =>
-                    setItemForm({ ...itemForm, preparationTime: e.target.value })
-                  }
-                  className="h-9 border-gray-200 text-xs"
-                />
+                <Input type="number" min="1" value={itemForm.preparationTime} onChange={(e) => setItemForm({ ...itemForm, preparationTime: e.target.value })} className="h-9 border-gray-200 text-xs" />
               </div>
-
               <div className="space-y-2">
                 <Label className="text-xs font-bold text-gray-700">Calories (cal)</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  value={itemForm.calories}
-                  onChange={(e) =>
-                    setItemForm({ ...itemForm, calories: e.target.value })
-                  }
-                  placeholder="300"
-                  className="h-9 border-gray-200 text-xs"
-                />
+                <Input type="number" min="0" value={itemForm.calories} onChange={(e) => setItemForm({ ...itemForm, calories: e.target.value })} placeholder="300" className="h-9 border-gray-200 text-xs" />
               </div>
             </div>
 
-            {/* Ingredients & Allergens */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label className="text-xs font-bold text-gray-700">Ingredients</Label>
-                <Input
-                  value={itemForm.ingredients}
-                  onChange={(e) =>
-                    setItemForm({ ...itemForm, ingredients: e.target.value })
-                  }
-                  placeholder="Paneer, Tomato, Butter"
-                  className="h-9 border-gray-200 text-xs"
-                />
+                <Input value={itemForm.ingredients} onChange={(e) => setItemForm({ ...itemForm, ingredients: e.target.value })} placeholder="Paneer, Tomato, Butter" className="h-9 border-gray-200 text-xs" />
               </div>
-
               <div className="space-y-2">
                 <Label className="text-xs font-bold text-gray-700">Allergens</Label>
-                <Input
-                  value={itemForm.allergens}
-                  onChange={(e) =>
-                    setItemForm({ ...itemForm, allergens: e.target.value })
-                  }
-                  placeholder="Dairy, Gluten"
-                  className="h-9 border-gray-200 text-xs"
-                />
+                <Input value={itemForm.allergens} onChange={(e) => setItemForm({ ...itemForm, allergens: e.target.value })} placeholder="Dairy, Gluten" className="h-9 border-gray-200 text-xs" />
               </div>
             </div>
 
-            <Button
-              onClick={handleSaveItem}
-              disabled={saving || !itemForm.name || !itemForm.price || !itemForm.categoryId}
-              className="w-full mt-2 font-bold"
-            >
+            <Button onClick={handleSaveItem} disabled={saving || !itemForm.name || !itemForm.price || !itemForm.categoryId} className="w-full mt-2 font-bold">
               {saving ? "Saving…" : editId ? "Update Item" : "Create Item"}
             </Button>
           </div>
@@ -1305,16 +1257,30 @@ export default function MenuPage() {
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label className="text-xs font-bold text-gray-700">Category Path</Label>
+              <Label className="text-xs font-bold text-gray-700">Parent Category</Label>
+              <Select value={catParentId} onValueChange={(v) => setCatParentId(v ?? "__root__")}>
+                <SelectTrigger className="h-9 border-gray-200 text-xs">
+                  <SelectValue placeholder="Top level" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__root__">— Top Level —</SelectItem>
+                  {flatCategories.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.depth > 0 ? "\u00A0\u00A0".repeat(c.depth) + "└ " : ""}{c.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-bold text-gray-700">Category Name</Label>
               <Input
-                placeholder="e.g. Vegetarian > Main Course > Dal"
+                placeholder="e.g. Main Course"
                 value={catName}
                 onChange={(e) => setCatName(e.target.value)}
                 className="h-9 border-gray-200 text-xs"
+                onKeyDown={(e) => { if (e.key === "Enter" && catName) handleCreateCategory(); }}
               />
-              <p className="text-[10px] text-gray-400 leading-normal">
-                To create a hierarchical path, use the separator <code className="font-black text-gray-600 dark:text-gray-300">&quot; &gt; &quot;</code> (with spaces) between parent and children.
-              </p>
             </div>
             <Button onClick={handleCreateCategory} disabled={!catName} className="w-full font-bold">
               Create Category

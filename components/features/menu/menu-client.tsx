@@ -73,7 +73,9 @@ interface MenuData {
   categories: Array<{
     id: string;
     name: string;
+    parentId: string | null;
     description: string | null;
+    children?: Array<{ id: string; name: string }>;
     menuItems: Array<{
       id: string;
       name: string;
@@ -159,13 +161,44 @@ export function MenuClient({ data, tableParam }: Props) {
 
   const allItems = useMemo(() => {
     return categories.flatMap((c) =>
-      c.menuItems.map((item) => ({ ...item, categoryName: c.name.includes(" > ") ? c.name.split(" > ").pop() : c.name, categoryId: c.id }))
+      c.menuItems.map((item) => ({ ...item, categoryName: c.name, categoryId: c.id }))
     );
   }, [categories]);
 
+  // Build parent -> children mapping and collect all descendant IDs for filtering
+  const categoryChildrenMap = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    categories.forEach((c) => {
+      if (c.children) {
+        map[c.id] = c.children.map((child) => child.id);
+      }
+    });
+    return map;
+  }, [categories]);
+
+  // Top-level (root) categories for display
+  const rootCategories = useMemo(() => categories.filter((c) => !c.parentId), [categories]);
+
+  // Collect all descendant category IDs for a given category
+  const getAllCategoryIds = useMemo(() => {
+    const memo: Record<string, string[]> = {};
+    const collect = (catId: string): string[] => {
+      if (memo[catId]) return memo[catId];
+      const ids = [catId];
+      const children = categoryChildrenMap[catId] || [];
+      children.forEach((childId) => ids.push(...collect(childId)));
+      memo[catId] = ids;
+      return ids;
+    };
+    return collect;
+  }, [categoryChildrenMap]);
+
   const filteredItems = useMemo(() => {
     let result = allItems;
-    if (activeCategory !== "all") result = result.filter((i) => i.categoryId === activeCategory);
+    if (activeCategory !== "all") {
+      const activeIds = getAllCategoryIds(activeCategory);
+      result = result.filter((i) => activeIds.includes(i.categoryId));
+    }
     if (vegFilter !== "all") result = result.filter((i) => i.foodType === vegFilter);
     if (search) result = result.filter((i) => i.name.toLowerCase().includes(search.toLowerCase()));
 
@@ -350,18 +383,22 @@ export function MenuClient({ data, tableParam }: Props) {
           >
             All
           </button>
-          {categories.map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => setActiveCategory(cat.id)}
-              className={`shrink-0 rounded-full px-3.5 py-2 min-h-9 text-xs font-medium transition-colors ${
-                activeCategory === cat.id
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:bg-muted/80"
-              }`}
-            >
-              {cat.name.includes(" > ") ? cat.name.split(" > ").pop() : cat.name}
-            </button>
+          {rootCategories.map((cat) => (
+            <div key={cat.id} className="shrink-0 flex items-center">
+              <button
+                onClick={() => setActiveCategory(cat.id)}
+                className={`rounded-full px-3.5 py-2 min-h-9 text-xs font-medium transition-colors ${
+                  activeCategory === cat.id
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                }`}
+              >
+                {cat.name}
+              </button>
+              {(cat.children && cat.children.length > 0) && (
+                <span className="text-muted-foreground/50 text-[10px] ml-0.5">▸</span>
+              )}
+            </div>
           ))}
           <button
             onClick={() => setVegFilter(vegFilter === "VEG" ? "all" : "VEG")}
