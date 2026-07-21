@@ -8,6 +8,7 @@ export const parsedMenuItemSchema = z.object({
   spicyLevel: z.coerce.number().int().min(0).max(3).default(0),
   ingredients: z.array(z.string().max(100)).default([]),
   allergens: z.array(z.string().max(100)).default([]),
+  category: z.string().max(100).default("Uncategorized"),
 });
 
 export const menuScanResponseSchema = z.object({

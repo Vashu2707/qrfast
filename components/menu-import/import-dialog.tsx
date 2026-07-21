@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState, useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getCategories } from "@/actions/categories";
 import { useMenuImport } from "@/hooks/use-menu-import";
@@ -20,6 +20,7 @@ import {
   RotateCcw,
   AlertCircle,
   ArrowLeft,
+  ScanLine,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -30,7 +31,6 @@ interface ImportDialogProps {
 
 export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
   const queryClient = useQueryClient();
-  const [hasOpened, setHasOpened] = useState(false);
 
   const {
     step,
@@ -71,10 +71,6 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
     [onOpenChange, reset, step, queryClient]
   );
 
-  const handleImportClick = useCallback(async () => {
-    await handleImport();
-  }, [handleImport]);
-
   useEffect(() => {
     if (step === "done" && importedCount > 0) {
       toast.success(`Successfully imported ${importedCount} menu items.`);
@@ -83,154 +79,178 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
 
   const hasMissingCategories =
     step === "preview" &&
+    !scanning &&
     items.some((i) => i.selected && !i.categoryId);
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto p-0 gap-0">
-        <DialogHeader className="px-6 pt-6 pb-4 border-b border-gray-100 dark:border-gray-800">
-          <DialogTitle className="flex items-center gap-2 font-extrabold">
-            <Sparkles className="size-5 text-blue-500" />
-            AI Menu Import
+      <DialogContent className="sm:max-w-2xl md:max-w-3xl lg:max-w-4xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
+        {/* ── Header ── */}
+        <DialogHeader className="px-5 pt-5 pb-3 shrink-0">
+          <DialogTitle className="flex items-center gap-2 font-extrabold text-base">
+            {step === "upload" && (
+              <>
+                <ScanLine className="size-5 text-blue-500" />
+                AI Menu Scanner
+              </>
+            )}
+            {step === "preview" && scanning && (
+              <>
+                <div className="size-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                Scanning Menu...
+              </>
+            )}
+            {step === "preview" && !scanning && (
+              <>
+                <Sparkles className="size-5 text-blue-500" />
+                Review Extracted Items
+              </>
+            )}
+            {step === "done" && (
+              <>
+                <CheckCircle2 className="size-5 text-green-500" />
+                Import Complete
+              </>
+            )}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="p-6 space-y-4">
+        {/* ── Body ── */}
+        <div className="flex-1 overflow-y-auto px-5 pb-5">
           {/* Upload Step */}
           {step === "upload" && (
-            <>
+            <div className="space-y-4">
               <UploadMenu onFileSelect={handleFileSelect} scanning={scanning} />
-              {error && (
-                <div className="flex items-center gap-2 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 p-3">
-                  <AlertCircle className="size-4 text-red-500 shrink-0" />
-                  <p className="text-xs text-red-700 dark:text-red-400 font-medium">{error}</p>
-                </div>
-              )}
-            </>
+              {error && <ErrorBanner message={error} />}
+            </div>
           )}
 
-          {/* Preview Step */}
-          {step === "preview" && (
-            <>
-              {scanning && (
-                <div className="flex items-center justify-center py-12">
-                  <div className="flex flex-col items-center gap-3">
-                    <div className="size-10 border-3 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                    <p className="text-sm font-bold text-gray-900 dark:text-white">
-                      Scanning menu...
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      AI is extracting items from your image
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {!scanning && items.length > 0 && (
-                <>
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          reset();
-                        }}
-                        className="text-xs font-bold"
-                      >
-                        <ArrowLeft className="mr-1 size-3.5" />
-                        New Image
-                      </Button>
-                      <p className="text-xs text-gray-500">
-                        <span className="font-bold text-gray-900 dark:text-white">
-                          {items.length}
-                        </span>{" "}
-                        items found
-                        {selectedCount < items.length && (
-                          <>
-                            ,{" "}
-                            <span className="font-bold text-blue-600">
-                              {selectedCount}
-                            </span>{" "}
-                            selected
-                          </>
-                        )}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      <BulkCategorySelect
-                        categories={categories}
-                        onBulkSelect={setBulkCategory}
-                      />
-                    </div>
-                  </div>
-
-                  {error && (
-                    <div className="flex items-center gap-2 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 p-3">
-                      <AlertCircle className="size-4 text-red-500 shrink-0" />
-                      <p className="text-xs text-red-700 dark:text-red-400 font-medium">{error}</p>
-                    </div>
-                  )}
-
-                  <PreviewTable
-                    items={items}
-                    categories={categories}
-                    allSelected={allSelected}
-                    onToggleAll={toggleAll}
-                    onToggleItem={toggleItem}
-                    onUpdateItem={updateItem}
+          {/* Scanning State */}
+          {step === "preview" && scanning && (
+            <div className="flex flex-col items-center justify-center py-16 gap-4">
+              {previewUrl && (
+                <div className="relative w-48 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-800 opacity-60">
+                  <img
+                    src={previewUrl}
+                    alt="Menu being scanned"
+                    className="w-full object-contain"
                   />
-                </>
-              )}
-
-              {!scanning && items.length === 0 && !error && (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <AlertCircle className="size-10 text-gray-300 mb-3" />
-                  <p className="text-sm font-bold text-gray-900 dark:text-white">
-                    No items found
-                  </p>
-                  <p className="text-xs text-gray-500 max-w-xs mt-1">
-                    The AI could not detect any menu items. Please try a clearer photo.
-                  </p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-4 text-xs font-bold"
-                    onClick={reset}
-                  >
-                    <RotateCcw className="mr-1 size-3.5" />
-                    Try Again
-                  </Button>
                 </div>
               )}
-            </>
+              <div className="flex flex-col items-center gap-2">
+                <p className="text-sm font-bold text-gray-900 dark:text-white">
+                  AI is extracting menu items...
+                </p>
+                <p className="text-xs text-gray-500">
+                  This usually takes a few seconds
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Items Found */}
+          {step === "preview" && !scanning && items.length > 0 && (
+            <div className="space-y-3">
+              {/* Toolbar */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={reset}
+                    className="text-xs font-bold h-7"
+                  >
+                    <ArrowLeft className="mr-1 size-3" />
+                    New Image
+                  </Button>
+                  <span className="text-xs text-gray-500">
+                    <span className="font-bold text-gray-900 dark:text-white">
+                      {items.length}
+                    </span>{" "}
+                    items found
+                    {selectedCount < items.length && (
+                      <>
+                        {" "}&middot;{" "}
+                        <span className="font-bold text-blue-600">
+                          {selectedCount}
+                        </span>{" "}
+                        selected
+                      </>
+                    )}
+                  </span>
+                </div>
+
+                <BulkCategorySelect
+                  categories={categories}
+                  onBulkSelect={setBulkCategory}
+                />
+              </div>
+
+              {error && <ErrorBanner message={error} />}
+
+              <PreviewTable
+                items={items}
+                categories={categories}
+                allSelected={allSelected}
+                onToggleAll={toggleAll}
+                onToggleItem={toggleItem}
+                onUpdateItem={updateItem}
+              />
+            </div>
+          )}
+
+          {/* No Items */}
+          {step === "preview" && !scanning && items.length === 0 && !error && (
+            <div className="flex flex-col items-center justify-center py-16 gap-3">
+              <div className="size-14 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                <AlertCircle className="size-6 text-gray-400" />
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-bold text-gray-900 dark:text-white">
+                  No items found
+                </p>
+                <p className="text-xs text-gray-500 mt-1 max-w-xs">
+                  The AI could not detect menu items. Try a clearer, well-lit photo of the menu.
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs font-bold mt-2"
+                onClick={reset}
+              >
+                <RotateCcw className="mr-1 size-3" />
+                Try Again
+              </Button>
+            </div>
           )}
 
           {/* Done Step */}
           {step === "done" && (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="size-16 rounded-full bg-green-50 dark:bg-green-950/30 flex items-center justify-center mb-4">
+            <div className="flex flex-col items-center justify-center py-12 gap-4">
+              <div className="size-16 rounded-full bg-green-50 dark:bg-green-950/30 flex items-center justify-center">
                 <CheckCircle2 className="size-8 text-green-600" />
               </div>
-              <h3 className="text-lg font-extrabold text-gray-900 dark:text-white">
-                Import Complete
-              </h3>
-              <p className="text-sm text-gray-500 mt-1">
-                Successfully imported{" "}
-                <span className="font-bold text-green-600">{importedCount}</span>{" "}
-                menu items.
-              </p>
-              <div className="flex gap-2 mt-6">
+              <div className="text-center">
+                <h3 className="text-lg font-extrabold text-gray-900 dark:text-white">
+                  All Done!
+                </h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  Successfully imported{" "}
+                  <span className="font-bold text-green-600">
+                    {importedCount}
+                  </span>{" "}
+                  menu items into your menu.
+                </p>
+              </div>
+              <div className="flex gap-2 mt-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => {
-                    reset();
-                  }}
+                  onClick={reset}
                   className="text-xs font-bold"
                 >
-                  <Sparkles className="mr-1 size-3.5" />
+                  <Sparkles className="mr-1 size-3" />
                   Import More
                 </Button>
                 <Button
@@ -245,20 +265,25 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
           )}
         </div>
 
-        {/* Footer Actions */}
+        {/* ── Footer ── */}
         {step === "preview" && !scanning && items.length > 0 && (
-          <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 flex items-center justify-between">
-            <p className="text-xs text-gray-500">
-              {hasMissingCategories && (
-                <span className="text-amber-600 font-medium">
-                  Assign categories to all selected items before importing.
-                </span>
+          <div className="px-5 py-3 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 shrink-0 flex items-center justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              {hasMissingCategories ? (
+                <p className="text-[11px] text-amber-600 font-medium truncate">
+                  Assign a category to all selected items before importing.
+                </p>
+              ) : (
+                <p className="text-[11px] text-gray-400">
+                  {selectedCount} item{selectedCount !== 1 ? "s" : ""} will be
+                  imported
+                </p>
               )}
-            </p>
+            </div>
             <Button
-              onClick={handleImportClick}
+              onClick={handleImport}
               disabled={saving || selectedCount === 0 || hasMissingCategories}
-              className="text-xs font-bold"
+              className="text-xs font-bold shrink-0"
               size="sm"
             >
               {saving ? (
@@ -268,8 +293,8 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
                 </>
               ) : (
                 <>
-                  <Sparkles className="mr-1 size-3.5" />
-                  Import Selected Items
+                  <Sparkles className="mr-1 size-3" />
+                  Import Selected ({selectedCount})
                 </>
               )}
             </Button>
@@ -277,5 +302,16 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+function ErrorBanner({ message }: { message: string }) {
+  return (
+    <div className="flex items-center gap-2 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 p-3">
+      <AlertCircle className="size-4 text-red-500 shrink-0" />
+      <p className="text-xs text-red-700 dark:text-red-400 font-medium">
+        {message}
+      </p>
+    </div>
   );
 }

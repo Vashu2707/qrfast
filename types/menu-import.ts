@@ -8,6 +8,7 @@ export interface ParsedMenuItem {
   spicyLevel: number;
   ingredients: string[];
   allergens: string[];
+  category: string;
 }
 
 export interface MenuScanResult {
@@ -32,6 +33,7 @@ export interface MenuImportItem {
   ingredients: string[];
   allergens: string[];
   categoryId: string;
+  categoryName: string;
   selected: boolean;
 }
 

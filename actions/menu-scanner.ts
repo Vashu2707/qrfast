@@ -1,16 +1,33 @@
 "use server";
 
+import prisma from "@/lib/prisma";
 import { analyzeMenuImage } from "@/lib/gemini";
 import { validateGeminiResponse } from "@/lib/validators";
 import { getCurrentUser } from "./auth";
-import type { MenuScanResponse } from "@/types/menu-import";
+import type { MenuScanResponse, ParsedMenuItem } from "@/types/menu-import";
 
 const MAX_SIZE = 10 * 1024 * 1024;
+
+interface ScanResultItem extends ParsedMenuItem {
+  categoryId: string;
+}
+
+interface ScanResultSuccess {
+  success: true;
+  items: ScanResultItem[];
+}
+
+type ScanResponse = ScanResultSuccess | MenuScanError;
+
+interface MenuScanError {
+  success: false;
+  error: string;
+}
 
 export async function scanMenuImage(
   base64Data: string,
   mimeType: string
-): Promise<MenuScanResponse> {
+): Promise<ScanResponse> {
   const user = await getCurrentUser();
   if (!user) {
     return { success: false, error: "Unauthorized" };
@@ -33,7 +50,57 @@ export async function scanMenuImage(
       return { success: false, error: validation.error! };
     }
 
-    return { success: true, items: validation.data!.items };
+    const items = validation.data!.items;
+
+    // Fetch existing categories
+    const existingCategories = await prisma.category.findMany({
+      select: { id: true, name: true },
+    });
+
+    // Build a case-insensitive lookup map
+    const categoryMap = new Map<string, string>();
+    existingCategories.forEach((cat) => {
+      categoryMap.set(cat.name.toLowerCase().trim(), cat.id);
+    });
+
+    // Collect unique category names from AI suggestions
+    const uniqueCategoryNames = [
+      ...new Set(items.map((item) => item.category.trim()).filter(Boolean)),
+    ];
+
+    // Create missing categories
+    for (const catName of uniqueCategoryNames) {
+      const normalized = catName.toLowerCase().trim();
+      if (!categoryMap.has(normalized)) {
+        try {
+          const newCategory = await prisma.category.create({
+            data: { name: catName.trim() },
+          });
+          categoryMap.set(normalized, newCategory.id);
+        } catch {
+          // Category might have been created by a concurrent request
+          const existing = await prisma.category.findFirst({
+            where: { name: { equals: catName.trim(), mode: "insensitive" } },
+            select: { id: true },
+          });
+          if (existing) {
+            categoryMap.set(normalized, existing.id);
+          }
+        }
+      }
+    }
+
+    // Map items with categoryId
+    const itemsWithCategory: ScanResultItem[] = items.map((item) => {
+      const normalized = item.category.toLowerCase().trim();
+      const categoryId = categoryMap.get(normalized) || "";
+      return {
+        ...item,
+        categoryId,
+      };
+    });
+
+    return { success: true, items: itemsWithCategory };
   } catch (error: unknown) {
     const raw = error instanceof Error ? error.message : String(error);
     const msg = raw.toLowerCase();

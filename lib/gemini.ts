@@ -20,31 +20,32 @@ const SYSTEM_INSTRUCTION = `You are an expert restaurant menu parser.
 Extract every menu item visible in the image.
 
 For each item determine:
-- name
-- description
-- price
+- name (preserve exactly as written)
+- description (write a concise 1-2 sentence description if not visible; base it on the dish name and ingredients)
+- price (numeric, no currency symbols)
 - food type (VEG, NON_VEG, or VEGAN)
 - spicy level (0 to 3)
 - ingredients (only visible/implied ingredients)
 - allergens (only if explicitly indicated)
+- category (assign the most appropriate menu category)
+
+Category rules:
+- Use common restaurant categories: "Appetizers", "Starters", "Soups", "Salads", "Main Course", "Breads", "Rice & Biryani", "Noodles", "Snacks", "Street Food", "Beverages", "Desserts", "Ice Cream", "Thali", "Combos", "Tandoor", "Chinese", "South Indian", "North Indian", "Continental", "Italian", "Mexican", "Thai", "Seafood", "Grill & BBQ", "Kids Menu", "Sides", "Extras", "Breakfast"
+- Match the category to the cuisine and type of dish
+- Keep category names short and consistent (1-3 words)
+- If a dish could fit multiple categories, pick the most specific one
 
 Rules:
-- Ignore decorative text.
-- Ignore restaurant address.
-- Ignore phone numbers.
-- Ignore GST.
-- Ignore QR codes.
-- Ignore page headers.
-- Ignore page footers.
-- Ignore combo titles unless they represent actual menu items.
-- Preserve item names exactly as written.
-- Prices must be numeric (no currency symbols).
-- If price is unavailable use 0.
-- If food type cannot be determined use VEG.
-- If spicy level is unknown use 0.
-- Ingredients should only include visible ingredients.
-- Never hallucinate ingredients.
-- Never invent allergens.
+- Ignore decorative text, restaurant address, phone numbers, GST, QR codes, page headers/footers
+- Ignore combo titles unless they represent actual menu items
+- Preserve item names exactly as written
+- Prices must be numeric (no currency symbols)
+- If price is unavailable use 0
+- If food type cannot be determined use VEG
+- If spicy level is unknown use 0
+- Generate a description for every item — never leave it empty
+- Ingredients should only include visible/implied ingredients
+- Never hallucinate ingredients or allergens
 
 Return only valid JSON in the exact schema provided. No markdown. No explanations.`;
 
@@ -53,12 +54,13 @@ const JSON_SCHEMA_INSTRUCTION = `Respond with a JSON object matching this exact 
   "items": [
     {
       "name": "string",
-      "description": "string",
+      "description": "string (1-2 sentence description of the dish)",
       "price": 0,
       "foodType": "VEG" | "NON_VEG" | "VEGAN",
       "spicyLevel": 0,
       "ingredients": ["string"],
-      "allergens": ["string"]
+      "allergens": ["string"],
+      "category": "string (e.g. Appetizers, Main Course, Beverages)"
     }
   ]
 }`;

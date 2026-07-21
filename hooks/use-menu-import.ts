@@ -75,7 +75,8 @@ export function useMenuImport() {
         spicyLevel: item.spicyLevel,
         ingredients: item.ingredients,
         allergens: item.allergens,
-        categoryId: "",
+        categoryId: item.categoryId || "",
+        categoryName: item.category || "",
         selected: true,
       }));
 
