@@ -77,6 +77,8 @@ export const menuItemSchema = z.object({
   allergens: z.array(z.string().max(100)).optional().default([]),
   nutrition: z.record(z.string(), z.unknown()).nullable().optional(),
   categoryId: z.string(),
+  isChefSpecial: z.boolean().optional().default(false),
+  isBestSeller: z.boolean().optional().default(false),
   variants: z.array(variantSchema).optional().default([]),
   addons: z.array(addonSchema).optional().default([]),
 });
