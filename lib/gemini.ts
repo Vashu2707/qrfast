@@ -105,7 +105,15 @@ export async function analyzeMenuImage(
   try {
     return await callGemini(base64Data, mimeType, PRIMARY_MODEL);
   } catch (primaryError) {
-    console.warn("Primary model failed, trying fallback:", primaryError);
-    return await callGemini(base64Data, mimeType, FALLBACK_MODEL);
+    const primaryMsg = primaryError instanceof Error ? primaryError.message : String(primaryError);
+    console.warn(`[gemini] Primary model (${PRIMARY_MODEL}) failed:`, primaryMsg);
+
+    try {
+      return await callGemini(base64Data, mimeType, FALLBACK_MODEL);
+    } catch (fallbackError) {
+      const fallbackMsg = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
+      console.error(`[gemini] Fallback model (${FALLBACK_MODEL}) also failed:`, fallbackMsg);
+      throw primaryError;
+    }
   }
 }

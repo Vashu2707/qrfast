@@ -35,19 +35,23 @@ export async function scanMenuImage(
 
     return { success: true, items: validation.data!.items };
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Unknown error occurred";
+    const raw = error instanceof Error ? error.message : String(error);
+    const msg = raw.toLowerCase();
+    console.error("[menu-scanner] Error:", raw);
 
-    if (message.includes("API key")) {
-      return { success: false, error: "AI service is not configured. Please contact support." };
+    if (msg.includes("api key") || msg.includes("apikey") || msg.includes("invalid_key") || msg.includes("401") || msg.includes("403")) {
+      return { success: false, error: "AI service authentication failed. Check your GEMINI_API_KEY." };
     }
-    if (message.includes("timeout") || message.includes("deadline")) {
+    if (msg.includes("timeout") || msg.includes("deadline")) {
       return { success: false, error: "AI service timed out. Please try again." };
     }
-    if (message.includes("quota") || message.includes("rate")) {
+    if (msg.includes("resource_exhausted") || msg.includes("429") || msg.includes("quota")) {
       return { success: false, error: "AI service rate limit exceeded. Please try again later." };
     }
+    if (msg.includes("not found") || msg.includes("404") || msg.includes("does not exist")) {
+      return { success: false, error: `AI model not available. Detail: ${raw}` };
+    }
 
-    console.error("Menu scan error:", error);
-    return { success: false, error: "Failed to analyze the menu image. Please try again." };
+    return { success: false, error: `Failed to analyze menu: ${raw}` };
   }
 }
