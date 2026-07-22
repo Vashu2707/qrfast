@@ -69,7 +69,7 @@ export default function TablesPage() {
   return (
     <div>
       <StaffHeader title="Tables" subtitle="Manage tables and QR codes" />
-      <div className="space-y-6 p-6">
+      <div className="space-y-4 p-4 sm:space-y-6 sm:p-6">
         <Button onClick={() => setDialogOpen(true)}><Plus className="mr-2 size-4" />Add Table</Button>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogContent>

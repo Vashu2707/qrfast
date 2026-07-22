@@ -41,7 +41,7 @@ export function PreviewTable({
       </div>
 
       {/* Item Cards */}
-      <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
+      <div className="space-y-2 max-h-[40vh] sm:max-h-[50vh] overflow-y-auto pr-1">
         {items.map((item) => (
           <ItemCard
             key={item.id}
@@ -79,16 +79,16 @@ function ItemCard({
       )}
     >
       {/* Main Row */}
-      <div className="flex items-center gap-3 px-3 py-2.5">
+      <div className="flex items-center gap-2 sm:gap-3 px-2.5 py-2 sm:px-3 sm:py-2.5">
         <Checkbox
           checked={item.selected}
           onCheckedChange={onToggle}
           aria-label={`Select ${item.name}`}
         />
 
-        {/* Image Thumbnail */}
+        {/* Image Thumbnail - hide on very small screens */}
         {item.imageUrl ? (
-          <div className="shrink-0 size-9 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-800">
+          <div className="shrink-0 size-8 sm:size-9 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-800 hidden xs:block">
             <img
               src={item.imageUrl}
               alt={item.name}
@@ -99,7 +99,7 @@ function ItemCard({
             />
           </div>
         ) : (
-          <div className="shrink-0 size-9 rounded-lg border border-dashed border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+          <div className="shrink-0 size-8 sm:size-9 rounded-lg border border-dashed border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 items-center justify-center hidden xs:flex">
             <ImageIcon className="size-3.5 text-gray-300 dark:text-gray-700" />
           </div>
         )}
@@ -111,11 +111,11 @@ function ItemCard({
 
         {/* Name + Price */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <Input
               value={item.name}
               onChange={(e) => onUpdate({ name: e.target.value })}
-              className="h-6 border-0 bg-transparent p-0 text-sm font-bold focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none min-w-0"
+              className="h-5 sm:h-6 border-0 bg-transparent p-0 text-xs sm:text-sm font-bold focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none min-w-0"
             />
             {item.spicyLevel > 0 && (
               <span className="text-[10px] shrink-0">
@@ -124,14 +124,14 @@ function ItemCard({
             )}
           </div>
           {item.description && (
-            <p className="text-[11px] text-gray-400 truncate mt-0.5 max-w-[280px]">
+            <p className="text-[10px] sm:text-[11px] text-gray-400 truncate mt-0.5 max-w-[180px] sm:max-w-[280px]">
               {item.description}
             </p>
           )}
         </div>
 
         {/* Price */}
-        <div className="shrink-0 w-20">
+        <div className="shrink-0 w-16 sm:w-20">
           <Input
             type="number"
             min="0"
@@ -140,12 +140,12 @@ function ItemCard({
             onChange={(e) =>
               onUpdate({ price: parseFloat(e.target.value) || 0 })
             }
-            className="h-6 border-0 bg-transparent p-0 text-sm font-bold text-right focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none"
+            className="h-5 sm:h-6 border-0 bg-transparent p-0 text-xs sm:text-sm font-bold text-right focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none"
           />
         </div>
 
-        {/* Category Badge */}
-        <div className="shrink-0 hidden sm:block">
+        {/* Category Badge - hidden on mobile */}
+        <div className="shrink-0 hidden md:block">
           {item.categoryId ? (
             <Badge className="text-[9px] font-bold px-1.5 py-0 bg-blue-50 text-blue-600 border-0">
               {item.categoryName || categories.find((c) => c.id === item.categoryId)?.name || "Set"}
@@ -160,7 +160,7 @@ function ItemCard({
         {/* Expand Toggle */}
         <button
           onClick={() => setExpanded(!expanded)}
-          className="shrink-0 size-6 rounded-md flex items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          className="shrink-0 size-7 sm:size-8 rounded-md flex items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
         >
           {expanded ? (
             <ChevronUp className="size-3.5" />
@@ -172,14 +172,14 @@ function ItemCard({
 
       {/* Expanded Details */}
       {expanded && (
-        <div className="px-3 pb-3 pt-1 border-t border-gray-50 dark:border-gray-900 space-y-2.5">
+        <div className="px-2.5 pb-3 pt-1 border-t border-gray-50 dark:border-gray-900 space-y-2.5 sm:px-3">
           {/* Image Section */}
           <div className="space-y-1">
             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
               Image
             </label>
             {item.imageUrl ? (
-              <div className="relative size-20 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-800">
+              <div className="relative size-16 sm:size-20 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-800">
                 <img
                   src={item.imageUrl}
                   alt={item.name}
@@ -193,7 +193,7 @@ function ItemCard({
                 </button>
               </div>
             ) : (
-              <div className="size-20 rounded-lg border border-dashed border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+              <div className="size-16 sm:size-20 rounded-lg border border-dashed border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
                 <ImageIcon className="size-5 text-gray-300 dark:text-gray-700" />
               </div>
             )}
@@ -213,7 +213,7 @@ function ItemCard({
           </div>
 
           {/* Food Type + Spicy */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
                 Food Type
@@ -235,7 +235,7 @@ function ItemCard({
           </div>
 
           {/* Ingredients + Allergens */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
                 Ingredients

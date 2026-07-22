@@ -65,26 +65,28 @@ export default function OrdersPage() {
   return (
     <div>
       <StaffHeader title="Orders" subtitle="Manage and track all orders" />
-      <div className="space-y-4 p-6">
-        <div className="flex flex-wrap gap-3">
+      <div className="space-y-4 p-4 sm:p-6">
+        <div className="flex flex-col gap-3 sm:flex-row">
           <div className="relative min-w-0 flex-1">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input placeholder="Search..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
-          <Select value={statusFilter} onValueChange={(v) => v && setStatusFilter(v)}>
-            <SelectTrigger className="w-full sm:w-[160px]">
-              <SelectValue placeholder="Filter status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              {Object.values(OrderStatus).map((s) => (
-                <SelectItem key={s} value={s}>{getOrderStatusLabel(s)}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button variant="outline" size="icon" className="size-11 shrink-0" onClick={() => refetch()}>
-            <RefreshCw className="size-4" />
-          </Button>
+          <div className="flex gap-3">
+            <Select value={statusFilter} onValueChange={(v) => v && setStatusFilter(v)}>
+              <SelectTrigger className="w-full sm:w-[160px]">
+                <SelectValue placeholder="Filter status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                {Object.values(OrderStatus).map((s) => (
+                  <SelectItem key={s} value={s}>{getOrderStatusLabel(s)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button variant="outline" size="icon" className="size-11 shrink-0" onClick={() => refetch()}>
+              <RefreshCw className="size-4" />
+            </Button>
+          </div>
         </div>
 
         {isLoading ? (
@@ -118,7 +120,7 @@ export default function OrdersPage() {
                       </div>
                       <p className="mt-2 text-lg font-bold">{formatCurrency(order.totalAmount)}</p>
                     </div>
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
                       <Select
                         value={order.status}
                         onValueChange={(v) => v && handleStatusUpdate(order.id, v as OrderStatus)}
@@ -133,22 +135,24 @@ export default function OrdersPage() {
                           <SelectItem value={OrderStatus.CANCELLED}>Cancelled</SelectItem>
                         </SelectContent>
                       </Select>
-                      {order.paymentStatus === PaymentStatus.PENDING && (
-                        <Button size="sm" onClick={() => handlePaymentUpdate(order.id, PaymentStatus.SUCCESS)}>
-                          Mark Paid
-                        </Button>
-                      )}
-                      {order.status === OrderStatus.COMPLETED && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="gap-1.5"
-                          onClick={() => window.open(`/api/bills/${order.id}`, "_blank")}
-                        >
-                          <FileText className="size-3.5" />
-                          View Bill
-                        </Button>
-                      )}
+                      <div className="flex gap-2">
+                        {order.paymentStatus === PaymentStatus.PENDING && (
+                          <Button size="sm" onClick={() => handlePaymentUpdate(order.id, PaymentStatus.SUCCESS)} className="flex-1 sm:flex-none">
+                            Mark Paid
+                          </Button>
+                        )}
+                        {order.status === OrderStatus.COMPLETED && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1.5 flex-1 sm:flex-none"
+                            onClick={() => window.open(`/api/bills/${order.id}`, "_blank")}
+                          >
+                            <FileText className="size-3.5" />
+                            View Bill
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </CardContent>

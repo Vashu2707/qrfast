@@ -589,53 +589,37 @@ export default function MenuPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50/50 dark:bg-gray-900/40 pb-12">
+    <div className="min-h-dvh bg-gray-50/50 dark:bg-gray-900/40 pb-12">
       {/* ── Header ── */}
-      <div className="bg-white dark:bg-gray-950 border-b border-gray-100 dark:border-gray-900 px-6 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="bg-white dark:bg-gray-950 border-b border-gray-100 dark:border-gray-900 px-4 py-3 sm:px-6 sm:py-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white">Menu Management</h1>
-          <p className="text-xs text-gray-500 mt-0.5">Organize your menu categories and menu items</p>
+          <h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">Menu Management</h1>
+          <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5">Organize your menu categories and items</p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="relative w-64">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="relative flex-1 sm:w-64 sm:flex-none">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
             <Input
               type="text"
-              placeholder="Search menu items..."
+              placeholder="Search menu..."
               value={globalSearch}
               onChange={(e) => setGlobalSearch(e.target.value)}
-              className="pl-9 h-9 bg-gray-50/50 border-gray-200 text-xs rounded-lg dark:bg-gray-900/50 focus-visible:ring-1"
+              className="pl-9 h-8 sm:h-9 bg-gray-50/50 border-gray-200 text-xs rounded-lg dark:bg-gray-900/50 focus-visible:ring-1"
             />
           </div>
 
           <div
-            className="flex size-9 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 relative cursor-pointer hover:bg-gray-200"
+            className="flex size-8 sm:size-9 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 relative cursor-pointer hover:bg-gray-200 shrink-0"
             onClick={() => setImportDialogOpen(true)}
             title="AI Menu Import"
           >
             <Sparkles className="size-4" />
           </div>
-
-          <div className="flex items-center gap-2 border-l border-gray-100 dark:border-gray-850 pl-3">
-            <div className="size-9 overflow-hidden rounded-full border border-gray-200">
-              <Image
-                src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=100&q=80"
-                alt="Spice Garden logo"
-                width={36}
-                height={36}
-                className="object-cover"
-              />
-            </div>
-            <div className="hidden lg:block text-left">
-              <p className="text-xs font-bold text-gray-900 dark:text-white leading-none">Spice Garden</p>
-              <p className="text-[10px] text-gray-500 leading-none mt-1">Owner</p>
-            </div>
-          </div>
         </div>
       </div>
 
-      <div className="px-6 py-6 space-y-6 max-w-7.5xl mx-auto">
+      <div className="px-4 py-4 sm:px-6 sm:py-6 space-y-4 sm:space-y-6 max-w-7.5xl mx-auto">
         {/* ── Stat Cards ── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
@@ -696,23 +680,23 @@ export default function MenuPage() {
         </div>
 
         {/* ── Workspace ── */}
-        <div className="grid grid-cols-12 gap-6 items-start">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-6 items-start">
           {/* Left: Tree Sidebar */}
-          <div className="col-span-12 lg:col-span-3 bg-white dark:bg-gray-950 rounded-xl border border-gray-100 dark:border-gray-900 shadow-sm p-4 space-y-4">
+          <div className="col-span-1 lg:col-span-3 bg-white dark:bg-gray-950 rounded-xl border border-gray-100 dark:border-gray-900 shadow-sm p-3 sm:p-4 space-y-3 sm:space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-bold text-gray-900 dark:text-white">Menu Categories</h2>
+              <h2 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white">Menu Categories</h2>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setCatDialogOpen(true)}
-                className="h-7 text-[10px] font-bold px-2.5 rounded-lg border-gray-200"
+                className="h-6 sm:h-7 text-[10px] font-bold px-2 sm:px-2.5 rounded-lg border-gray-200"
               >
                 <Plus className="mr-1 size-3" />
                 Add
               </Button>
             </div>
 
-            <div className="overflow-y-auto max-h-[60vh] pr-1">
+            <div className="overflow-y-auto max-h-[40vh] lg:max-h-[60vh] pr-1">
               {categoryTree.length > 0 ? (
                 renderTreeNodes(categoryTree)
               ) : (
@@ -722,9 +706,9 @@ export default function MenuPage() {
           </div>
 
           {/* Right: Items Workspace */}
-          <div className="col-span-12 lg:col-span-9 space-y-4">
+          <div className="col-span-1 lg:col-span-9 space-y-3 sm:space-y-4">
             {/* Breadcrumb & Title */}
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white dark:bg-gray-950 p-4 rounded-xl border border-gray-100 dark:border-gray-900 shadow-sm">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between bg-white dark:bg-gray-950 p-3 sm:p-4 rounded-xl border border-gray-100 dark:border-gray-900 shadow-sm">
               <div className="space-y-1">
                 <div className="flex items-center gap-1 text-[10px] text-gray-400 font-bold uppercase tracking-wider">
                   <Leaf className="size-3 text-green-500 mr-0.5" />

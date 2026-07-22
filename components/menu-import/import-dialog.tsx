@@ -134,9 +134,9 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-2xl md:max-w-3xl lg:max-w-4xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
+      <DialogContent className="w-full max-w-[calc(100vw-1rem)] sm:max-w-2xl md:max-w-3xl lg:max-w-4xl max-h-[100dvh] sm:max-h-[90vh] flex flex-col p-0 overflow-hidden rounded-none sm:rounded-2xl">
         {/* ── Header ── */}
-        <DialogHeader className="px-5 pt-5 pb-3 shrink-0">
+        <DialogHeader className="px-4 pt-4 pb-3 sm:px-5 sm:pt-5 shrink-0">
           <DialogTitle className="flex items-center gap-2 font-extrabold text-base">
             {step === "upload" && (
               <>
@@ -166,7 +166,7 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
         </DialogHeader>
 
         {/* ── Body ── */}
-        <div className="flex-1 overflow-y-auto px-5 pb-5">
+        <div className="flex-1 overflow-y-auto px-4 pb-4 sm:px-5 sm:pb-5">
           {/* Upload Step */}
           {step === "upload" && (
             <div className="space-y-4">
@@ -202,7 +202,7 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
           {step === "preview" && !scanning && items.length > 0 && (
             <div className="space-y-3">
               {/* Toolbar */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2">
                   <Button
                     variant="ghost"
@@ -217,7 +217,7 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
                     <span className="font-bold text-gray-900 dark:text-white">
                       {items.length}
                     </span>{" "}
-                    items found
+                    items
                     {selectedCount < items.length && (
                       <>
                         {" "}&middot;{" "}
@@ -230,30 +230,32 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
                   </span>
                 </div>
 
-                <BulkCategorySelect
-                  categories={categories}
-                  onBulkSelect={setBulkCategory}
-                />
+                <div className="flex flex-wrap items-center gap-2">
+                  <BulkCategorySelect
+                    categories={categories}
+                    onBulkSelect={setBulkCategory}
+                  />
 
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleGenerateImages}
-                  disabled={generatingImages || selectedCount === 0}
-                  className="text-xs font-bold h-7"
-                >
-                  {generatingImages ? (
-                    <>
-                      <Loader2 className="mr-1 size-3 animate-spin" />
-                      Finding Images...
-                    </>
-                  ) : (
-                    <>
-                      <ImageIcon className="mr-1 size-3" />
-                      Generate Images
-                    </>
-                  )}
-                </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleGenerateImages}
+                    disabled={generatingImages || selectedCount === 0}
+                    className="text-xs font-bold h-7"
+                  >
+                    {generatingImages ? (
+                      <>
+                        <Loader2 className="mr-1 size-3 animate-spin" />
+                        Finding Images...
+                      </>
+                    ) : (
+                      <>
+                        <ImageIcon className="mr-1 size-3" />
+                        Generate Images
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
 
               {error && <ErrorBanner message={error} />}
@@ -337,7 +339,7 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
 
         {/* ── Footer ── */}
         {step === "preview" && !scanning && items.length > 0 && (
-          <div className="px-5 py-3 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 shrink-0 flex items-center justify-between gap-3">
+          <div className="px-4 py-3 sm:px-5 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 shrink-0 flex items-center justify-between gap-3">
             <div className="flex-1 min-w-0">
               {hasMissingCategories ? (
                 <p className="text-[11px] text-amber-600 font-medium truncate">

@@ -69,7 +69,7 @@ export default function SettingsPage() {
   return (
     <div>
       <StaffHeader title="Settings" subtitle="Configure your restaurant" />
-      <div className="max-w-2xl space-y-6 p-6">
+      <div className="mx-auto max-w-2xl space-y-4 p-4 sm:space-y-6 sm:p-6">
         <Card className="border-border/60">
           <CardHeader><CardTitle className="text-base">Restaurant Details</CardTitle></CardHeader>
           <CardContent className="grid gap-4">

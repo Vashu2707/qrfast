@@ -68,7 +68,7 @@ export default function OffersPage() {
   return (
     <div>
       <StaffHeader title="Offers" subtitle="Manage discount codes" />
-      <div className="space-y-6 p-6">
+      <div className="space-y-4 p-4 sm:space-y-6 sm:p-6">
         <Button onClick={() => { resetForm(); setDialogOpen(true); }}><Plus className="mr-2 size-4" />Create Offer</Button>
         <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) resetForm(); }}>
           <DialogContent>

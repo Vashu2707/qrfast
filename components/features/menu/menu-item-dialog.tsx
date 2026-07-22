@@ -79,7 +79,7 @@ export function MenuItemDialog({ item, primaryColor, onClose }: Props) {
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto max-w-lg p-0">
+      <DialogContent className="max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto max-w-lg p-0 rounded-none sm:rounded-2xl">
         {item.images[0] && (
           <div className="relative h-48 w-full">
             <Image src={item.images[0]} alt={item.name} fill className="object-cover rounded-t-lg" />

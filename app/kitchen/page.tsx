@@ -74,7 +74,7 @@ export default function KitchenPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-dvh bg-background">
       <StaffHeader title="Kitchen Display" subtitle="Live order board" />
       <div className="flex flex-wrap items-center gap-2 border-b border-border/60 px-4 py-3 sm:px-6">
         <Button variant="outline" size="sm" onClick={() => refetch()}>
@@ -88,14 +88,14 @@ export default function KitchenPage() {
           {soundEnabled ? <Volume2 className="mr-2 size-4" /> : <VolumeX className="mr-2 size-4" />}
           Sound {soundEnabled ? "On" : "Off"}
         </Button>
-        <Link href="/dashboard"><Button variant="ghost" size="sm">Admin Dashboard</Button></Link>
+        <Link href="/dashboard"><Button variant="ghost" size="sm" className="hidden sm:inline-flex">Admin Dashboard</Button></Link>
         <Badge variant="secondary" className="ml-auto">{kitchenOrders.length} active</Badge>
       </div>
 
       {isLoading ? (
         <p className="py-20 text-center text-muted-foreground">Loading orders...</p>
       ) : (
-        <div className="grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 p-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4 sm:p-4">
           {columns.map(({ status, label, color }) => {
             const columnOrders = kitchenOrders.filter((o) => o.status === status);
             return (

@@ -61,7 +61,11 @@ export function DashboardShell({ children, user, unreadCount = 0 }: Props) {
           <ThemeToggle />
         </div>
 
-        <div className="flex-1 overflow-y-auto">{children}</div>
+        <div className="flex-1 overflow-y-auto">
+          <div className="mx-auto max-w-7xl">
+            {children}
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -35,7 +35,7 @@ export default function DashboardPage() {
   return (
     <div>
       <StaffHeader title="Dashboard" subtitle="Overview of your restaurant today" />
-      <div className="space-y-6 p-6">
+      <div className="space-y-4 p-4 sm:space-y-6 sm:p-6">
         {statsLoading ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             {Array.from({ length: 5 }).map((_, i) => (
@@ -67,7 +67,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Right Column: Notifications Panel */}
-          <div className="lg:col-span-1 lg:relative min-h-[400px] lg:min-h-0">
+          <div className="lg:col-span-1 lg:relative min-h-[300px] sm:min-h-[400px] lg:min-h-0">
             <div className="lg:absolute lg:inset-0 flex flex-col">
               {notificationsLoading ? (
                 <Skeleton className="h-full w-full rounded-xl" />
