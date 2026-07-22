@@ -367,7 +367,12 @@ export function OrderTrackingClient({
           <Button
             variant="outline"
             className="w-full h-11 gap-2"
-            onClick={() => window.open(`/api/bills/${orderId}`, "_blank")}
+            onClick={() =>
+              window.open(
+                `/api/bills/${orderId}${tableParam ? `?table=${encodeURIComponent(tableParam)}` : ""}`,
+                "_blank"
+              )
+            }
           >
             <Download className="size-4" />
             Download Bill

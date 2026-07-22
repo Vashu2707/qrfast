@@ -2,7 +2,7 @@
 
 import { GoogleGenAI } from "@google/genai";
 import { getStorageClient, getPublicUrl } from "@/lib/supabase/storage";
-import { getCurrentUser } from "./auth";
+import { requireAdmin } from "@/lib/roles";
 import { revalidatePath } from "next/cache";
 
 const IMAGE_SEARCH_MODEL = "gemini-3.5-flash-lite";
@@ -157,7 +157,7 @@ export type GenerateImagesResponse = GenerateImagesResult | GenerateImagesError;
 export async function generateMenuImages(
   dishNames: string[]
 ): Promise<GenerateImagesResponse> {
-  const user = await getCurrentUser();
+  const user = await requireAdmin();
   if (!user) {
     return { success: false, error: "Unauthorized" };
   }

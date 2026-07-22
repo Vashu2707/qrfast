@@ -52,6 +52,11 @@ export async function signUp(data: {
   email: string;
   password: string;
 }) {
+  // Staff accounts must be provisioned by an existing administrator or
+  // through Supabase administration; public signup must not grant admin access.
+  return { error: "Public staff registration is disabled." };
+
+  /*
   let supabase;
   try {
     supabase = await createClient();
@@ -91,6 +96,7 @@ export async function signUp(data: {
   }
 
   return { success: true };
+  */
 }
 
 export async function signOut() {

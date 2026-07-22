@@ -2,6 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { getCurrentUser } from "./auth";
+import { requireAdmin } from "@/lib/roles";
 import { revalidatePath } from "next/cache";
 
 export async function getNotifications() {
@@ -19,7 +20,7 @@ export async function getNotifications() {
 }
 
 export async function markNotificationRead(id: string | string[]) {
-  const user = await getCurrentUser();
+  const user = await requireAdmin();
   if (!user) return { error: "Unauthorized" };
 
   try {
@@ -37,7 +38,7 @@ export async function markNotificationRead(id: string | string[]) {
 }
 
 export async function deleteNotification(id: string | string[]) {
-  const user = await getCurrentUser();
+  const user = await requireAdmin();
   if (!user) return { error: "Unauthorized" };
 
   try {
@@ -54,7 +55,7 @@ export async function deleteNotification(id: string | string[]) {
 }
 
 export async function clearAllNotifications() {
-  const user = await getCurrentUser();
+  const user = await requireAdmin();
   if (!user) return { error: "Unauthorized" };
 
   try {

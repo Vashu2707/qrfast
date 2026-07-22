@@ -2,14 +2,14 @@
 
 import { randomUUID } from "crypto";
 import prisma from "@/lib/prisma";
-import { getCurrentUser } from "./auth";
+import { requireAdmin } from "@/lib/roles";
 import { revalidatePath } from "next/cache";
 import { createTableSchema } from "@/schemas";
 import QRCode from "qrcode";
 import { generateTableToken } from "@/lib/table-token";
 
 export async function getTables() {
-  const user = await getCurrentUser();
+  const user = await requireAdmin();
   if (!user) return [];
 
   try {
@@ -22,7 +22,7 @@ export async function getTables() {
 }
 
 export async function createTable(data: { number: string }) {
-  const user = await getCurrentUser();
+  const user = await requireAdmin();
   if (!user) return { error: "Unauthorized" };
 
   const parsed = createTableSchema.safeParse(data);
@@ -75,7 +75,7 @@ export async function createTable(data: { number: string }) {
 }
 
 export async function deleteTable(id: string) {
-  const user = await getCurrentUser();
+  const user = await requireAdmin();
   if (!user) return { error: "Unauthorized" };
 
   try {
@@ -89,7 +89,7 @@ export async function deleteTable(id: string) {
 }
 
 export async function updateTableStatus(id: string, status: string) {
-  const user = await getCurrentUser();
+  const user = await requireAdmin();
   if (!user) return { error: "Unauthorized" };
 
   try {

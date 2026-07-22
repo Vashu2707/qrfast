@@ -1,7 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
-import { getCurrentUser } from "./auth";
+import { requireAdmin } from "@/lib/roles";
 import { revalidatePath } from "next/cache";
 import type { SaveMenuItemsResult } from "@/types/menu-import";
 
@@ -20,7 +20,7 @@ interface MenuItemToSave {
 export async function saveMenuItems(
   items: MenuItemToSave[]
 ): Promise<SaveMenuItemsResult> {
-  const user = await getCurrentUser();
+  const user = await requireAdmin();
   if (!user) {
     return { error: "Unauthorized" };
   }
