@@ -2,12 +2,12 @@
 
 import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
-import { getCurrentUser } from "./auth";
+import { requireAdmin } from "@/lib/roles";
 import { menuItemSchema, type MenuItemInput } from "@/schemas";
 import { revalidatePath } from "next/cache";
 
 export async function getMenuItems() {
-  const user = await getCurrentUser();
+  const user = await requireAdmin();
   if (!user) throw new Error("Unauthorized");
 
   return prisma.menuItem.findMany({
@@ -17,7 +17,7 @@ export async function getMenuItems() {
 }
 
 export async function createMenuItem(rawData: MenuItemInput) {
-  const user = await getCurrentUser();
+  const user = await requireAdmin();
   if (!user) return { error: "Unauthorized" };
 
   const parsed = menuItemSchema.safeParse(rawData);
@@ -81,7 +81,7 @@ export async function createMenuItem(rawData: MenuItemInput) {
 }
 
 export async function updateMenuItem(id: string, rawData: MenuItemInput) {
-  const user = await getCurrentUser();
+  const user = await requireAdmin();
   if (!user) return { error: "Unauthorized" };
 
   const parsed = menuItemSchema.safeParse(rawData);
@@ -149,7 +149,7 @@ export async function updateMenuItem(id: string, rawData: MenuItemInput) {
 }
 
 export async function deleteMenuItem(id: string) {
-  const user = await getCurrentUser();
+  const user = await requireAdmin();
   if (!user) return { error: "Unauthorized" };
 
   try {
@@ -189,7 +189,7 @@ export async function toggleMenuItemAvailability(
   id: string,
   isAvailable: boolean
 ) {
-  const user = await getCurrentUser();
+  const user = await requireAdmin();
   if (!user) return { error: "Unauthorized" };
 
   try {

@@ -1,12 +1,12 @@
 "use server";
 
 import prisma from "@/lib/prisma";
-import { getCurrentUser } from "./auth";
+import { requireAdmin } from "@/lib/roles";
 import { offerSchema, type OfferInput } from "@/schemas";
 import { revalidatePath } from "next/cache";
 
 export async function getOffers() {
-  const user = await getCurrentUser();
+  const user = await requireAdmin();
   if (!user) throw new Error("Unauthorized");
 
   return prisma.offer.findMany({
@@ -15,7 +15,7 @@ export async function getOffers() {
 }
 
 export async function createOffer(rawData: OfferInput) {
-  const user = await getCurrentUser();
+  const user = await requireAdmin();
   if (!user) return { error: "Unauthorized" };
 
   const parsed = offerSchema.safeParse(rawData);
@@ -45,7 +45,7 @@ export async function createOffer(rawData: OfferInput) {
 }
 
 export async function updateOffer(id: string, rawData: OfferInput) {
-  const user = await getCurrentUser();
+  const user = await requireAdmin();
   if (!user) return { error: "Unauthorized" };
 
   const parsed = offerSchema.safeParse(rawData);
@@ -77,7 +77,7 @@ export async function updateOffer(id: string, rawData: OfferInput) {
 }
 
 export async function deleteOffer(id: string) {
-  const user = await getCurrentUser();
+  const user = await requireAdmin();
   if (!user) return { error: "Unauthorized" };
 
   try {
@@ -91,7 +91,7 @@ export async function deleteOffer(id: string) {
 }
 
 export async function toggleOfferStatus(id: string) {
-  const user = await getCurrentUser();
+  const user = await requireAdmin();
   if (!user) return { error: "Unauthorized" };
 
   const offer = await prisma.offer.findUnique({ where: { id } });

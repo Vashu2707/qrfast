@@ -3,7 +3,7 @@
 import prisma from "@/lib/prisma";
 import { analyzeMenuImage } from "@/lib/gemini";
 import { validateGeminiResponse } from "@/lib/validators";
-import { getCurrentUser } from "./auth";
+import { requireAdmin } from "@/lib/roles";
 import type { MenuScanResponse, ParsedMenuItem } from "@/types/menu-import";
 
 const MAX_SIZE = 10 * 1024 * 1024;
@@ -28,7 +28,7 @@ export async function scanMenuImage(
   base64Data: string,
   mimeType: string
 ): Promise<ScanResponse> {
-  const user = await getCurrentUser();
+  const user = await requireAdmin();
   if (!user) {
     return { success: false, error: "Unauthorized" };
   }

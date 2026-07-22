@@ -1,13 +1,13 @@
 "use server";
 
 import prisma from "@/lib/prisma";
-import { getCurrentUser } from "./auth";
+import { requireAdmin } from "@/lib/roles";
 import { OrderStatus, PaymentStatus } from "@prisma/client";
 
 const emptyStats = { todayOrders: 0, pendingOrders: 0, completedToday: 0, todayRevenue: 0, totalTables: 0, occupiedTables: 0, topItems: [] as { item: any; quantity: number }[], chartData: [] as { date: string; revenue: number }[], totalRevenue: 0, avgOrderValue: 0 };
 
 export async function getDashboardStats() {
-  const user = await getCurrentUser();
+  const user = await requireAdmin();
   if (!user) return { ...emptyStats };
 
   const todayStart = new Date();
@@ -110,7 +110,7 @@ export async function getDashboardStats() {
 }
 
 export async function exportOrdersCSV() {
-  const user = await getCurrentUser();
+  const user = await requireAdmin();
   if (!user) return "";
 
   try {

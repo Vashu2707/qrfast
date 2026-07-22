@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { getRazorpayClient } from "@/lib/razorpay";
 import { resend } from "@/lib/resend";
 import { getCurrentUser } from "./auth";
+import { requireAdmin, requireStaff } from "@/lib/roles";
 import { validateOffer } from "./offers";
 import { createOrderSchema, type CreateOrderInput } from "@/schemas";
 import {
@@ -234,6 +235,9 @@ export async function createOrder(rawData: CreateOrderInput) {
  * Only affects orders still in CONFIRMED status with PENDING payment.
  */
 export async function cancelUnpaidOrder(orderId: string) {
+  const user = await getCurrentUser();
+  if (!user) return;
+
   if (!orderId || typeof orderId !== "string") return;
 
   try {
@@ -380,7 +384,7 @@ export async function submitReview(data: {
 // ─── Staff (authenticated) ────────────────────────────────────────────────────
 
 export async function getOrders() {
-  const user = await getCurrentUser();
+  const user = await requireStaff();
   if (!user) return [];
 
   try {
@@ -399,7 +403,7 @@ export async function getOrders() {
 }
 
 export async function updateOrderStatus(id: string, status: OrderStatus) {
-  const user = await getCurrentUser();
+  const user = await requireStaff();
   if (!user) return { error: "Unauthorized" };
 
   try {
@@ -512,7 +516,7 @@ export async function updateOrderPaymentStatus(
   id: string,
   paymentStatus: PaymentStatus
 ) {
-  const user = await getCurrentUser();
+  const user = await requireAdmin();
   if (!user) return { error: "Unauthorized" };
 
   try {
