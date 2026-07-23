@@ -2,6 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { verifyTableToken } from "@/lib/table-token";
+import { convertDecimalsDeep } from "@/lib/decimal";
 
 export async function getPublicMenu(tableParam: string) {
   const tableId = verifyTableToken(tableParam);
@@ -69,14 +70,15 @@ export async function getPublicMenu(tableParam: string) {
     take: 10,
   });
 
-  return {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return convertDecimalsDeep({
     restaurant: settings,
     table,
     categories,
     bestsellers,
     newItems,
     reviews,
-  };
+  }) as any;
 }
 
 export async function getPublicMenuItem(itemId: string) {

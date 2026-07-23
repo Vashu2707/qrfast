@@ -1,12 +1,12 @@
 "use server";
 
 import prisma from "@/lib/prisma";
-import { getCurrentUser } from "./auth";
+import { requireAdmin } from "@/lib/roles";
 import { revalidatePath } from "next/cache";
 import { categorySchema } from "@/schemas";
 
 export async function getCategories() {
-  const user = await getCurrentUser();
+  const user = await requireAdmin();
   if (!user) throw new Error("Unauthorized");
 
   return prisma.category.findMany({
@@ -20,7 +20,7 @@ export async function createCategory(data: {
   sortOrder?: number;
   parentId?: string | null;
 }) {
-  const user = await getCurrentUser();
+  const user = await requireAdmin();
   if (!user) return { error: "Unauthorized" };
 
   const parsed = categorySchema.safeParse(data);
@@ -51,7 +51,7 @@ export async function updateCategory(
   id: string,
   data: { name?: string; description?: string; sortOrder?: number; parentId?: string | null }
 ) {
-  const user = await getCurrentUser();
+  const user = await requireAdmin();
   if (!user) return { error: "Unauthorized" };
 
   const parsed = categorySchema.partial().safeParse(data);
@@ -82,7 +82,7 @@ export async function updateCategory(
 }
 
 export async function deleteCategory(id: string) {
-  const user = await getCurrentUser();
+  const user = await requireAdmin();
   if (!user) return { error: "Unauthorized" };
 
   try {

@@ -117,7 +117,7 @@ export default function OffersPage() {
                 {offer.title && <p className="mt-1 text-sm text-muted-foreground">{offer.title}</p>}
                 <p className="mt-1 text-sm">
                   {offer.discountType === "PERCENTAGE" ? `${offer.discountValue}% off` : `₹${offer.discountValue} off`}
-                  {offer.minOrderAmount > 0 && ` · Min ₹${offer.minOrderAmount}`}
+                  {Number(offer.minOrderAmount) > 0 && ` · Min ₹${offer.minOrderAmount}`}
                 </p>
                 <p className="text-xs text-muted-foreground">Expires: {formatDate(offer.expiryDate)}</p>
                 <p className="text-xs text-muted-foreground">Used: {offer.usageCount}{offer.usageLimit ? `/${offer.usageLimit}` : ""}</p>

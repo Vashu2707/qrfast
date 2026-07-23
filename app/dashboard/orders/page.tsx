@@ -114,7 +114,7 @@ export default function OrdersPage() {
                       <div className="mt-3 space-y-1">
                         {order.orderItems.map((item) => (
                           <p key={item.id} className="text-sm">
-                            {item.quantity}x {item.menuItem.name} — {formatCurrency(item.price * item.quantity)}
+                            {item.quantity}x {item.menuItem.name} — {formatCurrency(Number(item.price) * item.quantity)}
                           </p>
                         ))}
                       </div>

@@ -2,12 +2,12 @@
 
 import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
-import { getCurrentUser } from "./auth";
+import { requireAdmin } from "@/lib/roles";
 import { settingsSchema, type SettingsInput } from "@/schemas";
 import { revalidatePath } from "next/cache";
 
 export async function getSettings() {
-  const user = await getCurrentUser();
+  const user = await requireAdmin();
   if (!user) throw new Error("Unauthorized");
 
   return prisma.settings.findUnique({
@@ -16,7 +16,7 @@ export async function getSettings() {
 }
 
 export async function updateRestaurantSettings(rawData: SettingsInput) {
-  const user = await getCurrentUser();
+  const user = await requireAdmin();
   if (!user) return { error: "Unauthorized" };
 
   const parsed = settingsSchema.safeParse(rawData);

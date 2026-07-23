@@ -177,26 +177,26 @@ export async function generateBillHtml(orderId: string): Promise<string | null> 
     <div class="totals">
       <div class="row">
         <span>Subtotal</span>
-        <span>${formatCurrency(order.subtotal)}</span>
+        <span>${formatCurrency(toNumber(order.subtotal))}</span>
       </div>
       ${toNumber(order.discountAmount) > 0 ? `
       <div class="row discount">
         <span>Discount${order.offerCode ? ` (${escapeHtml(order.offerCode)})` : ""}</span>
-        <span>−${formatCurrency(order.discountAmount)}</span>
+        <span>−${formatCurrency(toNumber(order.discountAmount))}</span>
       </div>` : ""}
       ${toNumber(order.gstAmount) > 0 ? `
       <div class="row">
         <span>GST (${restaurant.gstPercentage}%)</span>
-        <span>${formatCurrency(order.gstAmount)}</span>
+        <span>${formatCurrency(toNumber(order.gstAmount))}</span>
       </div>` : ""}
       ${toNumber(order.serviceChargeAmount) > 0 ? `
       <div class="row">
         <span>Service Charge (${restaurant.serviceChargePercentage}%)</span>
-        <span>${formatCurrency(order.serviceChargeAmount)}</span>
+        <span>${formatCurrency(toNumber(order.serviceChargeAmount))}</span>
       </div>` : ""}
       <div class="row total">
         <span>Grand Total</span>
-        <span>${formatCurrency(order.totalAmount)}</span>
+        <span>${formatCurrency(toNumber(order.totalAmount))}</span>
       </div>
     </div>
 

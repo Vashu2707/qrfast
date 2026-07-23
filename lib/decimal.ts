@@ -50,3 +50,19 @@ export function convertDecimals<T extends DecimalFields>(obj: T): T {
 export function convertDecimalsArray<T extends DecimalFields>(arr: T[]): T[] {
   return arr.map(convertDecimals);
 }
+
+/**
+ * Recursively convert all Prisma.Decimal values to JavaScript numbers in an object tree.
+ */
+export function convertDecimalsDeep<T>(obj: T): T {
+  if (obj == null || typeof obj !== "object") return obj;
+  if (Array.isArray(obj)) return obj.map(convertDecimalsDeep) as T;
+  if ("toNumber" in obj && typeof (obj as { toNumber: () => number }).toNumber === "function") {
+    return (obj as { toNumber: () => number }).toNumber() as T;
+  }
+  const result: Record<string, unknown> = {};
+  for (const key of Object.keys(obj as Record<string, unknown>)) {
+    result[key] = convertDecimalsDeep((obj as Record<string, unknown>)[key]);
+  }
+  return result as T;
+}

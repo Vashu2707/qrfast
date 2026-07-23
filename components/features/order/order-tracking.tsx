@@ -305,7 +305,7 @@ export function OrderTrackingClient({
                     <span className="font-medium">
                       {item.quantity}× {item.menuItem.name}
                     </span>
-                    <span className="font-medium">{formatCurrency(item.price * item.quantity)}</span>
+                    <span className="font-medium">{formatCurrency(Number(item.price) * item.quantity)}</span>
                   </div>
                   {/* Variant & addons from customizations */}
                   {customizations?.variant && (
@@ -329,7 +329,7 @@ export function OrderTrackingClient({
                 <span className="text-muted-foreground">Subtotal</span>
                 <span>{formatCurrency(order.subtotal)}</span>
               </div>
-              {order.discountAmount > 0 && (
+              {Number(order.discountAmount) > 0 && (
                 <div className="flex justify-between text-green-600">
                   <span>Discount</span>
                   <span>−{formatCurrency(order.discountAmount)}</span>
@@ -339,7 +339,7 @@ export function OrderTrackingClient({
                 <span className="text-muted-foreground">GST</span>
                 <span>{formatCurrency(order.gstAmount)}</span>
               </div>
-              {order.serviceChargeAmount > 0 && (
+              {Number(order.serviceChargeAmount) > 0 && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Service Charge</span>
                   <span>{formatCurrency(order.serviceChargeAmount)}</span>
@@ -367,7 +367,12 @@ export function OrderTrackingClient({
           <Button
             variant="outline"
             className="w-full h-11 gap-2"
-            onClick={() => window.open(`/api/bills/${orderId}`, "_blank")}
+            onClick={() =>
+              window.open(
+                `/api/bills/${orderId}${tableParam ? `?table=${encodeURIComponent(tableParam)}` : ""}`,
+                "_blank"
+              )
+            }
           >
             <Download className="size-4" />
             Download Bill

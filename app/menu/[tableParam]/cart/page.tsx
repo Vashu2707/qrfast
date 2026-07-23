@@ -22,8 +22,8 @@ export default async function CartPage({ params }: Props) {
   return (
     <CartClient
       tableParam={tableParam}
-      gstPercentage={settings?.gstPercentage ?? 5}
-      serviceChargePercentage={settings?.serviceChargePercentage ?? 0}
+      gstPercentage={Number(settings?.gstPercentage ?? 5)}
+      serviceChargePercentage={Number(settings?.serviceChargePercentage ?? 0)}
       primaryColor={settings?.primaryColor ?? "#E11D48"}
       restaurantName={settings?.restaurantName ?? "Restaurant"}
     />
