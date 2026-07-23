@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 type Order = {
   id: string;
   customerName: string;
-  totalAmount: number;
+  totalAmount: number | { toNumber(): number };
   status: string;
   createdAt: Date;
   table: { number: string };

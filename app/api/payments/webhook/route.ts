@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import crypto from "crypto";
 import prisma from "@/lib/prisma";
 import { PaymentStatus, OrderStatus, TableStatus, NotificationType } from "@prisma/client";
+import { toNumber } from "@/lib/decimal";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +41,11 @@ export async function POST(request: Request) {
       .update(rawBody)
       .digest("hex");
 
-    if (hash !== signature) {
+    const hashBuf = Buffer.from(hash, "utf8");
+    const sigBuf = Buffer.from(signature, "utf8");
+    const signatureValid = hashBuf.length === sigBuf.length && crypto.timingSafeEqual(hashBuf, sigBuf);
+
+    if (!signatureValid) {
       console.warn("[webhook] Signature mismatch!");
       return NextResponse.json(
         { error: "Webhook verification failed." },
@@ -114,7 +119,7 @@ export async function POST(request: Request) {
           await tx.notification.create({
             data: {
               title: `New Order! Table ${payment.order.table.number}`,
-              message: `${payment.order.customerName} placed an order for ₹${payment.order.totalAmount}`,
+              message: `${payment.order.customerName} placed an order for ₹${toNumber(payment.order.totalAmount)}`,
               type: NotificationType.NEW_ORDER,
             },
           });
@@ -200,7 +205,7 @@ export async function POST(request: Request) {
               await tx.notification.create({
                 data: {
                   title: `New Order! Table ${order.table.number}`,
-                  message: `${order.customerName} placed an order for ₹${order.totalAmount}`,
+                  message: `${order.customerName} placed an order for ₹${toNumber(order.totalAmount)}`,
                   type: NotificationType.NEW_ORDER,
                 },
               });
@@ -227,11 +232,9 @@ export async function POST(request: Request) {
     );
   } catch (error: unknown) {
     const elapsed = Date.now() - startTime;
-    const message =
-      error instanceof Error ? error.message : "Internal server error.";
     console.error(`[webhook] Exception after ${elapsed}ms:`, error);
     return NextResponse.json(
-      { error: message },
+      { error: "Webhook processing failed." },
       { status: 500, headers: NO_CACHE_HEADERS }
     );
   }

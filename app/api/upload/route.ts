@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getStorageClient, MENU_IMAGES_BUCKET } from "@/lib/supabase/storage";
+import { getCurrentUser } from "@/actions/auth";
 import { Role } from "@prisma/client";
+import { validateMagicBytes } from "@/lib/file-validation";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +22,8 @@ export async function POST(request: Request) {
   }
 
   // 2. Role check — only ADMIN can upload
-  if (user.user_metadata?.role !== Role.ADMIN) {
+  const dbUser = await getCurrentUser();
+  if (!dbUser || dbUser.role !== Role.ADMIN) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -52,16 +55,22 @@ export async function POST(request: Request) {
     );
   }
 
-  // 4. Build a unique, sanitised storage path
+  // 4. Validate magic bytes server-side (don't trust client Content-Type)
+  const buffer = await file.arrayBuffer();
+  const magic = validateMagicBytes(buffer, ALLOWED_MIME_TYPES);
+  if (!magic.valid) {
+    return NextResponse.json({ error: magic.error }, { status: 400 });
+  }
+
+  // 5. Build a unique, sanitised storage path
   //    Format: menu-items/<userId>/<timestamp>-<sanitized-filename>
   const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
   const safeName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
   const storagePath = `menu-items/${user.id}/${safeName}`;
 
-  // 5. Upload to Supabase Storage using the service-role client
+  // 6. Upload to Supabase Storage using the service-role client
   //    (service role bypasses RLS so the bucket can be private while still
   //     allowing staff to upload via this authenticated endpoint)
-  const buffer = await file.arrayBuffer();
   const storageClient = getStorageClient();
 
   const { error: uploadError } = await storageClient.storage

@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { requireAdmin } from "@/lib/roles";
 import { offerSchema, type OfferInput } from "@/schemas";
 import { revalidatePath } from "next/cache";
+import { toNumber } from "@/lib/decimal";
 
 export async function getOffers() {
   const user = await requireAdmin();
@@ -130,17 +131,20 @@ export async function validateOffer(code: string, subtotal: number) {
       return { isValid: false, message: "Offer usage limit reached." };
     }
 
-    if (subtotal < offer.minOrderAmount) {
+    const minOrderAmount = toNumber(offer.minOrderAmount);
+    const discountValue = toNumber(offer.discountValue);
+
+    if (subtotal < minOrderAmount) {
       return {
         isValid: false,
-        message: `Minimum order amount of ₹${offer.minOrderAmount} required.`,
+        message: `Minimum order amount of ₹${minOrderAmount} required.`,
       };
     }
 
     let discount =
       offer.discountType === "PERCENTAGE"
-        ? (subtotal * offer.discountValue) / 100
-        : offer.discountValue;
+        ? (subtotal * discountValue) / 100
+        : discountValue;
 
     discount = Math.min(discount, subtotal);
 
@@ -149,8 +153,8 @@ export async function validateOffer(code: string, subtotal: number) {
       offer: {
         code: offer.code,
         discountType: offer.discountType,
-        discountValue: offer.discountValue,
-        minOrderAmount: offer.minOrderAmount,
+        discountValue,
+        minOrderAmount,
       },
       discountAmount: discount,
     };

@@ -1,6 +1,6 @@
 import { menuScanResponseSchema, type MenuScanResponseInput } from "./menu-schema";
 
-const ACCEPTED_TYPES = ["image/png", "image/jpeg", "image/jpg"] as const;
+const ACCEPTED_TYPES = ["image/png", "image/jpeg"] as const;
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const COMPRESS_THRESHOLD = 5 * 1024 * 1024; // 5MB
 

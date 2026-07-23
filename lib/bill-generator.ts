@@ -1,11 +1,22 @@
 import prisma from "@/lib/prisma";
+import { toNumber } from "@/lib/decimal";
 
 function escapeHtml(str: string): string {
   return str
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function isHttpUrl(str: string): boolean {
+  try {
+    const url = new URL(str);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
 }
 
 function formatCurrency(amount: number): string {
@@ -60,6 +71,7 @@ export async function generateBillHtml(orderId: string): Promise<string | null> 
     const customizations = item.customizations as Record<string, unknown> | null;
     const variant = customizations?.variant as { name: string; price: number } | undefined;
     const addons = (customizations?.addons as { name: string; price: number }[]) ?? [];
+    const itemPrice = toNumber(item.price);
 
     return `
       <tr>
@@ -69,7 +81,7 @@ export async function generateBillHtml(orderId: string): Promise<string | null> 
           ${item.notes ? `<div style="font-size:11px;color:#888;margin-top:2px;font-style:italic;">${escapeHtml(item.notes)}</div>` : ""}
         </td>
         <td style="padding:6px 0;border-bottom:1px solid #f0f0f0;text-align:center;color:#666;">${item.quantity}</td>
-        <td style="padding:6px 0;border-bottom:1px solid #f0f0f0;text-align:right;font-weight:500;">${formatCurrency(item.price * item.quantity)}</td>
+        <td style="padding:6px 0;border-bottom:1px solid #f0f0f0;text-align:right;font-weight:500;">${formatCurrency(itemPrice * item.quantity)}</td>
       </tr>
     `;
   }).join("");
@@ -116,7 +128,7 @@ export async function generateBillHtml(orderId: string): Promise<string | null> 
 <body>
   <div class="bill">
     <div class="header">
-      ${restaurant.logo ? `<img src="${escapeHtml(restaurant.logo)}" alt="Logo" style="height:48px;margin:0 auto 8px;object-fit:contain;" />` : ""}
+      ${restaurant.logo && isHttpUrl(restaurant.logo) ? `<img src="${escapeHtml(restaurant.logo)}" alt="Logo" style="height:48px;margin:0 auto 8px;object-fit:contain;" />` : ""}
       <h1>${escapeHtml(restaurant.restaurantName)}</h1>
       ${restaurant.address ? `<p>${escapeHtml(restaurant.address)}</p>` : ""}
       ${restaurant.phone ? `<p>Ph: ${escapeHtml(restaurant.phone)}</p>` : ""}
@@ -165,26 +177,26 @@ export async function generateBillHtml(orderId: string): Promise<string | null> 
     <div class="totals">
       <div class="row">
         <span>Subtotal</span>
-        <span>${formatCurrency(order.subtotal)}</span>
+        <span>${formatCurrency(toNumber(order.subtotal))}</span>
       </div>
-      ${order.discountAmount > 0 ? `
+      ${toNumber(order.discountAmount) > 0 ? `
       <div class="row discount">
         <span>Discount${order.offerCode ? ` (${escapeHtml(order.offerCode)})` : ""}</span>
-        <span>−${formatCurrency(order.discountAmount)}</span>
+        <span>−${formatCurrency(toNumber(order.discountAmount))}</span>
       </div>` : ""}
-      ${order.gstAmount > 0 ? `
+      ${toNumber(order.gstAmount) > 0 ? `
       <div class="row">
         <span>GST (${restaurant.gstPercentage}%)</span>
-        <span>${formatCurrency(order.gstAmount)}</span>
+        <span>${formatCurrency(toNumber(order.gstAmount))}</span>
       </div>` : ""}
-      ${order.serviceChargeAmount > 0 ? `
+      ${toNumber(order.serviceChargeAmount) > 0 ? `
       <div class="row">
         <span>Service Charge (${restaurant.serviceChargePercentage}%)</span>
-        <span>${formatCurrency(order.serviceChargeAmount)}</span>
+        <span>${formatCurrency(toNumber(order.serviceChargeAmount))}</span>
       </div>` : ""}
       <div class="row total">
         <span>Grand Total</span>
-        <span>${formatCurrency(order.totalAmount)}</span>
+        <span>${formatCurrency(toNumber(order.totalAmount))}</span>
       </div>
     </div>
 

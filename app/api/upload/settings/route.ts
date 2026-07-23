@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getStorageClient, MENU_IMAGES_BUCKET } from "@/lib/supabase/storage";
+import { getCurrentUser } from "@/actions/auth";
+import { Role } from "@prisma/client";
+import { validateMagicBytes } from "@/lib/file-validation";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +18,11 @@ export async function POST(request: Request) {
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const dbUser = await getCurrentUser();
+  if (!dbUser || dbUser.role !== Role.ADMIN) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   let formData: FormData;
@@ -43,11 +51,17 @@ export async function POST(request: Request) {
     );
   }
 
+  // Validate magic bytes server-side (don't trust client Content-Type)
+  const buffer = await file.arrayBuffer();
+  const magic = validateMagicBytes(buffer, ALLOWED_MIME_TYPES);
+  if (!magic.valid) {
+    return NextResponse.json({ error: magic.error }, { status: 400 });
+  }
+
   const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
   const safeName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
   const storagePath = `settings/${user.id}/${safeName}`;
 
-  const buffer = await file.arrayBuffer();
   const storageClient = getStorageClient();
 
   const { error: uploadError } = await storageClient.storage

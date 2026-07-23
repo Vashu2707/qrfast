@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  password: z.string().min(8, "Password must be at least 8 characters").max(128, "Password must be at most 128 characters"),
 });
 
 export const forgotPasswordSchema = z.object({
@@ -11,10 +11,11 @@ export const forgotPasswordSchema = z.object({
 
 export const resetPasswordSchema = z
   .object({
-    password: z.string().min(6, "Password must be at least 6 characters"),
+    password: z.string().min(8, "Password must be at least 8 characters").max(128, "Password must be at most 128 characters"),
     confirmPassword: z
       .string()
-      .min(6, "Confirm password must be at least 6 characters"),
+      .min(8, "Confirm password must be at least 8 characters")
+      .max(128, "Confirm password must be at most 128 characters"),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",
@@ -25,8 +26,8 @@ export const signUpSchema = z
   .object({
     name: z.string().min(1, "Name is required"),
     email: z.string().email("Invalid email address"),
-    password: z.string().min(6, "Password must be at least 6 characters"),
-    confirmPassword: z.string().min(6, "Confirm password must be at least 6 characters"),
+    password: z.string().min(8, "Password must be at least 8 characters").max(128, "Password must be at most 128 characters"),
+    confirmPassword: z.string().min(8, "Confirm password must be at least 8 characters").max(128, "Confirm password must be at most 128 characters"),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",

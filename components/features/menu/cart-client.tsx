@@ -217,7 +217,7 @@ export function CartClient({
         modal: {
           ondismiss: async () => {
             isSubmitting.current = false;
-            await cancelUnpaidOrder(result.orderId);
+            await cancelUnpaidOrder(result.orderId, tableId);
           },
         },
       };

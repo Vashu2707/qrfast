@@ -6,14 +6,21 @@ import prisma, { prismaWithRetry } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { unstable_rethrow } from "next/navigation";
 import { getDefaultRouteForRole } from "@/lib/roles";
+import { checkRateLimit, getServerActionIp } from "@/lib/rate-limit";
+import { touchSession, clearSession, isSessionFresh } from "@/lib/session";
 
 export async function signIn(data: { email: string; password: string }) {
+  const ip = await getServerActionIp();
+  const { allowed, retryAfterMs } = checkRateLimit(`signin:${ip}`, 5, 60_000);
+  if (!allowed) {
+    return { error: "Too many login attempts. Please try again later." };
+  }
+
   let supabase;
   try {
     supabase = await createClient();
-  } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : "Unknown error";
-    return { error: "Failed to initialize auth: " + msg };
+  } catch {
+    return { error: "Authentication service is unavailable. Please try again." };
   }
 
   let authData;
@@ -26,9 +33,8 @@ export async function signIn(data: { email: string; password: string }) {
     if (result.error || !authData.user) {
       return { error: result.error?.message || "Invalid credentials." };
     }
-  } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : "Unknown error";
-    return { error: "Auth service error: " + msg };
+  } catch {
+    return { error: "Authentication service is unavailable. Please try again." };
   }
 
   let user;
@@ -37,13 +43,13 @@ export async function signIn(data: { email: string; password: string }) {
       where: { id: authData.user.id },
     });
     if (!user) {
-      return { error: "Staff account record not found in database." };
+      return { error: "Staff account not found." };
     }
-  } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : "Unknown error";
-    return { error: "Failed to fetch account info: " + msg };
+  } catch {
+    return { error: "Failed to load account information. Please try again." };
   }
 
+  await touchSession();
   return { success: true, role: user.role };
 }
 
@@ -60,9 +66,8 @@ export async function signUp(data: {
   let supabase;
   try {
     supabase = await createClient();
-  } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : "Unknown error";
-    return { error: "Failed to initialize auth: " + msg };
+  } catch {
+    return { error: "Authentication service is unavailable. Please try again." };
   }
 
   let authData;
@@ -76,9 +81,8 @@ export async function signUp(data: {
     if (result.error || !authData.user) {
       return { error: result.error?.message || "Failed to create account." };
     }
-  } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : "Unknown error";
-    return { error: "Auth service error: " + msg };
+  } catch {
+    return { error: "Authentication service is unavailable. Please try again." };
   }
 
   try {
@@ -90,9 +94,8 @@ export async function signUp(data: {
         role: "ADMIN",
       },
     });
-  } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : "Unknown error";
-    return { error: "Failed to create staff record: " + msg };
+  } catch {
+    return { error: "Failed to create staff record. Please try again." };
   }
 
   return { success: true };
@@ -103,20 +106,27 @@ export async function signOut() {
   try {
     const supabase = await createClient();
     await supabase.auth.signOut();
-  } catch {
-    // Proceed with sign-out even if Supabase call fails
+  } catch (error) {
+    console.error("signOut error:", error);
+    return { error: "Failed to sign out. Please try again." };
   }
+  await clearSession();
   revalidatePath("/");
   return { success: true };
 }
 
 export async function forgotPassword(email: string) {
+  const ip = await getServerActionIp();
+  const { allowed, retryAfterMs } = checkRateLimit(`forgot:${ip}`, 3, 60 * 60_000);
+  if (!allowed) {
+    return { error: "Too many reset requests. Please try again later." };
+  }
+
   let supabase;
   try {
     supabase = await createClient();
-  } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : "Unknown error";
-    return { error: "Failed to initialize auth: " + msg };
+  } catch {
+    return { error: "Authentication service is unavailable. Please try again." };
   }
 
   // Use the configured app URL — never derive from the Host header to prevent
@@ -137,29 +147,37 @@ export async function forgotPassword(email: string) {
       redirectTo: `${appUrl}/reset-password`,
     });
     if (error) return { error: error.message };
-  } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : "Unknown error";
-    return { error: "Failed to send reset email: " + msg };
+  } catch {
+    return { error: "Failed to send reset email. Please try again." };
   }
 
   return { success: true };
 }
 
 export async function resetPassword(password: string) {
+  const ip = await getServerActionIp();
+  const { allowed, retryAfterMs } = checkRateLimit(`reset:${ip}`, 3, 60 * 60_000);
+  if (!allowed) {
+    return { error: "Too many reset attempts. Please try again later." };
+  }
+
+  const session = await isSessionFresh();
+  if (!session.fresh) {
+    return { error: session.reason };
+  }
+
   let supabase;
   try {
     supabase = await createClient();
-  } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : "Unknown error";
-    return { error: "Failed to initialize auth: " + msg };
+  } catch {
+    return { error: "Authentication service is unavailable. Please try again." };
   }
 
   try {
     const { error } = await supabase.auth.updateUser({ password });
     if (error) return { error: error.message };
-  } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : "Unknown error";
-    return { error: "Failed to reset password: " + msg };
+  } catch {
+    return { error: "Failed to reset password. Please try again." };
   }
 
   return { success: true };
