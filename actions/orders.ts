@@ -430,10 +430,8 @@ export async function updateOrderStatus(id: string, status: OrderStatus) {
           data: { status: TableStatus.AVAILABLE },
         });
 
-        const [{ nextval }] = await tx.$queryRaw<{ nextval: bigint }[]>`
-          SELECT nextval('invoice_number_seq') AS nextval
-        `;
-        const invoiceNumber = `INV-${String(nextval).padStart(4, "0")}`;
+        const invoiceCount = await tx.invoice.count();
+        const invoiceNumber = `INV-${String(invoiceCount + 1).padStart(4, "0")}`;
 
         await tx.invoice.create({
           data: {
