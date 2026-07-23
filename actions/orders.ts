@@ -14,6 +14,7 @@ import {
   TableStatus,
 } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import { toNumber } from "@/lib/decimal";
 
 // ─── Public ──────────────────────────────────────────────────────────────────
 
@@ -49,13 +50,13 @@ export async function createOrder(rawData: CreateOrderInput) {
         const menuItem = menuItems.find((m) => m.id === cartItem.menuItemId);
         if (!menuItem) throw new Error(`Menu item not found or unavailable.`);
 
-        let itemPrice = menuItem.discountPrice ?? menuItem.price;
+        let itemPrice = toNumber(menuItem.discountPrice) || toNumber(menuItem.price);
 
         if (cartItem.customizations?.variant) {
           const v = menuItem.variants.find(
             (x) => x.id === cartItem.customizations!.variant!.id
           );
-          if (v) itemPrice = v.price;
+          if (v) itemPrice = toNumber(v.price);
         }
 
         let addonsPrice = 0;
@@ -64,8 +65,8 @@ export async function createOrder(rawData: CreateOrderInput) {
           for (const addonInput of cartItem.customizations.addons) {
             const add = menuItem.addons.find((a) => a.id === addonInput.id);
             if (add) {
-              addonsPrice += add.price;
-              addonsDetails.push({ id: add.id, name: add.name, price: add.price });
+              addonsPrice += toNumber(add.price);
+              addonsDetails.push({ id: add.id, name: add.name, price: toNumber(add.price) });
             }
           }
         }
@@ -109,11 +110,13 @@ export async function createOrder(rawData: CreateOrderInput) {
       }
 
       const taxableAmount = Math.max(0, subtotal - discountAmount);
+      const gstPercentage = toNumber(settings.gstPercentage);
+      const serviceChargePercentage = toNumber(settings.serviceChargePercentage);
       const gstAmount =
-        Math.round(((taxableAmount * settings.gstPercentage) / 100) * 100) / 100;
+        Math.round(((taxableAmount * gstPercentage) / 100) * 100) / 100;
       const serviceChargeAmount =
         Math.round(
-          ((taxableAmount * settings.serviceChargePercentage) / 100) * 100
+          ((taxableAmount * serviceChargePercentage) / 100) * 100
         ) / 100;
       const totalAmount =
         Math.round((taxableAmount + gstAmount + serviceChargeAmount) * 100) / 100;
@@ -233,17 +236,19 @@ export async function createOrder(rawData: CreateOrderInput) {
  * Cancels an unpaid Razorpay order when the customer dismisses the payment modal.
  * Only affects orders still in CONFIRMED status with PENDING payment.
  */
-export async function cancelUnpaidOrder(orderId: string) {
+export async function cancelUnpaidOrder(orderId: string, tableId: string) {
   if (!orderId || typeof orderId !== "string") return;
+  if (!tableId || typeof tableId !== "string") return;
 
   try {
     await prisma.$transaction(async (tx) => {
       const order = await tx.order.findUnique({
         where: { id: orderId },
-        select: { status: true, paymentStatus: true },
+        select: { status: true, paymentStatus: true, tableId: true },
       });
 
       if (!order) return;
+      if (order.tableId !== tableId) return;
       if (order.status !== OrderStatus.CONFIRMED) return;
       if (order.paymentStatus !== PaymentStatus.PENDING) return;
 
@@ -424,8 +429,10 @@ export async function updateOrderStatus(id: string, status: OrderStatus) {
           data: { status: TableStatus.AVAILABLE },
         });
 
-        const count = await tx.invoice.count();
-        const invoiceNumber = `INV-${String(count + 1).padStart(4, "0")}`;
+        const [{ nextval }] = await tx.$queryRaw<{ nextval: bigint }[]>`
+          SELECT nextval('invoice_number_seq') AS nextval
+        `;
+        const invoiceNumber = `INV-${String(nextval).padStart(4, "0")}`;
 
         await tx.invoice.create({
           data: {
@@ -462,7 +469,7 @@ export async function updateOrderStatus(id: string, status: OrderStatus) {
                 from: process.env.RESEND_FROM_EMAIL || "receipts@resend.dev",
                 to: customerEmail,
                 subject: `Invoice ${invoiceNumber} | QRFast`,
-                html: `<p>Dear Customer,</p><p>Thank you for dining with us! Here is your bill summary:</p><ul><li>Invoice: ${invoiceNumber}</li><li>Subtotal: ₹${order.subtotal}</li><li>Discount: ₹${order.discountAmount}</li><li>GST: ₹${order.gstAmount}</li><li>Service Charge: ₹${order.serviceChargeAmount}</li><li><strong>Grand Total: ₹${order.totalAmount}</strong></li></ul><p>We hope to see you again soon!</p>`,
+                html: `<p>Dear Customer,</p><p>Thank you for dining with us! Here is your bill summary:</p><ul><li>Invoice: ${invoiceNumber}</li><li>Subtotal: ₹${toNumber(order.subtotal)}</li><li>Discount: ₹${toNumber(order.discountAmount)}</li><li>GST: ₹${toNumber(order.gstAmount)}</li><li>Service Charge: ₹${toNumber(order.serviceChargeAmount)}</li><li><strong>Grand Total: ₹${toNumber(order.totalAmount)}</strong></li></ul><p>We hope to see you again soon!</p>`,
               });
             } catch (resendError) {
               console.error("Email send failed:", resendError);

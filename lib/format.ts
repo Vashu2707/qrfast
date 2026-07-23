@@ -1,10 +1,20 @@
-export function formatCurrency(amount: number, currency = "INR"): string {
+function toNum(value: unknown): number {
+  if (value == null) return 0;
+  if (typeof value === "number") return value;
+  if (typeof value === "string") return parseFloat(value) || 0;
+  if (typeof value === "object" && "toNumber" in value && typeof (value as { toNumber: () => number }).toNumber === "function") {
+    return (value as { toNumber: () => number }).toNumber();
+  }
+  return 0;
+}
+
+export function formatCurrency(amount: unknown, currency = "INR"): string {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency,
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
-  }).format(amount);
+  }).format(toNum(amount));
 }
 
 export function formatDate(date: Date | string): string {

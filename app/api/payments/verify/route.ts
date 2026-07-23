@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import crypto from "crypto";
 import prisma from "@/lib/prisma";
 import { PaymentStatus, OrderStatus, TableStatus, NotificationType } from "@prisma/client";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import { toNumber } from "@/lib/decimal";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +15,17 @@ const NO_CACHE_HEADERS = {
 export async function POST(request: Request) {
   const startTime = Date.now();
   console.log("[verify] Payment verification started");
+
+  // Rate limit: 10 requests per minute per IP
+  const ip = getClientIp(request);
+  const { allowed, retryAfterMs } = checkRateLimit(`verify:${ip}`, 10, 60_000);
+  if (!allowed) {
+    console.warn(`[verify] Rate limited IP: ${ip}`);
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429, headers: { ...NO_CACHE_HEADERS, "Retry-After": String(Math.ceil(retryAfterMs / 1000)) } }
+    );
+  }
 
   try {
     const body = await request.json();
@@ -50,7 +63,11 @@ export async function POST(request: Request) {
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
       .digest("hex");
 
-    if (hash !== razorpay_signature) {
+    const hashBuf = Buffer.from(hash, "utf8");
+    const sigBuf = Buffer.from(razorpay_signature, "utf8");
+    const signatureValid = hashBuf.length === sigBuf.length && crypto.timingSafeEqual(hashBuf, sigBuf);
+
+    if (!signatureValid) {
       console.warn("[verify] Signature mismatch!", {
         orderId: razorpay_order_id,
         paymentId: razorpay_payment_id,
@@ -131,7 +148,7 @@ export async function POST(request: Request) {
         await tx.notification.create({
           data: {
             title: `New Order! Table ${order.table.number}`,
-            message: `${order.customerName} placed an order for ₹${order.totalAmount}`,
+            message: `${order.customerName} placed an order for ₹${toNumber(order.totalAmount)}`,
             type: NotificationType.NEW_ORDER,
           },
         });
@@ -156,11 +173,9 @@ export async function POST(request: Request) {
     );
   } catch (error: unknown) {
     const elapsed = Date.now() - startTime;
-    const message =
-      error instanceof Error ? error.message : "Internal server error.";
     console.error(`[verify] Exception after ${elapsed}ms:`, error);
     return NextResponse.json(
-      { error: message },
+      { error: "Payment verification failed. Please try again." },
       { status: 500, headers: NO_CACHE_HEADERS }
     );
   }

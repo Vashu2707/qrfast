@@ -44,7 +44,11 @@ export function DashboardSidebar({ user, unreadCount = 0 }: DashboardSidebarProp
   const router = useRouter();
 
   const handleSignOut = async () => {
-    await signOut();
+    const result = await signOut();
+    if ("error" in result && result.error) {
+      toast.error(result.error);
+      return;
+    }
     toast.success("Signed out");
     router.push("/login");
     router.refresh();

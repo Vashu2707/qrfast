@@ -2,6 +2,11 @@ import type { NextConfig } from "next";
 
 const isDev = process.env.NODE_ENV === "development";
 
+// Extract project ref from Supabase URL to scope CSP (e.g. "abc123" from "https://abc123.supabase.co")
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+const supabaseHost = supabaseUrl.replace(/^https?:\/\//, "").replace(/\/$/, "");
+const supabaseCsp = supabaseHost || "*.supabase.co";
+
 const securityHeaders = [
   // Prevent clickjacking
   { key: "X-Frame-Options", value: "SAMEORIGIN" },
@@ -33,13 +38,13 @@ const securityHeaders = [
         ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com"
         : "script-src 'self' 'unsafe-inline' https://checkout.razorpay.com",
       // Images: self + data URIs (QR codes) + Supabase + Unsplash
-      "img-src 'self' data: blob: https://*.supabase.co https://images.unsplash.com",
+      `img-src 'self' data: blob: https://${supabaseCsp} https://images.unsplash.com`,
       // Frames: Razorpay payment iframe
       "frame-src https://api.razorpay.com https://checkout.razorpay.com",
       // API connections + HMR WebSockets in development
       isDev
-        ? "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.razorpay.com ws://localhost:* wss://localhost:* ws://127.0.0.1:* wss://127.0.0.1:*"
-        : "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.razorpay.com",
+        ? `connect-src 'self' https://${supabaseCsp} wss://${supabaseCsp} https://api.razorpay.com ws://localhost:* wss://localhost:* ws://127.0.0.1:* wss://127.0.0.1:*`
+        : `connect-src 'self' https://${supabaseCsp} wss://${supabaseCsp} https://api.razorpay.com`,
       // Fonts: local only
       "font-src 'self' data:",
       "object-src 'none'",
@@ -53,7 +58,7 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },
-      { protocol: "https", hostname: "*.supabase.co" },
+      { protocol: "https", hostname: supabaseHost || "*.supabase.co" },
     ],
     formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 60,

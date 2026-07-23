@@ -34,7 +34,10 @@ if (!process.env.DATABASE_URL) {
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) throw new Error("DATABASE_URL is required to seed the database.");
 
-const pool = new pg.Pool({ connectionString });
+const pool = new pg.Pool({
+  connectionString,
+  ssl: connectionString.includes("sslmode=") ? undefined : { rejectUnauthorized: false },
+});
 const prisma = new PrismaClient({
   adapter: new PrismaPg(pool),
 });
@@ -60,8 +63,8 @@ async function main() {
         currency: "INR",
         timezone: "Asia/Kolkata",
         gstNumber: "07AAAAA1111A1Z1",
-        gstPercentage: 5.0,
-        serviceChargePercentage: 2.5,
+        gstPercentage: "5.0",
+        serviceChargePercentage: "2.5",
         openingHours: {
           monday: { open: "11:00", close: "23:00", closed: false },
           tuesday: { open: "11:00", close: "23:00", closed: false },
@@ -142,8 +145,8 @@ async function main() {
     {
       name: "Paneer Butter Masala",
       description: "Rich, creamy and delicious gravy with soft paneer cubes",
-      price: 280,
-      discountPrice: 250,
+      price: "280",
+      discountPrice: "250",
       foodType: FoodType.VEG,
       spicyLevel: 1,
       preparationTime: 15,
@@ -158,7 +161,7 @@ async function main() {
     {
       name: "Paneer Lababdar",
       description: "Authentic Punjabi style rich and spicy curry",
-      price: 290,
+      price: "290",
       foodType: FoodType.VEG,
       spicyLevel: 2,
       preparationTime: 15,
@@ -173,7 +176,7 @@ async function main() {
     {
       name: "Kadai Paneer",
       description: "Spicy paneer cooked with bell peppers and onions",
-      price: 270,
+      price: "270",
       foodType: FoodType.VEG,
       spicyLevel: 2,
       preparationTime: 15,
@@ -188,7 +191,7 @@ async function main() {
     {
       name: "Paneer Do Pyaza",
       description: "Paneer cooked with double onions",
-      price: 260,
+      price: "260",
       foodType: FoodType.VEG,
       spicyLevel: 1,
       preparationTime: 15,
@@ -203,7 +206,7 @@ async function main() {
     {
       name: "Palak Paneer",
       description: "Cottage cheese cubes in smooth spinach gravy",
-      price: 280,
+      price: "280",
       foodType: FoodType.VEG,
       spicyLevel: 1,
       preparationTime: 15,
@@ -216,8 +219,8 @@ async function main() {
     {
       name: "Shahi Paneer",
       description: "Royal preparation with rich cashew gravy",
-      price: 300,
-      discountPrice: 270,
+      price: "300",
+      discountPrice: "270",
       foodType: FoodType.VEG,
       spicyLevel: 1,
       preparationTime: 15,
@@ -233,7 +236,7 @@ async function main() {
     {
       name: "Paneer Tikka Masala",
       description: "Grilled paneer tikka tossed in spicy onion tomato gravy",
-      price: 290,
+      price: "290",
       foodType: FoodType.VEG,
       spicyLevel: 2,
       preparationTime: 20,
@@ -246,7 +249,7 @@ async function main() {
     {
       name: "Mutter Paneer",
       description: "Classic combination of green peas and paneer in curry",
-      price: 250,
+      price: "250",
       foodType: FoodType.VEG,
       spicyLevel: 1,
       preparationTime: 15,
@@ -259,7 +262,7 @@ async function main() {
     {
       name: "Paneer Bhurji",
       description: "Scrambled paneer cooked with onions, tomatoes and spices",
-      price: 240,
+      price: "240",
       foodType: FoodType.VEG,
       spicyLevel: 2,
       preparationTime: 12,
@@ -272,7 +275,7 @@ async function main() {
     {
       name: "Paneer Pasanda",
       description: "Rich paneer sandwiches stuffed with nuts and shallow fried in cream gravy",
-      price: 320,
+      price: "320",
       foodType: FoodType.VEG,
       spicyLevel: 1,
       preparationTime: 20,
@@ -295,26 +298,26 @@ async function main() {
 
   // 2. Loop to seed items in other categories to match counts
   // Count mapping:
-  const counts: Record<string, { count: number; vegType: FoodType; baseName: string; price: number }> = {
-    "Vegetarian > Main Course > Mushroom": { count: 8, vegType: FoodType.VEG, baseName: "Mushroom", price: 240 },
-    "Vegetarian > Main Course > Dal": { count: 6, vegType: FoodType.VEG, baseName: "Dal", price: 180 },
-    "Vegetarian > Main Course > Mix Veg": { count: 4, vegType: FoodType.VEG, baseName: "Veg", price: 210 },
-    "Vegetarian > Main Course > Kofta": { count: 4, vegType: FoodType.VEG, baseName: "Kofta", price: 260 },
-    "Vegetarian > Starters": { count: 14, vegType: FoodType.VEG, baseName: "Veg Starter", price: 190 },
-    "Vegetarian > Rice & Biryani": { count: 8, vegType: FoodType.VEG, baseName: "Veg Rice", price: 220 },
-    "Vegetarian > Breads": { count: 10, vegType: FoodType.VEG, baseName: "Roti / Naan", price: 40 },
-    "Vegetarian > Chinese": { count: 6, vegType: FoodType.VEG, baseName: "Veg Chinese", price: 180 },
-    "Vegetarian > South Indian": { count: 4, vegType: FoodType.VEG, baseName: "South Indian Special", price: 130 },
+  const counts: Record<string, { count: number; vegType: FoodType; baseName: string; price: string }> = {
+    "Vegetarian > Main Course > Mushroom": { count: 8, vegType: FoodType.VEG, baseName: "Mushroom", price: "240" },
+    "Vegetarian > Main Course > Dal": { count: 6, vegType: FoodType.VEG, baseName: "Dal", price: "180" },
+    "Vegetarian > Main Course > Mix Veg": { count: 4, vegType: FoodType.VEG, baseName: "Veg", price: "210" },
+    "Vegetarian > Main Course > Kofta": { count: 4, vegType: FoodType.VEG, baseName: "Kofta", price: "260" },
+    "Vegetarian > Starters": { count: 14, vegType: FoodType.VEG, baseName: "Veg Starter", price: "190" },
+    "Vegetarian > Rice & Biryani": { count: 8, vegType: FoodType.VEG, baseName: "Veg Rice", price: "220" },
+    "Vegetarian > Breads": { count: 10, vegType: FoodType.VEG, baseName: "Roti / Naan", price: "40" },
+    "Vegetarian > Chinese": { count: 6, vegType: FoodType.VEG, baseName: "Veg Chinese", price: "180" },
+    "Vegetarian > South Indian": { count: 4, vegType: FoodType.VEG, baseName: "South Indian Special", price: "130" },
 
-    "Non-Vegetarian > Chicken": { count: 20, vegType: FoodType.NON_VEG, baseName: "Chicken", price: 320 },
-    "Non-Vegetarian > Mutton": { count: 8, vegType: FoodType.NON_VEG, baseName: "Mutton", price: 380 },
-    "Non-Vegetarian > Fish": { count: 6, vegType: FoodType.NON_VEG, baseName: "Fish", price: 340 },
-    "Non-Vegetarian > Egg": { count: 4, vegType: FoodType.NON_VEG, baseName: "Egg Dish", price: 160 },
-    "Non-Vegetarian > Seafood": { count: 4, vegType: FoodType.NON_VEG, baseName: "Prawns", price: 390 },
+    "Non-Vegetarian > Chicken": { count: 20, vegType: FoodType.NON_VEG, baseName: "Chicken", price: "320" },
+    "Non-Vegetarian > Mutton": { count: 8, vegType: FoodType.NON_VEG, baseName: "Mutton", price: "380" },
+    "Non-Vegetarian > Fish": { count: 6, vegType: FoodType.NON_VEG, baseName: "Fish", price: "340" },
+    "Non-Vegetarian > Egg": { count: 4, vegType: FoodType.NON_VEG, baseName: "Egg Dish", price: "160" },
+    "Non-Vegetarian > Seafood": { count: 4, vegType: FoodType.NON_VEG, baseName: "Prawns", price: "390" },
 
-    "Beverages": { count: 10, vegType: FoodType.VEG, baseName: "Drink", price: 80 },
-    "Desserts": { count: 8, vegType: FoodType.VEG, baseName: "Sweet", price: 120 },
-    "Soups & Salads": { count: 6, vegType: FoodType.VEG, baseName: "Soup / Salad", price: 140 },
+    "Beverages": { count: 10, vegType: FoodType.VEG, baseName: "Drink", price: "80" },
+    "Desserts": { count: 8, vegType: FoodType.VEG, baseName: "Sweet", price: "120" },
+    "Soups & Salads": { count: 6, vegType: FoodType.VEG, baseName: "Soup / Salad", price: "140" },
   };
 
   // Keep track of total items seeded to check
@@ -333,7 +336,7 @@ async function main() {
         data: {
           name: `${config.baseName} Special ${i}`,
           description: `Delicious and authentic preparation of ${config.baseName} with select spices.`,
-          price: config.price + (i * 10),
+          price: String(Number(config.price) + (i * 10)),
           foodType: config.vegType,
           spicyLevel: (i % 3),
           preparationTime: 12 + (i % 10),

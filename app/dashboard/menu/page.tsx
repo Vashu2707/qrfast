@@ -13,6 +13,7 @@ import { getCategories, createCategory, deleteCategory } from "@/actions/categor
 import { StaffHeader } from "@/components/layout/dashboard-sidebar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toNumber } from "@/lib/decimal";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
@@ -335,8 +336,8 @@ export default function MenuPage() {
       result = result.filter(i => i.isBestSeller);
     }
     return [...result].sort((a, b) => {
-      if (sortBy === "price-low") return (a.discountPrice ?? a.price) - (b.discountPrice ?? b.price);
-      if (sortBy === "price-high") return (b.discountPrice ?? b.price) - (a.discountPrice ?? a.price);
+      if (sortBy === "price-low") return toNumber(a.discountPrice) - toNumber(a.price) > toNumber(b.discountPrice) - toNumber(b.price) ? 1 : -1;
+      if (sortBy === "price-high") return toNumber(b.discountPrice) - toNumber(b.price) > toNumber(a.discountPrice) - toNumber(a.price) ? 1 : -1;
       return a.name.localeCompare(b.name);
     });
   }, [items, activeCategoryIds, activeCategoryId, globalSearch, searchQuery, filterTab, sortBy]);

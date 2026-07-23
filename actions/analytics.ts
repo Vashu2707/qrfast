@@ -3,6 +3,7 @@
 import prisma from "@/lib/prisma";
 import { getCurrentUser } from "./auth";
 import { OrderStatus, PaymentStatus } from "@prisma/client";
+import { toNumber } from "@/lib/decimal";
 
 const emptyStats = { todayOrders: 0, pendingOrders: 0, completedToday: 0, todayRevenue: 0, totalTables: 0, occupiedTables: 0, topItems: [] as { item: any; quantity: number }[], chartData: [] as { date: string; revenue: number }[], totalRevenue: 0, avgOrderValue: 0 };
 
@@ -77,7 +78,7 @@ export async function getDashboardStats() {
       .forEach((o) => {
         const key = o.createdAt.toISOString().split("T")[0];
         if (salesByDay[key] !== undefined) {
-          salesByDay[key] += o.totalAmount;
+          salesByDay[key] += toNumber(o.totalAmount);
         }
       });
 
@@ -88,15 +89,15 @@ export async function getDashboardStats() {
 
     const totalRevenue = allOrders
       .filter((o) => o.paymentStatus === PaymentStatus.SUCCESS)
-      .reduce((s, o) => s + o.totalAmount, 0);
+      .reduce((s, o) => s + toNumber(o.totalAmount), 0);
 
-    const avgOrderValue = todayOrders > 0 ? (todayRevenue._sum.totalAmount || 0) / todayOrders : 0;
+    const avgOrderValue = todayOrders > 0 ? toNumber(todayRevenue._sum.totalAmount) / todayOrders : 0;
 
     return {
       todayOrders,
       pendingOrders,
       completedToday,
-      todayRevenue: todayRevenue._sum.totalAmount || 0,
+      todayRevenue: toNumber(todayRevenue._sum.totalAmount),
       totalTables,
       occupiedTables,
       topItems,
@@ -107,6 +108,11 @@ export async function getDashboardStats() {
   } catch {
     return { ...emptyStats };
   }
+}
+
+function csvSafeField(value: string): string {
+  const escaped = value.replace(/"/g, '""');
+  return /^[=+\-@\t\r]/.test(escaped) ? `'${escaped}` : `"${escaped}"`;
 }
 
 export async function exportOrdersCSV() {
@@ -123,7 +129,7 @@ export async function exportOrdersCSV() {
     const rows = orders
       .map(
         (o) =>
-          `${o.id},${o.table.number},"${o.customerName}",${o.customerPhone},${o.status},${o.paymentStatus},${o.totalAmount},${o.createdAt.toISOString()}`
+          `${o.id},${o.table.number},${csvSafeField(o.customerName)},${o.customerPhone},${o.status},${o.paymentStatus},${o.totalAmount},${o.createdAt.toISOString()}`
       )
       .join("\n");
 

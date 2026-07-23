@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 import { createTableSchema } from "@/schemas";
 import QRCode from "qrcode";
 import { generateTableToken } from "@/lib/table-token";
+import { TableStatus } from "@prisma/client";
 
 export async function getTables() {
   const user = await getCurrentUser();
@@ -92,10 +93,14 @@ export async function updateTableStatus(id: string, status: string) {
   const user = await getCurrentUser();
   if (!user) return { error: "Unauthorized" };
 
+  if (!Object.values(TableStatus).includes(status as TableStatus)) {
+    return { error: "Invalid table status." };
+  }
+
   try {
     const table = await prisma.table.update({
       where: { id },
-      data: { status: status as any },
+      data: { status: status as TableStatus },
     });
     revalidatePath("/dashboard/tables");
     return { success: true, table };
