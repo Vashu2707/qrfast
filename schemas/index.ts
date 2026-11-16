@@ -90,6 +90,7 @@ export type MenuItemInput = z.infer<typeof menuItemSchema>;
 export const categorySchema = z.object({
   name: z.string().min(1).max(100),
   description: z.string().max(500).optional().or(z.literal("")),
+  section: z.enum(["FOOD", "COCKTAIL"]).optional().default("FOOD"),
   sortOrder: z.coerce.number().int().min(0).optional().default(0),
   parentId: z.string().nullable().optional().default(null),
 });
@@ -131,6 +132,7 @@ export type OfferInput = z.infer<typeof offerSchema>;
 
 export const settingsSchema = z.object({
   restaurantName: z.string().min(1).max(200),
+  cocktailsEnabled: z.boolean().optional().default(false),
   logo: z.string().nullable().optional().or(z.literal("")),
   banner: z.string().nullable().optional().or(z.literal("")),
   address: z.string().max(500).nullable().optional().or(z.literal("")),

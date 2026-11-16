@@ -51,3 +51,57 @@ export function getOrderStatusColor(status: string): string {
   };
   return colors[status] || "bg-muted text-muted-foreground";
 }
+
+// ─── Hotel (booking/room) labels & colors ────────────────────────────────────
+
+export function getBookingStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    PENDING: "Pending",
+    CONFIRMED: "Confirmed",
+    CHECKED_IN: "Checked In",
+    CHECKED_OUT: "Checked Out",
+    CANCELLED: "Cancelled",
+    NO_SHOW: "No Show",
+  };
+  return labels[status] || status;
+}
+
+export function getBookingStatusColor(status: string): string {
+  const colors: Record<string, string> = {
+    PENDING: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
+    CONFIRMED: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300",
+    CHECKED_IN: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",
+    CHECKED_OUT: "bg-slate-100 text-slate-800 dark:bg-slate-900/30 dark:text-slate-300",
+    CANCELLED: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
+    NO_SHOW: "bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300",
+  };
+  return colors[status] || "bg-muted text-muted-foreground";
+}
+
+export function getRoomStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    AVAILABLE: "Available",
+    OCCUPIED: "Occupied",
+    CLEANING: "Cleaning",
+    MAINTENANCE: "Maintenance",
+  };
+  return labels[status] || status;
+}
+
+export function getRoomStatusColor(status: string): string {
+  const colors: Record<string, string> = {
+    AVAILABLE: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
+    OCCUPIED: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
+    CLEANING: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
+    MAINTENANCE: "bg-slate-100 text-slate-800 dark:bg-slate-900/30 dark:text-slate-300",
+  };
+  return colors[status] || "bg-muted text-muted-foreground";
+}
+
+/** Format a date-only value (UTC midnight) without timezone day shifts. */
+export function formatDateOnly(date: Date | string): string {
+  return new Intl.DateTimeFormat("en-IN", {
+    dateStyle: "medium",
+    timeZone: "UTC",
+  }).format(new Date(date));
+}

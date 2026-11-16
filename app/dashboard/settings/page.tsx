@@ -9,8 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SingleImageUpload } from "@/components/ui/single-image-upload";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, Martini } from "lucide-react";
 
 export default function SettingsPage() {
   const queryClient = useQueryClient();
@@ -19,6 +20,7 @@ export default function SettingsPage() {
   const { data: settings } = useQuery({ queryKey: ["settings"], queryFn: () => getSettings() });
 
   const [form, setForm] = useState<Record<string, string>>({});
+  const [cocktailsEnabled, setCocktailsEnabled] = useState(false);
 
   const initForm = () => {
     if (!settings) return;
@@ -36,6 +38,7 @@ export default function SettingsPage() {
       gstPercentage: String(settings.gstPercentage ?? 5),
       serviceChargePercentage: String(settings.serviceChargePercentage ?? 0),
     });
+    setCocktailsEnabled(settings.cocktailsEnabled ?? false);
   };
 
   if (Object.keys(form).length === 0 && settings) initForm();
@@ -44,6 +47,7 @@ export default function SettingsPage() {
     setLoading(true);
     const result = await updateRestaurantSettings({
       restaurantName: form.restaurantName || "",
+      cocktailsEnabled,
       address: form.address || null,
       phone: form.phone || null,
       email: form.email || null,
@@ -111,6 +115,27 @@ export default function SettingsPage() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2"><Label>Currency</Label><Input value={form.currency || ""} onChange={(e) => update("currency", e.target.value)} /></div>
               <div className="space-y-2"><Label>Primary Color</Label><Input type="color" value={form.primaryColor || "#E11D48"} onChange={(e) => update("primaryColor", e.target.value)} /></div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/60">
+          <CardHeader><CardTitle className="text-base">Bars & Pubs — Cocktails</CardTitle></CardHeader>
+          <CardContent className="grid gap-4">
+            <div className="flex items-center justify-between gap-4 rounded-lg border border-amber-200/60 bg-amber-50/50 p-3 dark:border-amber-900/40 dark:bg-amber-950/20">
+              <div className="flex items-start gap-3">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">
+                  <Martini className="size-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">Show cocktails section to customers</p>
+                  <p className="text-xs text-muted-foreground">
+                    Adds a separate Cocktails menu with a bar-themed view on the customer QR menu.
+                    Manage drink categories under Menu → Cocktails.
+                  </p>
+                </div>
+              </div>
+              <Switch checked={cocktailsEnabled} onCheckedChange={setCocktailsEnabled} />
             </div>
           </CardContent>
         </Card>

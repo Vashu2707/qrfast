@@ -17,6 +17,7 @@ export async function getCategories() {
 export async function createCategory(data: {
   name: string;
   description?: string;
+  section?: "FOOD" | "COCKTAIL";
   sortOrder?: number;
   parentId?: string | null;
 }) {
@@ -29,10 +30,21 @@ export async function createCategory(data: {
   }
 
   try {
+    // Subcategories always inherit their parent's section (food vs cocktail).
+    let section = parsed.data.section ?? "FOOD";
+    if (parsed.data.parentId) {
+      const parent = await prisma.category.findUnique({
+        where: { id: parsed.data.parentId },
+        select: { section: true },
+      });
+      if (parent) section = parent.section;
+    }
+
     const category = await prisma.category.create({
       data: {
         name: parsed.data.name,
         description: parsed.data.description,
+        section,
         sortOrder: parsed.data.sortOrder ?? 0,
         parentId: parsed.data.parentId || null,
       },

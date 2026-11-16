@@ -30,6 +30,7 @@ export async function updateRestaurantSettings(rawData: SettingsInput) {
       where: { id: "singleton" },
       data: {
         restaurantName: data.restaurantName,
+        cocktailsEnabled: data.cocktailsEnabled ?? false,
         logo: data.logo || null,
         banner: data.banner || null,
         address: data.address || null,
