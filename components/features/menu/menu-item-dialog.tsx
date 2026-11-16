@@ -12,6 +12,25 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Minus, Plus, Leaf, Flame, Clock } from "lucide-react";
 import { toast } from "sonner";
+import type { CSSProperties } from "react";
+
+/** Same palette as the Cocktails view — shadcn tokens are overridden in-place
+ *  because the dialog renders in a portal outside the themed wrapper. */
+const barThemeVars = {
+  "--background": "#0c0a09",
+  "--foreground": "#fafaf9",
+  "--card": "#1c1917",
+  "--card-foreground": "#fafaf9",
+  "--primary": "#f59e0b",
+  "--primary-foreground": "#1c1917",
+  "--muted": "#292524",
+  "--muted-foreground": "#a8a29e",
+  "--accent": "#292524",
+  "--accent-foreground": "#fde68a",
+  "--border": "#44403c",
+  "--input": "#44403c",
+  "--ring": "#f59e0b",
+} as CSSProperties;
 
 type MenuItem = {
   id: string;
@@ -32,10 +51,11 @@ type MenuItem = {
 interface Props {
   item: MenuItem;
   primaryColor: string;
+  barTheme?: boolean;
   onClose: () => void;
 }
 
-export function MenuItemDialog({ item, primaryColor, onClose }: Props) {
+export function MenuItemDialog({ item, primaryColor, barTheme = false, onClose }: Props) {
   const { addItem } = useCart();
   const [quantity, setQuantity] = useState(1);
   const [selectedVariant, setSelectedVariant] = useState(item.variants[0] || null);
@@ -79,7 +99,10 @@ export function MenuItemDialog({ item, primaryColor, onClose }: Props) {
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto max-w-lg p-0 rounded-none sm:rounded-2xl">
+      <DialogContent
+        style={barTheme ? barThemeVars : undefined}
+        className="max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto max-w-lg p-0 rounded-none sm:rounded-2xl"
+      >
         {item.images[0] && (
           <div className="relative h-48 w-full">
             <Image src={item.images[0]} alt={item.name} fill className="object-cover rounded-t-lg" />
@@ -159,7 +182,7 @@ export function MenuItemDialog({ item, primaryColor, onClose }: Props) {
 
           <div className="space-y-2">
             <Label>Special Instructions</Label>
-            <Textarea placeholder="No onions, extra spicy..." value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
+            <Textarea placeholder={barTheme ? "No salt, extra lime..." : "No onions, extra spicy..."} value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
           </div>
 
           <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">

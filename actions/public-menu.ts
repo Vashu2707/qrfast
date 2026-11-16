@@ -4,6 +4,24 @@ import prisma from "@/lib/prisma";
 import { verifyTableToken } from "@/lib/table-token";
 import { convertDecimalsDeep } from "@/lib/decimal";
 
+const categoryInclude = {
+  menuItems: {
+    where: { isAvailable: true },
+    include: { variants: true, addons: true },
+    orderBy: { name: "asc" as const },
+  },
+  children: {
+    orderBy: { sortOrder: "asc" as const },
+    include: {
+      menuItems: {
+        where: { isAvailable: true },
+        include: { variants: true, addons: true },
+        orderBy: { name: "asc" as const },
+      },
+    },
+  },
+};
+
 export async function getPublicMenu(tableParam: string) {
   const tableId = verifyTableToken(tableParam);
   if (!tableId) return null;
@@ -14,27 +32,21 @@ export async function getPublicMenu(tableParam: string) {
 
   if (!settings) return null;
 
+  // Food menu — always returned. Cocktail categories are a completely separate
+  // tree and are only exposed when the restaurant enables the bar section.
   const categories = await prisma.category.findMany({
     orderBy: { sortOrder: "asc" },
-    where: { parentId: null },
-    include: {
-      menuItems: {
-        where: { isAvailable: true },
-        include: { variants: true, addons: true },
-        orderBy: { name: "asc" },
-      },
-      children: {
-        orderBy: { sortOrder: "asc" },
-        include: {
-          menuItems: {
-            where: { isAvailable: true },
-            include: { variants: true, addons: true },
-            orderBy: { name: "asc" },
-          },
-        },
-      },
-    },
+    where: { parentId: null, section: "FOOD" },
+    include: categoryInclude,
   });
+
+  const cocktailCategories = settings.cocktailsEnabled
+    ? await prisma.category.findMany({
+        orderBy: { sortOrder: "asc" },
+        where: { parentId: null, section: "COCKTAIL" },
+        include: categoryInclude,
+      })
+    : [];
 
   const table = await prisma.table.findUnique({
     where: { id: tableId },
@@ -52,13 +64,13 @@ export async function getPublicMenu(tableParam: string) {
   const popularIds = popularItems.map((p) => p.menuItemId);
   const bestsellers = popularIds.length
     ? await prisma.menuItem.findMany({
-        where: { id: { in: popularIds }, isAvailable: true },
+        where: { id: { in: popularIds }, isAvailable: true, category: { section: "FOOD" } },
         include: { variants: true, addons: true, category: true },
       })
     : [];
 
   const newItems = await prisma.menuItem.findMany({
-    where: { isAvailable: true },
+    where: { isAvailable: true, category: { section: "FOOD" } },
     include: { variants: true, addons: true, category: true },
     orderBy: { createdAt: "desc" },
     take: 6,
@@ -75,6 +87,7 @@ export async function getPublicMenu(tableParam: string) {
     restaurant: settings,
     table,
     categories,
+    cocktailCategories,
     bestsellers,
     newItems,
     reviews,

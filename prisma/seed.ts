@@ -353,11 +353,78 @@ async function main() {
     }
   }
 
-  // Also verify stats
+  // Verify stats
   const totalItems = await prisma.menuItem.count();
   const vegItems = await prisma.menuItem.count({ where: { foodType: { in: [FoodType.VEG, FoodType.VEGAN] } } });
   const nonVegItems = await prisma.menuItem.count({ where: { foodType: FoodType.NON_VEG } });
   const unavailableItems = await prisma.menuItem.count({ where: { isAvailable: false } });
+
+  // ─── Hotel space (idempotent — separate tables from the restaurant) ───────
+  const hotelSettingsCount = await prisma.hotelSettings.count();
+  if (hotelSettingsCount === 0) {
+    await prisma.hotelSettings.create({
+      data: {
+        id: "singleton",
+        hotelName: "Azure Heights",
+        description:
+          "A calm city retreat with modern rooms, warm service and an effortless online booking experience.",
+        phone: "+919876543210",
+        email: "stay@azureheights.com",
+        address: "42 Skyline Avenue, Bandra West, Mumbai - 400050",
+        primaryColor: "#0F172A",
+        currency: "INR",
+        timezone: "Asia/Kolkata",
+        gstPercentage: "12.0",
+        checkInTime: "14:00",
+        checkOutTime: "11:00",
+      },
+    });
+    console.log("Seeded hotel settings.");
+  }
+
+  const hotelRoomTypeCount = await prisma.hotelRoomType.count();
+  if (hotelRoomTypeCount === 0) {
+    const roomTypes = [
+      {
+        name: "Standard",
+        description: "Cozy room with a queen bed, ideal for solo travellers and couples.",
+        basePrice: "2500",
+        maxGuests: 2,
+        amenities: ["Wi-Fi", "AC", "TV", "Room Service"],
+        sortOrder: 1,
+        rooms: ["101", "102", "103", "104"],
+      },
+      {
+        name: "Deluxe",
+        description: "Spacious room with a king bed and a dedicated work desk.",
+        basePrice: "4000",
+        maxGuests: 3,
+        amenities: ["Wi-Fi", "AC", "TV", "Mini Bar", "Room Service"],
+        sortOrder: 2,
+        rooms: ["201", "202", "203", "204"],
+      },
+      {
+        name: "Suite",
+        description: "Premium suite with a living area and city views.",
+        basePrice: "7000",
+        maxGuests: 4,
+        amenities: ["Wi-Fi", "AC", "TV", "Mini Bar", "Living Area", "Room Service"],
+        sortOrder: 3,
+        rooms: ["301", "302"],
+      },
+    ];
+
+    for (const type of roomTypes) {
+      const { rooms, ...rest } = type;
+      const created = await prisma.hotelRoomType.create({ data: rest });
+      for (const number of rooms) {
+        await prisma.hotelRoom.create({
+          data: { number, roomTypeId: created.id, floor: number[0] },
+        });
+      }
+    }
+    console.log("Seeded hotel room types and rooms.");
+  }
 
   console.log(`\nSeeded database successfully:`);
   console.log(`  Total Items:       ${totalItems}`);

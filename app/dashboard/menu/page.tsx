@@ -10,6 +10,7 @@ import {
   toggleMenuItemAvailability,
 } from "@/actions/menu-items";
 import { getCategories, createCategory, deleteCategory } from "@/actions/categories";
+import { getSettings } from "@/actions/settings";
 import { StaffHeader } from "@/components/layout/dashboard-sidebar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,6 +61,8 @@ import {
   Eye,
   Check,
   FolderTree,
+  Martini,
+  Star,
 } from "lucide-react";
 import Image from "next/image";
 import { ImportDialog } from "@/components/menu-import/import-dialog";
@@ -233,6 +236,7 @@ export default function MenuPage() {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   const [activeCategoryId, setActiveCategoryId] = useState<string>("");
+  const [menuSection, setMenuSection] = useState<"FOOD" | "COCKTAIL">("FOOD");
   const [filterTab, setFilterTab] = useState<"all" | "available" | "unavailable" | "bestseller">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [globalSearch, setGlobalSearch] = useState("");
@@ -251,19 +255,40 @@ export default function MenuPage() {
     queryFn: () => getCategories(),
     refetchInterval: 15000,
   });
+  const { data: settings } = useQuery({
+    queryKey: ["settings"],
+    queryFn: () => getSettings(),
+  });
+  const cocktailsEnabled = settings?.cocktailsEnabled ?? false;
+
+  // ── Section scoping: the cocktail menu is a completely separate tree ──
+  const sectionCategories = useMemo(
+    () => categories.filter((c) => (c.section ?? "FOOD") === menuSection),
+    [categories, menuSection],
+  );
+
+  const sectionCategoryIds = useMemo(
+    () => new Set(sectionCategories.map((c) => c.id)),
+    [sectionCategories],
+  );
+
+  const sectionItems = useMemo(
+    () => items.filter((i) => sectionCategoryIds.has(i.categoryId)),
+    [items, sectionCategoryIds],
+  );
 
   // Build tree
   const categoryItemCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    items.forEach((item) => {
+    sectionItems.forEach((item) => {
       counts[item.categoryId] = (counts[item.categoryId] || 0) + 1;
     });
     return counts;
-  }, [items]);
+  }, [sectionItems]);
 
   const categoryTree = useMemo(() => {
-    return buildCategoryTree(categories, categoryItemCounts);
-  }, [categories, categoryItemCounts]);
+    return buildCategoryTree(sectionCategories, categoryItemCounts);
+  }, [sectionCategories, categoryItemCounts]);
 
   const flatCategories = useMemo(() => flattenTreeForSelect(categoryTree), [categoryTree]);
 
@@ -308,15 +333,16 @@ export default function MenuPage() {
   }, [activeNode]);
 
   const stats = useMemo(() => {
-    const total = items.length;
-    const veg = items.filter(i => i.foodType === "VEG" || i.foodType === "VEGAN").length;
-    const nonVeg = items.filter(i => i.foodType === "NON_VEG").length;
-    const unavailable = items.filter(i => !i.isAvailable).length;
-    return { total, veg, nonVeg, unavailable };
-  }, [items]);
+    const total = sectionItems.length;
+    const veg = sectionItems.filter(i => i.foodType === "VEG" || i.foodType === "VEGAN").length;
+    const nonVeg = sectionItems.filter(i => i.foodType === "NON_VEG").length;
+    const unavailable = sectionItems.filter(i => !i.isAvailable).length;
+    const bestseller = sectionItems.filter(i => i.isBestSeller).length;
+    return { total, veg, nonVeg, unavailable, bestseller };
+  }, [sectionItems]);
 
   const displayedItems = useMemo(() => {
-    let result = items;
+    let result = sectionItems;
     if (activeCategoryId) {
       result = result.filter(i => activeCategoryIds.includes(i.categoryId));
     }
@@ -340,7 +366,7 @@ export default function MenuPage() {
       if (sortBy === "price-high") return toNumber(b.discountPrice) - toNumber(b.price) > toNumber(a.discountPrice) - toNumber(a.price) ? 1 : -1;
       return a.name.localeCompare(b.name);
     });
-  }, [items, activeCategoryIds, activeCategoryId, globalSearch, searchQuery, filterTab, sortBy]);
+  }, [sectionItems, activeCategoryIds, activeCategoryId, globalSearch, searchQuery, filterTab, sortBy]);
 
   const activeCategoryName = activeBreadcrumb.length > 0
     ? activeBreadcrumb[activeBreadcrumb.length - 1].name
@@ -461,6 +487,7 @@ export default function MenuPage() {
   const handleCreateCategory = async () => {
     const result = await createCategory({
       name: catName,
+      section: menuSection,
       parentId: catParentId === "__root__" ? null : catParentId,
     });
     if (result.error) toast.error(result.error);
@@ -502,8 +529,12 @@ export default function MenuPage() {
       const isSelected = activeCategoryId === node.id;
       const isRoot = level === 0;
       const iconInfo = isRoot ? categoryIcons[node.name.toLowerCase()] : undefined;
-      const IconComponent = iconInfo?.icon ?? UtensilsCrossed;
-      const iconBg = iconInfo?.bg ?? "bg-gray-50 text-gray-500 border-gray-100";
+      const IconComponent = iconInfo?.icon ?? (menuSection === "COCKTAIL" ? Martini : UtensilsCrossed);
+      const iconBg = iconInfo?.bg ?? (
+        menuSection === "COCKTAIL"
+          ? "bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/50"
+          : "bg-gray-50 text-gray-500 border-gray-100"
+      );
 
       return (
         <div key={node.id} className="select-none">
@@ -594,8 +625,14 @@ export default function MenuPage() {
       {/* ── Header ── */}
       <div className="bg-white dark:bg-gray-950 border-b border-gray-100 dark:border-gray-900 px-4 py-3 sm:px-6 sm:py-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">Menu Management</h1>
-          <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5">Organize your menu categories and items</p>
+          <h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
+            {menuSection === "COCKTAIL" ? "Cocktails Management" : "Menu Management"}
+          </h1>
+          <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5">
+            {menuSection === "COCKTAIL"
+              ? "Organize your bar menu — drink categories and cocktails"
+              : "Organize your menu categories and items"}
+          </p>
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
@@ -621,42 +658,124 @@ export default function MenuPage() {
       </div>
 
       <div className="px-4 py-4 sm:px-6 sm:py-6 space-y-4 sm:space-y-6 max-w-7.5xl mx-auto">
+        {/* ── Section Switch: Food / Cocktails ── */}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between bg-white dark:bg-gray-950 rounded-xl border border-gray-100 dark:border-gray-900 shadow-sm p-2 sm:p-2.5">
+          <div className="flex gap-1 rounded-lg bg-gray-100/70 dark:bg-gray-900 p-1">
+            {([
+              { id: "FOOD", label: "Food Menu", icon: UtensilsCrossed },
+              { id: "COCKTAIL", label: "Cocktails", icon: Martini },
+            ] as const).map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  if (menuSection === tab.id) return;
+                  setMenuSection(tab.id);
+                  setActiveCategoryId("");
+                  setFilterTab("all");
+                  setSearchQuery("");
+                  setCatParentId("__root__");
+                }}
+                className={cn(
+                  "flex flex-1 sm:flex-none items-center justify-center gap-1.5 px-4 py-1.5 text-xs font-bold rounded-md transition-colors cursor-pointer",
+                  menuSection === tab.id
+                    ? tab.id === "COCKTAIL"
+                      ? "bg-amber-500 text-white shadow-sm"
+                      : "bg-white text-gray-900 shadow-sm dark:bg-gray-800 dark:text-white"
+                    : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                )}
+              >
+                <tab.icon className="size-3.5" />
+                {tab.label}
+              </button>
+            ))}
+          </div>
+          {menuSection === "COCKTAIL" && (
+            cocktailsEnabled ? (
+              <span className="flex w-fit items-center gap-1.5 text-[10px] font-bold text-emerald-700 bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-400 px-2.5 py-1 rounded-full">
+                <Check className="size-3" />
+                Visible to customers on the QR menu
+              </span>
+            ) : (
+              <span className="flex w-fit items-center gap-1.5 text-[10px] font-bold text-amber-700 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-400 px-2.5 py-1 rounded-full">
+                <AlertCircle className="size-3" />
+                Hidden from customers — enable it in Settings
+              </span>
+            )
+          )}
+        </div>
+
         {/* ── Stat Cards ── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[
-            {
-              title: "Total Items",
-              valueText: String(stats.total),
-              trend: "+12%",
-              trendColor: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400",
-              icon: UtensilsCrossed,
-              iconBg: "bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400",
-            },
-            {
-              title: "Vegetarian",
-              valueText: `${stats.veg} items`,
-              trend: "+8%",
-              trendColor: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400",
-              icon: Leaf,
-              iconBg: "bg-green-50 text-green-600 dark:bg-green-950/30 dark:text-green-400",
-            },
-            {
-              title: "Non-Vegetarian",
-              valueText: `${stats.nonVeg} items`,
-              trend: "+15%",
-              trendColor: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400",
-              icon: Flame,
-              iconBg: "bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400",
-            },
-            {
-              title: "Unavailable",
-              valueText: `${stats.unavailable} items`,
-              trend: "-3%",
-              trendColor: "bg-rose-50 text-rose-700 dark:bg-rose-950/20 dark:text-rose-400",
-              icon: AlertCircle,
-              iconBg: "bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400",
-            },
-          ].map((item, idx) => (
+          {(menuSection === "FOOD"
+            ? [
+                {
+                  title: "Total Items",
+                  valueText: String(stats.total),
+                  trend: "+12%",
+                  trendColor: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400",
+                  icon: UtensilsCrossed,
+                  iconBg: "bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400",
+                },
+                {
+                  title: "Vegetarian",
+                  valueText: `${stats.veg} items`,
+                  trend: "+8%",
+                  trendColor: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400",
+                  icon: Leaf,
+                  iconBg: "bg-green-50 text-green-600 dark:bg-green-950/30 dark:text-green-400",
+                },
+                {
+                  title: "Non-Vegetarian",
+                  valueText: `${stats.nonVeg} items`,
+                  trend: "+15%",
+                  trendColor: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400",
+                  icon: Flame,
+                  iconBg: "bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400",
+                },
+                {
+                  title: "Unavailable",
+                  valueText: `${stats.unavailable} items`,
+                  trend: "-3%",
+                  trendColor: "bg-rose-50 text-rose-700 dark:bg-rose-950/20 dark:text-rose-400",
+                  icon: AlertCircle,
+                  iconBg: "bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400",
+                },
+              ]
+            : [
+                {
+                  title: "Total Drinks",
+                  valueText: String(stats.total),
+                  trend: "+12%",
+                  trendColor: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400",
+                  icon: Martini,
+                  iconBg: "bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400",
+                },
+                {
+                  title: "Available",
+                  valueText: `${stats.total - stats.unavailable} items`,
+                  trend: "+8%",
+                  trendColor: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400",
+                  icon: Check,
+                  iconBg: "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400",
+                },
+                {
+                  title: "Unavailable",
+                  valueText: `${stats.unavailable} items`,
+                  trend: "-3%",
+                  trendColor: "bg-rose-50 text-rose-700 dark:bg-rose-950/20 dark:text-rose-400",
+                  icon: AlertCircle,
+                  iconBg: "bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400",
+                },
+                {
+                  title: "Bestsellers",
+                  valueText: `${stats.bestseller} items`,
+                  trend: "+15%",
+                  trendColor: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400",
+                  icon: Star,
+                  iconBg: "bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400",
+                },
+              ]
+          ).map((item, idx) => (
             <Card key={idx} className="border-0 shadow-sm bg-white dark:bg-gray-950 overflow-hidden">
               <CardContent className="px-3 py-1.5 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
@@ -685,7 +804,9 @@ export default function MenuPage() {
           {/* Left: Tree Sidebar */}
           <div className="col-span-1 lg:col-span-3 bg-white dark:bg-gray-950 rounded-xl border border-gray-100 dark:border-gray-900 shadow-sm p-3 sm:p-4 space-y-3 sm:space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white">Menu Categories</h2>
+              <h2 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white">
+                {menuSection === "COCKTAIL" ? "Bar Categories" : "Menu Categories"}
+              </h2>
               <Button
                 variant="outline"
                 size="sm"
@@ -701,7 +822,11 @@ export default function MenuPage() {
               {categoryTree.length > 0 ? (
                 renderTreeNodes(categoryTree)
               ) : (
-                <p className="text-xs text-gray-400 text-center py-4">No categories yet. Click Add to create one.</p>
+                <p className="text-xs text-gray-400 text-center py-4">
+                  {menuSection === "COCKTAIL"
+                    ? "No cocktail categories yet. Click Add to create one."
+                    : "No categories yet. Click Add to create one."}
+                </p>
               )}
             </div>
           </div>
@@ -729,7 +854,7 @@ export default function MenuPage() {
                   ))}
                 </div>
                 <h2 className="text-lg font-black text-gray-900 dark:text-white">
-                  {activeCategoryName} Dishes
+                  {activeCategoryName} {menuSection === "COCKTAIL" ? "Drinks" : "Dishes"}
                 </h2>
                 <p className="text-xs text-gray-500">
                   {displayedItems.length} items
@@ -787,7 +912,7 @@ export default function MenuPage() {
                   className="h-8 text-xs font-bold rounded-lg px-3 bg-gray-900 text-white hover:bg-gray-800 dark:bg-blue-600 dark:hover:bg-blue-700"
                 >
                   <Plus className="mr-1 size-3.5" />
-                  Add Item
+                  {menuSection === "COCKTAIL" ? "Add Drink" : "Add Item"}
                 </Button>
               </div>
             </div>
@@ -836,11 +961,15 @@ export default function MenuPage() {
               <Card className="border-0 shadow-sm bg-white dark:bg-gray-950 py-16">
                 <CardContent className="flex flex-col items-center justify-center text-center space-y-3">
                   <div className="size-12 rounded-full bg-gray-50 flex items-center justify-center text-gray-400">
-                    <UtensilsCrossed className="size-6" />
+                    {menuSection === "COCKTAIL" ? <Martini className="size-6" /> : <UtensilsCrossed className="size-6" />}
                   </div>
-                  <p className="text-sm font-bold text-gray-900 dark:text-white">No items found</p>
+                  <p className="text-sm font-bold text-gray-900 dark:text-white">
+                    {menuSection === "COCKTAIL" ? "No drinks found" : "No items found"}
+                  </p>
                   <p className="text-xs text-gray-500 max-w-xs">
-                    Try checking other subcategories, modifying filters, or add a new menu item to this category.
+                    {menuSection === "COCKTAIL"
+                      ? "Try another category, adjust filters, or add a new cocktail to this category."
+                      : "Try checking other subcategories, modifying filters, or add a new menu item to this category."}
                   </p>
                 </CardContent>
               </Card>
@@ -1087,7 +1216,9 @@ export default function MenuPage() {
       >
         <DialogContent className="max-h-[90vh] overflow-y-auto max-w-lg rounded-xl">
           <DialogHeader>
-            <DialogTitle className="font-extrabold">{editId ? "Edit Menu Item" : "Add Menu Item"}</DialogTitle>
+            <DialogTitle className="font-extrabold">
+              {editId ? "Edit" : "Add"} {menuSection === "COCKTAIL" ? "Drink" : "Menu Item"}
+            </DialogTitle>
           </DialogHeader>
 
           <div className="grid gap-4 py-2">
@@ -1096,7 +1227,7 @@ export default function MenuPage() {
               <Input
                 value={itemForm.name}
                 onChange={(e) => setItemForm({ ...itemForm, name: e.target.value })}
-                placeholder="e.g. Paneer Butter Masala"
+                placeholder={menuSection === "COCKTAIL" ? "e.g. Old Fashioned" : "e.g. Paneer Butter Masala"}
                 className="h-9 border-gray-200 text-xs"
               />
             </div>

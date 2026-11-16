@@ -115,6 +115,7 @@ export type PublicMenuData = {
   restaurant: Settings;
   table: Table;
   categories: CategoryWithItems[];
+  cocktailCategories: CategoryWithItems[];
   bestsellers: MenuItemWithRelations[];
   newItems: MenuItemWithRelations[];
   reviews: (Review & { menuItem: MenuItem | null })[];

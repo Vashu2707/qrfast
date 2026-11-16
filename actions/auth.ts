@@ -8,6 +8,7 @@ import { unstable_rethrow } from "next/navigation";
 import { getDefaultRouteForRole } from "@/lib/roles";
 import { checkRateLimit, getServerActionIp } from "@/lib/rate-limit";
 import { touchSession, clearSession, isSessionFresh } from "@/lib/session";
+import { setSpace, clearSpace } from "@/lib/space";
 
 export async function signIn(data: { email: string; password: string }) {
   const ip = await getServerActionIp();
@@ -43,6 +44,9 @@ export async function signIn(data: { email: string; password: string }) {
       where: { id: authData.user.id },
     });
     if (!user) {
+      // Not a restaurant credential — drop the session so a stray Supabase
+      // login can't loop between /dashboard and /login.
+      await supabase.auth.signOut();
       return { error: "Staff account not found." };
     }
   } catch {
@@ -50,6 +54,7 @@ export async function signIn(data: { email: string; password: string }) {
   }
 
   await touchSession();
+  await setSpace("restaurant");
   return { success: true, role: user.role };
 }
 
@@ -111,6 +116,7 @@ export async function signOut() {
     return { error: "Failed to sign out. Please try again." };
   }
   await clearSession();
+  await clearSpace();
   revalidatePath("/");
   return { success: true };
 }

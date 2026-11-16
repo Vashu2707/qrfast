@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, type CSSProperties } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useCart } from "@/hooks/use-cart";
 import { formatCurrency } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -12,10 +13,42 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { MenuItemDialog } from "@/components/features/menu/menu-item-dialog";
 import {
   Search, ShoppingBag, Bell, Receipt,
-  Star, ChevronRight, Filter, Sparkles, Crown,
+  Star, ChevronRight, Filter, Sparkles, Crown, Martini, UtensilsCrossed,
 } from "lucide-react";
 import { requestService } from "@/actions/orders";
 import { toast } from "sonner";
+
+type FoodType = "VEG" | "NON_VEG" | "VEGAN";
+
+interface MenuCategoryItem {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  discountPrice: number | null;
+  foodType: FoodType;
+  spicyLevel: number;
+  preparationTime: number;
+  images: string[];
+  ingredients: string[];
+  allergens: string[];
+  isChefSpecial?: boolean;
+  variants: { id: string; name: string; price: number }[];
+  addons: { id: string; name: string; price: number; isVeg: boolean }[];
+}
+
+interface MenuCategory {
+  id: string;
+  name: string;
+  parentId: string | null;
+  description: string | null;
+  children?: MenuCategory[];
+  menuItems: MenuCategoryItem[];
+}
+
+interface MenuFeaturedItem extends MenuCategoryItem {
+  category: { id: string; name: string };
+}
 
 interface MenuData {
   restaurant: {
@@ -23,45 +56,14 @@ interface MenuData {
     logo: string | null;
     banner: string | null;
     primaryColor: string;
+    cocktailsEnabled: boolean;
   };
   table: {
     id: string;
     number: string;
   };
-  bestsellers: Array<{
-    id: string;
-    name: string;
-    description: string | null;
-    price: number;
-    discountPrice: number | null;
-    foodType: "VEG" | "NON_VEG" | "VEGAN";
-    spicyLevel: number;
-    preparationTime: number;
-    images: string[];
-    ingredients: string[];
-    allergens: string[];
-    isChefSpecial?: boolean;
-    variants: { id: string; name: string; price: number }[];
-    addons: { id: string; name: string; price: number; isVeg: boolean }[];
-    category: { id: string; name: string };
-  }>;
-  newItems: Array<{
-    id: string;
-    name: string;
-    description: string | null;
-    price: number;
-    discountPrice: number | null;
-    foodType: "VEG" | "NON_VEG" | "VEGAN";
-    spicyLevel: number;
-    preparationTime: number;
-    images: string[];
-    ingredients: string[];
-    allergens: string[];
-    isChefSpecial?: boolean;
-    variants: { id: string; name: string; price: number }[];
-    addons: { id: string; name: string; price: number; isVeg: boolean }[];
-    category: { id: string; name: string };
-  }>;
+  bestsellers: MenuFeaturedItem[];
+  newItems: MenuFeaturedItem[];
   reviews: Array<{
     id: string;
     customerName: string;
@@ -70,51 +72,34 @@ interface MenuData {
     createdAt: Date | string;
     menuItem: { name: string } | null;
   }>;
-  categories: Array<{
-    id: string;
-    name: string;
-    parentId: string | null;
-    description: string | null;
-    children?: Array<{
-      id: string;
-      name: string;
-      parentId: string | null;
-      description: string | null;
-      menuItems: Array<{
-        id: string;
-        name: string;
-        description: string | null;
-        price: number;
-        discountPrice: number | null;
-        foodType: "VEG" | "NON_VEG" | "VEGAN";
-        spicyLevel: number;
-        preparationTime: number;
-        images: string[];
-        ingredients: string[];
-        allergens: string[];
-        isChefSpecial?: boolean;
-        variants: { id: string; name: string; price: number }[];
-        addons: { id: string; name: string; price: number; isVeg: boolean }[];
-      }>;
-    }>;
-    menuItems: Array<{
-      id: string;
-      name: string;
-      description: string | null;
-      price: number;
-      discountPrice: number | null;
-      foodType: "VEG" | "NON_VEG" | "VEGAN";
-      spicyLevel: number;
-      preparationTime: number;
-      images: string[];
-      ingredients: string[];
-      allergens: string[];
-      isChefSpecial?: boolean;
-      variants: { id: string; name: string; price: number }[];
-      addons: { id: string; name: string; price: number; isVeg: boolean }[];
-    }>;
-  }>;
+  categories: MenuCategory[];
+  cocktailCategories: MenuCategory[];
 }
+
+/** Bar/pubs theme: overrides shadcn tokens for the Cocktails view. */
+const barThemeVars = {
+  "--background": "#0c0a09",
+  "--foreground": "#fafaf9",
+  "--card": "#1c1917",
+  "--card-foreground": "#fafaf9",
+  "--popover": "#1c1917",
+  "--popover-foreground": "#fafaf9",
+  "--primary": "#f59e0b",
+  "--primary-foreground": "#1c1917",
+  "--secondary": "#292524",
+  "--secondary-foreground": "#fafaf9",
+  "--muted": "#292524",
+  "--muted-foreground": "#a8a29e",
+  "--accent": "#292524",
+  "--accent-foreground": "#fde68a",
+  "--destructive": "#dc2626",
+  "--border": "#44403c",
+  "--input": "#44403c",
+  "--ring": "#f59e0b",
+  "--radius": "0.75rem",
+} as CSSProperties;
+
+const BAR_ACCENT = "#f59e0b";
 
 interface Props {
   data: MenuData;
@@ -156,17 +141,17 @@ function SpicyLevel({ level }: { level: number }) {
 }
 
 /** Chef special crown badge */
-function ChefSpecialBadge() {
+function ChefSpecialBadge({ label = "Chef's Special" }: { label?: string }) {
   return (
     <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
       <Crown className="size-2.5" />
-      Chef&apos;s Special
+      {label}
     </span>
   );
 }
 
 export function MenuClient({ data, tableParam }: Props) {
-  const { restaurant, table, bestsellers, newItems, reviews, categories } = data;
+  const { restaurant, table, bestsellers, newItems, reviews, categories, cocktailCategories } = data;
   const { items, setTable, getSubtotal } = useCart();
 
   const [search, setSearch] = useState("");
@@ -175,13 +160,29 @@ export function MenuClient({ data, tableParam }: Props) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [sortBy, setSortBy] = useState<"name" | "price-low" | "price-high">("name");
+  const [view, setView] = useState<"food" | "cocktails">("food");
+
+  // The cocktails section only exists for customers when the restaurant
+  // enables it from the backend (Settings → Bars & Pubs).
+  const barEnabled = restaurant.cocktailsEnabled === true;
+  const isBar = barEnabled && view === "cocktails";
+  const activeCategories = isBar ? cocktailCategories : categories;
+  const accentColor = isBar ? BAR_ACCENT : restaurant.primaryColor;
+
+  const handleViewChange = (next: "food" | "cocktails") => {
+    if (next === "cocktails" && !barEnabled) return;
+    setView(next);
+    setActiveCategory("all");
+    setVegFilter("all");
+    setSearch("");
+  };
 
   useEffect(() => {
     setTable(table.id, table.number);
   }, [table.id, table.number, setTable]);
 
   const allItems = useMemo(() => {
-    const collectItems = (cats: typeof categories, parentName?: string): any[] =>
+    const collectItems = (cats: typeof activeCategories, parentName?: string): any[] =>
       cats.flatMap((c) => {
         const displayName = parentName ? `${parentName} > ${c.name}` : c.name;
         const directItems = c.menuItems.map((item) => ({
@@ -192,22 +193,22 @@ export function MenuClient({ data, tableParam }: Props) {
         const childItems = c.children ? collectItems(c.children, displayName) : [];
         return [...directItems, ...childItems];
       });
-    return collectItems(categories);
-  }, [categories]);
+    return collectItems(activeCategories);
+  }, [activeCategories]);
 
   // Build parent -> children mapping and collect all descendant IDs for filtering
   const categoryChildrenMap = useMemo(() => {
     const map: Record<string, string[]> = {};
-    categories.forEach((c) => {
+    activeCategories.forEach((c) => {
       if (c.children) {
         map[c.id] = c.children.map((child) => child.id);
       }
     });
     return map;
-  }, [categories]);
+  }, [activeCategories]);
 
   // Top-level (root) categories for display
-  const rootCategories = useMemo(() => categories.filter((c) => !c.parentId), [categories]);
+  const rootCategories = useMemo(() => activeCategories.filter((c) => !c.parentId), [activeCategories]);
 
   // Collect all descendant category IDs for a given category
   const getAllCategoryIds = useMemo(() => {
@@ -254,7 +255,10 @@ export function MenuClient({ data, tableParam }: Props) {
   const isFiltering = search || activeCategory !== "all" || vegFilter !== "all";
 
   return (
-    <div className="min-h-dvh bg-background pb-28">
+    <div
+      className="min-h-dvh bg-background text-foreground pb-28"
+      style={isBar ? barThemeVars : undefined}
+    >
       {/* ──────────────── Hero Banner ──────────────── */}
       <div className="relative h-52 overflow-hidden sm:h-60">
         {restaurant.banner ? (
@@ -268,7 +272,12 @@ export function MenuClient({ data, tableParam }: Props) {
         ) : (
           <div className="h-full w-full bg-gradient-to-br from-primary/20 to-primary/5" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
+        <div
+          className={cn(
+            "absolute inset-0 bg-gradient-to-t via-background/50 to-transparent",
+            isBar ? "from-[#0c0a09] via-[#0c0a09]/60" : "from-background"
+          )}
+        />
 
         {/* Top bar */}
         <div className="absolute inset-x-0 top-0 flex items-center justify-between p-4">
@@ -285,12 +294,54 @@ export function MenuClient({ data, tableParam }: Props) {
               </div>
             )}
             <div>
+              {isBar && (
+                <span className="mb-1 inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-amber-400 backdrop-blur-sm">
+                  <Martini className="size-3" />
+                  Bar Menu
+                </span>
+              )}
               <h1 className="text-2xl font-bold tracking-tight">{restaurant.restaurantName}</h1>
-              <p className="text-sm text-muted-foreground">Table {table.number} · Dine-In</p>
+              <p className="text-sm text-muted-foreground">
+                Table {table.number} · {isBar ? "Bar" : "Dine-In"}
+              </p>
             </div>
           </div>
         </div>
       </div>
+
+      {/* ──────────────── Food / Cocktails view switch ──────────────── */}
+      {barEnabled && (
+        <div className="px-4 pt-3">
+          <div className="grid grid-cols-2 gap-1 rounded-xl border border-border/60 bg-muted/40 p-1">
+            <button
+              onClick={() => handleViewChange("food")}
+              className={cn(
+                "flex min-h-10 items-center justify-center gap-2 rounded-lg text-sm font-semibold transition-colors",
+                view === "food"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <UtensilsCrossed className="size-4" />
+              Food
+            </button>
+            <button
+              onClick={() => handleViewChange("cocktails")}
+              className={cn(
+                "flex min-h-10 items-center justify-center gap-2 rounded-lg text-sm font-semibold transition-colors",
+                view === "cocktails"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : isBar
+                    ? "text-muted-foreground hover:text-foreground"
+                    : "text-amber-600 hover:text-amber-700"
+              )}
+            >
+              <Martini className="size-4" />
+              Cocktails
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ──────────────── Quick Actions ──────────────── */}
       <div className="flex gap-2 overflow-x-auto px-4 py-3">
@@ -305,7 +356,7 @@ export function MenuClient({ data, tableParam }: Props) {
       </div>
 
       {/* ──────────────── Bestsellers (horizontal scroll) ──────────────── */}
-      {bestsellers.length > 0 && !isFiltering && (
+      {!isBar && bestsellers.length > 0 && !isFiltering && (
         <section className="px-4 py-3">
           <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
             <Star className="size-4 text-amber-500" />
@@ -349,7 +400,7 @@ export function MenuClient({ data, tableParam }: Props) {
       )}
 
       {/* ──────────────── New Items (horizontal scroll) ──────────────── */}
-      {newItems.length > 0 && !isFiltering && (
+      {!isBar && newItems.length > 0 && !isFiltering && (
         <section className="px-4 py-3">
           <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
             <Sparkles className="size-4 text-primary" />
@@ -390,12 +441,25 @@ export function MenuClient({ data, tableParam }: Props) {
         </section>
       )}
 
+      {/* ──────────────── Cocktail intro ──────────────── */}
+      {isBar && !isFiltering && (
+        <section className="px-4 pt-3 pb-1">
+          <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-amber-400">
+            <Martini className="size-4" />
+            Cocktail Menu
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            Shaken, stirred &amp; served — please drink responsibly.
+          </p>
+        </section>
+      )}
+
       {/* ──────────────── Search & Filters ──────────────── */}
       <div className="sticky top-0 z-20 space-y-3 border-b border-border/60 bg-background/95 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 backdrop-blur-md">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search menu..."
+            placeholder={isBar ? "Search cocktails..." : "Search menu..."}
             className="pl-9"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -430,30 +494,34 @@ export function MenuClient({ data, tableParam }: Props) {
               )}
             </div>
           ))}
-          <button
-            onClick={() => setVegFilter(vegFilter === "VEG" ? "all" : "VEG")}
-            className={`shrink-0 rounded-full px-3.5 py-2 min-h-9 text-xs font-medium transition-colors ${
-              vegFilter === "VEG" ? "bg-green-600 text-white" : "bg-muted text-muted-foreground"
-            }`}
-          >
-            🥬 Veg
-          </button>
-          <button
-            onClick={() => setVegFilter(vegFilter === "NON_VEG" ? "all" : "NON_VEG")}
-            className={`shrink-0 rounded-full px-3.5 py-2 min-h-9 text-xs font-medium transition-colors ${
-              vegFilter === "NON_VEG" ? "bg-red-600 text-white" : "bg-muted text-muted-foreground"
-            }`}
-          >
-            🍖 Non-Veg
-          </button>
-          <button
-            onClick={() => setVegFilter(vegFilter === "VEGAN" ? "all" : "VEGAN")}
-            className={`shrink-0 rounded-full px-3.5 py-2 min-h-9 text-xs font-medium transition-colors ${
-              vegFilter === "VEGAN" ? "bg-emerald-600 text-white" : "bg-muted text-muted-foreground"
-            }`}
-          >
-            🌱 Vegan
-          </button>
+          {!isBar && (
+            <>
+              <button
+                onClick={() => setVegFilter(vegFilter === "VEG" ? "all" : "VEG")}
+                className={`shrink-0 rounded-full px-3.5 py-2 min-h-9 text-xs font-medium transition-colors ${
+                  vegFilter === "VEG" ? "bg-green-600 text-white" : "bg-muted text-muted-foreground"
+                }`}
+              >
+                🥬 Veg
+              </button>
+              <button
+                onClick={() => setVegFilter(vegFilter === "NON_VEG" ? "all" : "NON_VEG")}
+                className={`shrink-0 rounded-full px-3.5 py-2 min-h-9 text-xs font-medium transition-colors ${
+                  vegFilter === "NON_VEG" ? "bg-red-600 text-white" : "bg-muted text-muted-foreground"
+                }`}
+              >
+                🍖 Non-Veg
+              </button>
+              <button
+                onClick={() => setVegFilter(vegFilter === "VEGAN" ? "all" : "VEGAN")}
+                className={`shrink-0 rounded-full px-3.5 py-2 min-h-9 text-xs font-medium transition-colors ${
+                  vegFilter === "VEGAN" ? "bg-emerald-600 text-white" : "bg-muted text-muted-foreground"
+                }`}
+              >
+                🌱 Vegan
+              </button>
+            </>
+          )}
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
@@ -473,7 +541,7 @@ export function MenuClient({ data, tableParam }: Props) {
               key="empty"
               className="col-span-full py-16 text-center text-muted-foreground"
             >
-              No items found
+              {isBar ? "No cocktails found" : "No items found"}
             </p>
           ) : (
             filteredItems.map((item, i) => (
@@ -491,13 +559,13 @@ export function MenuClient({ data, tableParam }: Props) {
                       <Image src={item.images[0]} alt={item.name} fill className="object-cover" />
                       {item.isChefSpecial && (
                         <div className="absolute bottom-0 left-0 right-0 bg-amber-500/90 py-0.5 text-center text-[9px] font-bold text-white">
-                          CHEF&apos;S SPECIAL
+                          {isBar ? "BARTENDER&apos;S SPECIAL" : "CHEF&apos;S SPECIAL"}
                         </div>
                       )}
                     </div>
                   ) : (
                     <div className="flex h-44 w-full items-center justify-center bg-muted text-3xl sm:h-28 sm:w-28 sm:text-2xl lg:h-24 lg:w-24">
-                      🍽️
+                      {isBar ? "🍸" : "🍽️"}
                     </div>
                   )}
 
@@ -505,16 +573,18 @@ export function MenuClient({ data, tableParam }: Props) {
                   <div className="flex min-w-0 flex-1 items-center gap-3 p-3 sm:p-3">
                     <div className="min-w-0 flex-1">
                       <div className="mb-0.5 flex flex-wrap items-center gap-1.5">
-                        <FoodTypeIndicator foodType={item.foodType} />
+                        {!isBar && <FoodTypeIndicator foodType={item.foodType} />}
                         <SpicyLevel level={item.spicyLevel} />
                         <span className="line-clamp-2 font-semibold text-sm leading-tight">{item.name}</span>
                       </div>
-                      {item.isChefSpecial && <ChefSpecialBadge />}
+                      {item.isChefSpecial && (
+                        <ChefSpecialBadge label={isBar ? "Bartender's Special" : undefined} />
+                      )}
                       <p className="mt-1 line-clamp-2 text-xs text-muted-foreground leading-relaxed">
                         {item.description}
                       </p>
                       <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                        <span className="font-bold text-sm" style={{ color: restaurant.primaryColor }}>
+                        <span className="font-bold text-sm" style={{ color: accentColor }}>
                           {formatCurrency(item.discountPrice ?? item.price)}
                         </span>
                         {item.discountPrice && (
@@ -535,7 +605,7 @@ export function MenuClient({ data, tableParam }: Props) {
       </div>
 
       {/* ──────────────── Customer Reviews ──────────────── */}
-      {reviews.length > 0 && !isFiltering && (
+      {!isBar && reviews.length > 0 && !isFiltering && (
         <section className="border-t border-border/60 px-4 py-6">
           <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
             <Star className="size-4 text-amber-500" />
@@ -585,7 +655,7 @@ export function MenuClient({ data, tableParam }: Props) {
             <Link href={`/menu/${tableParam}/cart`}>
               <Button
                 className="w-full h-12 text-base font-semibold gap-2"
-                style={{ backgroundColor: restaurant.primaryColor }}
+                style={{ backgroundColor: accentColor }}
               >
                 <ShoppingBag className="size-5" />
                 <span>
@@ -601,7 +671,8 @@ export function MenuClient({ data, tableParam }: Props) {
       {selectedItem && (
         <MenuItemDialog
           item={selectedItem}
-          primaryColor={restaurant.primaryColor}
+          primaryColor={accentColor}
+          barTheme={isBar}
           onClose={() => setSelectedItem(null)}
         />
       )}
