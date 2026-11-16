@@ -8,6 +8,7 @@ import { unstable_rethrow } from "next/navigation";
 import { checkRateLimit, getServerActionIp } from "@/lib/rate-limit";
 import { touchSession, clearSession } from "@/lib/session";
 import { setSpace, clearSpace } from "@/lib/space";
+import { HotelRole, Role, type HotelUser } from "@prisma/client";
 
 export async function hotelSignIn(data: { email: string; password: string }) {
   const ip = await getServerActionIp();
@@ -37,16 +38,26 @@ export async function hotelSignIn(data: { email: string; password: string }) {
     return { error: "Authentication service is unavailable. Please try again." };
   }
 
-  let user;
+  let role: HotelRole;
   try {
-    user = await prisma.hotelUser.findUnique({
+    const hotelUser = await prisma.hotelUser.findUnique({
       where: { id: authData.user.id },
     });
-    if (!user) {
-      // Not a hotel credential — drop the session so a restaurant login can
-      // never be reused inside the hotel space.
-      await supabase.auth.signOut();
-      return { error: "Hotel account not found." };
+    if (hotelUser) {
+      role = hotelUser.role;
+    } else {
+      // Admin fallback: restaurant admins may use their existing credentials
+      // in the hotel space without a HotelUser row.
+      const admin = await prisma.adminUser.findUnique({
+        where: { id: authData.user.id },
+      });
+      if (!admin || admin.role !== Role.ADMIN) {
+        // Not a hotel (or admin) credential — drop the session so a stray
+        // restaurant login can never be reused inside the hotel space.
+        await supabase.auth.signOut();
+        return { error: "Hotel account not found." };
+      }
+      role = HotelRole.ADMIN;
     }
   } catch {
     return { error: "Failed to load account information. Please try again." };
@@ -54,7 +65,7 @@ export async function hotelSignIn(data: { email: string; password: string }) {
 
   await touchSession();
   await setSpace("hotel");
-  return { success: true, role: user.role };
+  return { success: true, role };
 }
 
 export async function hotelSignOut() {
@@ -114,7 +125,13 @@ const getHotelDbUser = cache(async (userId: string) => {
   );
 });
 
-export async function getCurrentHotelUser() {
+const getRestaurantDbUser = cache(async (userId: string) => {
+  return prismaWithRetry(() =>
+    prisma.adminUser.findUnique({ where: { id: userId } })
+  );
+});
+
+export async function getCurrentHotelUser(): Promise<HotelUser | null> {
   try {
     const supabase = await createClient();
     const {
@@ -124,7 +141,20 @@ export async function getCurrentHotelUser() {
     if (!authUser) return null;
 
     const dbUser = await getHotelDbUser(authUser.id);
-    return dbUser;
+    if (dbUser) return dbUser;
+
+    // Admin fallback: a restaurant admin session in the hotel space is
+    // treated as a hotel ADMIN (Kitchen accounts are not hotel users).
+    const admin = await getRestaurantDbUser(authUser.id);
+    if (!admin || admin.role !== Role.ADMIN) return null;
+    return {
+      id: admin.id,
+      email: admin.email,
+      name: admin.name,
+      role: HotelRole.ADMIN,
+      createdAt: admin.createdAt,
+      updatedAt: admin.updatedAt,
+    };
   } catch (err) {
     unstable_rethrow(err);
     console.error("getCurrentHotelUser error:", err);
