@@ -94,23 +94,67 @@ export async function createOrder(rawData: CreateOrderInput) {
         };
       });
 
+      // ── Append-to-open-order ──────────────────────────────────────────
+      // If this table already has an open (in-progress) order, new items are
+      // appended to it instead of starting a brand-new order. This keeps the
+      // original order, its status timeline, and its payment history intact.
+      const existingOrder =
+        table.status === TableStatus.OCCUPIED
+          ? await tx.order.findFirst({
+              where: {
+                tableId: table.id,
+                status: {
+                  in: [
+                    OrderStatus.PLACED,
+                    OrderStatus.PREPARING,
+                    OrderStatus.PREPARED,
+                    OrderStatus.READY,
+                    OrderStatus.SERVED,
+                  ],
+                },
+              },
+              orderBy: { createdAt: "desc" },
+              include: { payments: true },
+            })
+          : null;
+
+      // Combined subtotal: previous order's subtotal + newly added items.
+      const baseSubtotal = existingOrder
+        ? toNumber(existingOrder.subtotal) + subtotal
+        : subtotal;
+
       let discountAmount = 0;
       let offerCodeApplied: string | null = null;
       if (data.couponCode) {
-        const offerVal = await validateOffer(data.couponCode, subtotal);
+        const offerVal = await validateOffer(data.couponCode, baseSubtotal);
         if (offerVal.isValid && offerVal.discountAmount) {
           discountAmount = offerVal.discountAmount;
           offerCodeApplied = offerVal.offer?.code ?? null;
-          if (offerCodeApplied) {
+          // Don't double-count usage when the same code is already applied.
+          if (offerCodeApplied && offerCodeApplied !== existingOrder?.offerCode) {
             await tx.offer.update({
               where: { code: offerCodeApplied },
               data: { usageCount: { increment: 1 } },
             });
           }
+        } else if (existingOrder) {
+          // New coupon invalid on an appended order → keep the previous discount.
+          discountAmount = Math.min(
+            toNumber(existingOrder.discountAmount),
+            baseSubtotal
+          );
+          offerCodeApplied = existingOrder.offerCode;
         }
+      } else if (existingOrder) {
+        // No coupon in this checkout → carry over the existing order's discount.
+        discountAmount = Math.min(
+          toNumber(existingOrder.discountAmount),
+          baseSubtotal
+        );
+        offerCodeApplied = existingOrder.offerCode;
       }
 
-      const taxableAmount = Math.max(0, subtotal - discountAmount);
+      const taxableAmount = Math.max(0, baseSubtotal - discountAmount);
       const gstPercentage = toNumber(settings.gstPercentage);
       const serviceChargePercentage = toNumber(settings.serviceChargePercentage);
       const gstAmount =
@@ -122,42 +166,116 @@ export async function createOrder(rawData: CreateOrderInput) {
       const totalAmount =
         Math.round((taxableAmount + gstAmount + serviceChargeAmount) * 100) / 100;
 
+      // Already-captured money on the existing order (e.g. a previous
+      // Razorpay payment) — only the remainder is charged this time.
+      const paidAmount = existingOrder
+        ? existingOrder.payments
+            .filter((p) => p.status === PaymentStatus.SUCCESS)
+            .reduce((sum, p) => sum + toNumber(p.amount), 0)
+        : 0;
+      const amountDue = Math.max(
+        0,
+        Math.round((totalAmount - paidAmount) * 100) / 100
+      );
+
       const isRazorpay = data.paymentMethod === PaymentMethod.RAZORPAY;
 
-      const order = await tx.order.create({
-        data: {
-          tableId: table.id,
-          customerName: data.customerName,
-          customerPhone: data.customerPhone ?? "",
-          // For Razorpay: keep as CONFIRMED until payment is verified.
-          // For Cash: immediate PLACED (customer pays at counter).
-          status: isRazorpay ? OrderStatus.CONFIRMED : OrderStatus.PLACED,
-          paymentStatus: PaymentStatus.PENDING,
-          paymentMethod: data.paymentMethod as PaymentMethod,
-          subtotal,
-          discountAmount,
-          gstAmount,
-          serviceChargeAmount,
-          totalAmount,
-          offerCode: offerCodeApplied,
-          notes: data.notes ?? null,
-        },
-      });
+      let order: Awaited<ReturnType<typeof prisma.order.create>>;
+      if (existingOrder) {
+        // ── Append: same order keeps its id, status, and history ──
+        order = existingOrder;
 
-      await tx.orderItem.createMany({
-        data: verifiedItems.map((item) => ({
-          orderId: order.id,
-          menuItemId: item.menuItemId,
-          quantity: item.quantity,
-          price: item.price,
-          notes: item.notes,
-          customizations: item.customizations,
-        })),
-      });
+        await tx.orderItem.createMany({
+          data: verifiedItems.map((item) => ({
+            orderId: existingOrder.id,
+            menuItemId: item.menuItemId,
+            quantity: item.quantity,
+            price: item.price,
+            notes: item.notes,
+            customizations: item.customizations,
+          })),
+        });
+
+        await tx.order.update({
+          where: { id: existingOrder.id },
+          data: {
+            subtotal: baseSubtotal,
+            discountAmount,
+            gstAmount,
+            serviceChargeAmount,
+            totalAmount,
+            offerCode: offerCodeApplied,
+            notes: data.notes
+              ? existingOrder.notes
+                ? `${existingOrder.notes}\n${data.notes}`
+                : data.notes
+              : existingOrder.notes,
+            // Keep original customer info; only refresh if empty.
+            customerName: existingOrder.customerName || data.customerName,
+            customerPhone: existingOrder.customerPhone || data.customerPhone || "",
+            paymentMethod: data.paymentMethod as PaymentMethod,
+          },
+        });
+
+        // Replace any stale pending payment with one for the remainder due.
+        await tx.payment.deleteMany({
+          where: { orderId: existingOrder.id, status: PaymentStatus.PENDING },
+        });
+      } else {
+        // ── New order (no open order on this table) ──
+        order = await tx.order.create({
+          data: {
+            tableId: table.id,
+            customerName: data.customerName,
+            customerPhone: data.customerPhone ?? "",
+            // For Razorpay: keep as CONFIRMED until payment is verified.
+            // For Cash: immediate PLACED (customer pays at counter).
+            status: isRazorpay ? OrderStatus.CONFIRMED : OrderStatus.PLACED,
+            paymentStatus: PaymentStatus.PENDING,
+            paymentMethod: data.paymentMethod as PaymentMethod,
+            subtotal: baseSubtotal,
+            discountAmount,
+            gstAmount,
+            serviceChargeAmount,
+            totalAmount,
+            offerCode: offerCodeApplied,
+            notes: data.notes ?? null,
+          },
+        });
+
+        await tx.orderItem.createMany({
+          data: verifiedItems.map((item) => ({
+            orderId: order.id,
+            menuItemId: item.menuItemId,
+            quantity: item.quantity,
+            price: item.price,
+            notes: item.notes,
+            customizations: item.customizations,
+          })),
+        });
+      }
 
       // For Cash: occupy table and notify immediately.
       // For Razorpay: defer until payment is confirmed in /api/payments/verify.
-      if (!isRazorpay) {
+      if (existingOrder) {
+        // Appended items: the kitchen must know now, regardless of payment
+        // method — the items stay on the order even if the payment modal is
+        // dismissed (cancelUnpaidOrder never touches non-CONFIRMED orders).
+        if (!isRazorpay) {
+          await tx.table.update({
+            where: { id: table.id },
+            data: { status: TableStatus.OCCUPIED },
+          });
+        }
+
+        await tx.notification.create({
+          data: {
+            title: `Additional Order! Table ${table.number}`,
+            message: `${data.customerName} added items — order total ₹${totalAmount}`,
+            type: NotificationType.NEW_ORDER,
+          },
+        });
+      } else if (!isRazorpay) {
         await tx.table.update({
           where: { id: table.id },
           data: { status: TableStatus.OCCUPIED },
@@ -173,52 +291,65 @@ export async function createOrder(rawData: CreateOrderInput) {
       }
 
       let razorpayOrder = null;
-      if (isRazorpay) {
-        try {
-          console.log("[createOrder] Creating Razorpay order:", {
-            orderId: order.id,
-            amount: totalAmount,
-            currency: settings.currency || "INR",
-          });
+      // Charge only the remainder not already paid (full total for new orders,
+      // since paidAmount is 0). New orders keep the legacy behaviour of always
+      // creating a payment row.
+      if (amountDue > 0 || !existingOrder) {
+        if (isRazorpay) {
+          try {
+            console.log("[createOrder] Creating Razorpay order:", {
+              orderId: order.id,
+              amount: amountDue,
+              currency: settings.currency || "INR",
+            });
 
-          const rzpOrder = await getRazorpayClient().orders.create({
-            amount: Math.round(totalAmount * 100),
-            currency: settings.currency || "INR",
-            receipt: `rcpt_${order.id.substring(0, 14)}`,
-            notes: { orderId: order.id },
-            payment: { capture: "automatic" },
-          });
+            const rzpOrder = await getRazorpayClient().orders.create({
+              amount: Math.round(amountDue * 100),
+              currency: settings.currency || "INR",
+              receipt: `rcpt_${order.id.substring(0, 14)}`,
+              notes: { orderId: order.id },
+              payment: { capture: "automatic" },
+            });
 
-          const rzpOrderData = rzpOrder as unknown as { id: string; amount: number; currency: string };
-          console.log("[createOrder] Razorpay order created:", rzpOrderData.id);
+            const rzpOrderData = rzpOrder as unknown as { id: string; amount: number; currency: string };
+            console.log("[createOrder] Razorpay order created:", rzpOrderData.id);
 
-          razorpayOrder = {
-            id: rzpOrderData.id,
-            amount: rzpOrderData.amount,
-            currency: rzpOrderData.currency,
-          };
+            razorpayOrder = {
+              id: rzpOrderData.id,
+              amount: rzpOrderData.amount,
+              currency: rzpOrderData.currency,
+            };
 
+            await tx.payment.create({
+              data: {
+                orderId: order.id,
+                amount: amountDue,
+                method: PaymentMethod.RAZORPAY,
+                transactionId: rzpOrder.id,
+                status: PaymentStatus.PENDING,
+              },
+            });
+          } catch (rzpError) {
+            console.error("Razorpay order creation failed:", rzpError);
+            throw new Error("Failed to initialize payment gateway.");
+          }
+        } else {
           await tx.payment.create({
             data: {
               orderId: order.id,
-              amount: totalAmount,
-              method: PaymentMethod.RAZORPAY,
-              transactionId: rzpOrder.id,
+              amount: amountDue,
+              method: PaymentMethod.CASH,
               status: PaymentStatus.PENDING,
             },
           });
-        } catch (rzpError) {
-          console.error("Razorpay order creation failed:", rzpError);
-          throw new Error("Failed to initialize payment gateway.");
         }
-      } else {
-        await tx.payment.create({
-          data: {
-            orderId: order.id,
-            amount: totalAmount,
-            method: PaymentMethod.CASH,
-            status: PaymentStatus.PENDING,
-          },
+      }
+
+      // New money is owed on an appended order → reflect that until it's paid.
+      if (existingOrder && amountDue > 0) {
+        await tx.order.update({
+          where: { id: existingOrder.id },
+          data: { paymentStatus: PaymentStatus.PENDING },
         });
       }
 
