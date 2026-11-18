@@ -72,7 +72,17 @@ export default function OrdersPage() {
             <Input placeholder="Search..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
           <div className="flex gap-3">
-            <Select value={statusFilter} onValueChange={(v) => v && setStatusFilter(v)}>
+            <Select
+              value={statusFilter}
+              onValueChange={(v) => v && setStatusFilter(v)}
+              items={[
+                { value: "all", label: "All Status" },
+                ...Object.values(OrderStatus).map((s) => ({
+                  value: s,
+                  label: getOrderStatusLabel(s),
+                })),
+              ]}
+            >
               <SelectTrigger className="w-full sm:w-[160px]">
                 <SelectValue placeholder="Filter status" />
               </SelectTrigger>
@@ -124,6 +134,10 @@ export default function OrdersPage() {
                       <Select
                         value={order.status}
                         onValueChange={(v) => v && handleStatusUpdate(order.id, v as OrderStatus)}
+                        items={Object.values(OrderStatus).map((s) => ({
+                          value: s,
+                          label: getOrderStatusLabel(s),
+                        }))}
                       >
                         <SelectTrigger className="w-full sm:w-[180px]">
                           <SelectValue />

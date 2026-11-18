@@ -78,7 +78,14 @@ export default function OffersPage() {
               <div className="space-y-2"><Label>Title</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="20% Off" /></div>
               <div className="space-y-2">
                 <Label>Discount Type</Label>
-                <Select value={form.discountType} onValueChange={(v) => v && setForm({ ...form, discountType: v })}>
+                <Select
+                  value={form.discountType}
+                  onValueChange={(v) => v && setForm({ ...form, discountType: v })}
+                  items={[
+                    { value: "PERCENTAGE", label: "Percentage" },
+                    { value: "FLAT", label: "Flat Amount" },
+                  ]}
+                >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="PERCENTAGE">Percentage</SelectItem>
