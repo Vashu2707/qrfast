@@ -14,6 +14,10 @@ const geistMono = localFont({
   src: "./fonts/GeistMonoVF.woff",
   variable: "--font-geist-mono",
   weight: "100 900",
+  // Nothing in the theme references --font-geist-mono (Tailwind's font-mono
+  // still resolves to the system mono stack), so auto-preloading this file
+  // triggers "preloaded ... was not used within a few seconds" warnings.
+  preload: false,
 });
 
 export const metadata: Metadata = {

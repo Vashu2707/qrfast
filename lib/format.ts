@@ -18,10 +18,14 @@ export function formatCurrency(amount: unknown, currency = "INR"): string {
 }
 
 export function formatDate(date: Date | string): string {
+  const d = date instanceof Date ? date : new Date(date);
+  // Never hand an invalid date to Intl.DateTimeFormat — it throws
+  // RangeError("date value is not finite") and white-screens the page.
+  if (Number.isNaN(d.getTime())) return "—";
   return new Intl.DateTimeFormat("en-IN", {
     dateStyle: "medium",
     timeStyle: "short",
-  }).format(new Date(date));
+  }).format(d);
 }
 
 export function getOrderStatusLabel(status: string): string {
@@ -100,8 +104,10 @@ export function getRoomStatusColor(status: string): string {
 
 /** Format a date-only value (UTC midnight) without timezone day shifts. */
 export function formatDateOnly(date: Date | string): string {
+  const d = date instanceof Date ? date : new Date(date);
+  if (Number.isNaN(d.getTime())) return "—";
   return new Intl.DateTimeFormat("en-IN", {
     dateStyle: "medium",
     timeZone: "UTC",
-  }).format(new Date(date));
+  }).format(d);
 }

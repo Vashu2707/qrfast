@@ -33,10 +33,11 @@ const securityHeaders = [
       "default-src 'self'",
       // Next.js requires 'unsafe-inline' for styles; nonce-based CSP needs additional setup
       "style-src 'self' 'unsafe-inline'",
-      // Scripts: self + Razorpay SDK + (unsafe-eval in development for Fast Refresh)
-      isDev
-        ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com"
-        : "script-src 'self' 'unsafe-inline' https://checkout.razorpay.com",
+      // Scripts: self + Razorpay SDK. Razorpay's checkout.js runs eval(),
+      // so 'unsafe-eval' is required in production too (without it the
+      // browser logs "blocked a JavaScript eval (script-src)"). 'unsafe-inline'
+      // is needed for Next.js inline scripts; nonce-based CSP needs more setup.
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com",
       // Images: self + data URIs (QR codes) + Supabase + Unsplash
       `img-src 'self' data: blob: https://${supabaseCsp} https://images.unsplash.com`,
       // Frames: Razorpay payment iframe

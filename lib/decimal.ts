@@ -56,6 +56,10 @@ export function convertDecimalsArray<T extends DecimalFields>(arr: T[]): T[] {
  */
 export function convertDecimalsDeep<T>(obj: T): T {
   if (obj == null || typeof obj !== "object") return obj;
+  // Dates are not Decimal-like — walking them would yield an empty object
+  // ({}), which later crashes Intl.DateTimeFormat with
+  // "date value is not finite". Pass them through untouched.
+  if (obj instanceof Date) return obj;
   if (Array.isArray(obj)) return obj.map(convertDecimalsDeep) as T;
   if ("toNumber" in obj && typeof (obj as { toNumber: () => number }).toNumber === "function") {
     return (obj as { toNumber: () => number }).toNumber() as T;
