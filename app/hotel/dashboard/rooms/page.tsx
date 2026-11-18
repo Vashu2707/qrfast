@@ -236,6 +236,10 @@ export default function HotelRoomsPage() {
                       <Select
                         value={room.status}
                         onValueChange={(v) => v && handleRoomStatus(room.id, v)}
+                        items={ROOM_STATUSES.map((s) => ({
+                          value: s,
+                          label: getRoomStatusLabel(s),
+                        }))}
                       >
                         <SelectTrigger className="my-3">
                           <SelectValue />
@@ -387,6 +391,7 @@ export default function HotelRoomsPage() {
               <Select
                 value={roomForm.roomTypeId}
                 onValueChange={(v) => v && setRoomForm({ ...roomForm, roomTypeId: v })}
+                items={roomTypes.map((t) => ({ value: t.id, label: t.name }))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select room type" />
@@ -405,6 +410,10 @@ export default function HotelRoomsPage() {
               <Select
                 value={roomForm.status}
                 onValueChange={(v) => v && setRoomForm({ ...roomForm, status: v })}
+                items={ROOM_STATUSES.map((s) => ({
+                  value: s,
+                  label: getRoomStatusLabel(s),
+                }))}
               >
                 <SelectTrigger>
                   <SelectValue />

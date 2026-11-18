@@ -261,7 +261,17 @@ export default function HotelBookingsPage() {
             />
           </div>
           <div className="flex gap-3">
-            <Select value={statusFilter} onValueChange={(v) => v && setStatusFilter(v)}>
+            <Select
+              value={statusFilter}
+              onValueChange={(v) => v && setStatusFilter(v)}
+              items={[
+                { value: "all", label: "All Status" },
+                ...STATUSES.map((s) => ({
+                  value: s,
+                  label: getBookingStatusLabel(s),
+                })),
+              ]}
+            >
               <SelectTrigger className="w-full min-w-0 sm:w-[170px]">
                 <SelectValue placeholder="Filter status" />
               </SelectTrigger>
@@ -401,7 +411,14 @@ export default function HotelBookingsPage() {
           <div className="grid gap-4">
             <div className="space-y-2">
               <Label>Room Type</Label>
-              <Select value={form.roomTypeId} onValueChange={(v) => v && setForm({ ...form, roomTypeId: v })}>
+              <Select
+                value={form.roomTypeId}
+                onValueChange={(v) => v && setForm({ ...form, roomTypeId: v })}
+                items={roomTypes.map((t) => ({
+                  value: t.id,
+                  label: `${t.name} — ${formatCurrency(t.basePrice)}/night`,
+                }))}
+              >
                 <SelectTrigger><SelectValue placeholder="Select room type" /></SelectTrigger>
                 <SelectContent>
                   {roomTypes.map((t) => (
@@ -520,7 +537,14 @@ export default function HotelBookingsPage() {
           <div className="grid gap-4">
             <div className="space-y-2">
               <Label>Room</Label>
-              <Select value={selectedRoomId} onValueChange={(v) => v && setSelectedRoomId(v)}>
+              <Select
+                value={selectedRoomId}
+                onValueChange={(v) => v && setSelectedRoomId(v)}
+                items={assignableRooms.map((r) => ({
+                  value: r.id,
+                  label: `Room ${r.number}${r.floor ? ` · Floor ${r.floor}` : ""} — ${r.status}`,
+                }))}
+              >
                 <SelectTrigger><SelectValue placeholder="Select a room" /></SelectTrigger>
                 <SelectContent>
                   {assignableRooms.length === 0 ? (
@@ -560,7 +584,15 @@ export default function HotelBookingsPage() {
             </p>
             <div className="space-y-2">
               <Label>Status</Label>
-              <Select value={payStatus} onValueChange={(v) => v && setPayStatus(v)}>
+              <Select
+                value={payStatus}
+                onValueChange={(v) => v && setPayStatus(v)}
+                items={[
+                  { value: "PENDING", label: "Pending" },
+                  { value: "PAID", label: "Paid" },
+                  { value: "REFUNDED", label: "Refunded" },
+                ]}
+              >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="PENDING">Pending</SelectItem>
@@ -572,7 +604,16 @@ export default function HotelBookingsPage() {
             {payStatus !== "PENDING" && (
               <div className="space-y-2">
                 <Label>Method</Label>
-                <Select value={payMethod} onValueChange={(v) => v && setPayMethod(v)}>
+                <Select
+                  value={payMethod}
+                  onValueChange={(v) => v && setPayMethod(v)}
+                  items={[
+                    { value: "CASH", label: "Cash" },
+                    { value: "UPI", label: "UPI" },
+                    { value: "CARD", label: "Card" },
+                    { value: "ONLINE", label: "Online" },
+                  ]}
+                >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="CASH">Cash</SelectItem>
