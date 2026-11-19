@@ -160,16 +160,11 @@ export async function forgotPassword(email: string) {
   return { success: true };
 }
 
-export async function resetPassword(password: string) {
+export async function resetPassword(password: string, code?: string) {
   const ip = await getServerActionIp();
-  const { allowed, retryAfterMs } = checkRateLimit(`reset:${ip}`, 3, 60 * 60_000);
+  const { allowed } = checkRateLimit(`reset:${ip}`, 3, 60 * 60_000);
   if (!allowed) {
     return { error: "Too many reset attempts. Please try again later." };
-  }
-
-  const session = await isSessionFresh();
-  if (!session.fresh) {
-    return { error: session.reason };
   }
 
   let supabase;
@@ -179,6 +174,38 @@ export async function resetPassword(password: string) {
     return { error: "Authentication service is unavailable. Please try again." };
   }
 
+  if (code) {
+    // The email link lands on the reset page with ?code= (PKCE). Exchange it
+    // here — no browser Supabase client exists to consume it — so the recovery
+    // session is written to the same cookie jar signIn() uses.
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error) {
+      // Retrying resends the same, now-redeemed code. Fall back to the session
+      // the first exchange created, but only when it is fresh (touchSession
+      // below marks it so) — never to a stale pre-existing session.
+      const fresh = await isSessionFresh();
+      if (!fresh.fresh) {
+        return {
+          error:
+            error.code === "pkce_code_verifier_not_found"
+              ? "This reset link only works in the browser it was requested from. Please request a new link and open it here."
+              : "This reset link has expired or was already used. Please request a new one.",
+        };
+      }
+    } else {
+      await touchSession();
+    }
+  } else {
+    // No recovery code in the URL (expired or invalid link): allow only
+    // callers that already proved a fresh session.
+    const fresh = await isSessionFresh();
+    if (!fresh.fresh) {
+      return {
+        error: "This reset link is invalid or has expired. Please request a new one.",
+      };
+    }
+  }
+
   try {
     const { error } = await supabase.auth.updateUser({ password });
     if (error) return { error: error.message };
@@ -186,6 +213,20 @@ export async function resetPassword(password: string) {
     return { error: "Failed to reset password. Please try again." };
   }
 
+  // End the recovery session: the new password applies at the next sign-in,
+  // and a session-less form on /login can't bounce against the activity gate.
+  try {
+    await supabase.auth.signOut();
+    await clearSession();
+  } catch (error) {
+    // signOut() removes the local session on every path it returns from; if
+    // it throws instead, keep the activity cookie fresh so the surviving
+    // session can't loop between /login and /dashboard.
+    console.error("resetPassword signOut error:", error);
+    await touchSession();
+  }
+  await clearSpace();
+  revalidatePath("/");
   return { success: true };
 }
 

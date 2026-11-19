@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { resetPassword } from "@/actions/auth";
@@ -14,6 +15,15 @@ import { toast } from "sonner";
 import { ArrowLeft, Loader2 } from "lucide-react";
 
 export default function HotelResetPasswordPage() {
+  return (
+    <Suspense fallback={<div className="text-center text-muted-foreground">Loading...</div>}>
+      <HotelResetPasswordForm />
+    </Suspense>
+  );
+}
+
+function HotelResetPasswordForm() {
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
 
   const {
@@ -26,7 +36,7 @@ export default function HotelResetPasswordPage() {
 
   const onSubmit = async (data: ResetPasswordFormData) => {
     setLoading(true);
-    const result = await resetPassword(data.password);
+    const result = await resetPassword(data.password, searchParams.get("code") ?? undefined);
     setLoading(false);
 
     if (result.error) {
