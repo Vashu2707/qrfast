@@ -16,6 +16,7 @@ import {
 } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { toNumber } from "@/lib/decimal";
+import { getOrderStatusLabel } from "@/lib/format";
 
 // ─── Public ──────────────────────────────────────────────────────────────────
 
@@ -168,12 +169,13 @@ export async function createOrder(rawData: CreateOrderInput) {
 
       // Already-captured money on the existing order (e.g. a previous
       // Razorpay payment) — only the remainder is charged this time.
-      const paidAmount = existingOrder
+      // `let`: adjusted below when a PENDING row turns out to be paid already.
+      let paidAmount = existingOrder
         ? existingOrder.payments
             .filter((p) => p.status === PaymentStatus.SUCCESS)
             .reduce((sum, p) => sum + toNumber(p.amount), 0)
         : 0;
-      const amountDue = Math.max(
+      let amountDue = Math.max(
         0,
         Math.round((totalAmount - paidAmount) * 100) / 100
       );
@@ -217,9 +219,57 @@ export async function createOrder(rawData: CreateOrderInput) {
           },
         });
 
-        // Replace any stale pending payment with one for the remainder due.
+        // A PENDING Razorpay row may already be paid — the capture can be in
+        // flight while this append runs. Never delete rows that exist on
+        // Razorpay's side, and count their captured amounts so the customer
+        // is not charged twice for the same money.
+        const pendingRzp: { id: string; rzpId: string }[] = [];
+        for (const p of existingOrder.payments) {
+          if (
+            p.status === PaymentStatus.PENDING &&
+            p.method === PaymentMethod.RAZORPAY &&
+            p.transactionId
+          ) {
+            pendingRzp.push({ id: p.id, rzpId: p.transactionId });
+          }
+        }
+        const keepIds: string[] = [];
+        if (pendingRzp.length > 0) {
+          try {
+            const rzpClient = getRazorpayClient();
+            for (const row of pendingRzp) {
+              const res = await rzpClient.orders.fetchPayments(row.rzpId);
+              // Keep any row with a live payment (created/authorized/captured)
+              // so verify/webhook can still find it; only failed rows are stale.
+              const live = res.items.filter((pay) => pay.status !== "failed");
+              if (live.length > 0) {
+                keepIds.push(row.id);
+                const capturedRupees =
+                  live
+                    .filter((pay) => pay.status === "captured")
+                    .reduce((sum, pay) => sum + Number(pay.amount), 0) / 100;
+                if (capturedRupees > 0) {
+                  paidAmount = Math.round((paidAmount + capturedRupees) * 100) / 100;
+                }
+              }
+            }
+          } catch (rzpError) {
+            console.error("createOrder: Razorpay payment lookup failed:", rzpError);
+            throw new Error(
+              "Could not verify your previous payment. Please try again."
+            );
+          }
+          amountDue = Math.max(0, Math.round((totalAmount - paidAmount) * 100) / 100);
+        }
+
+        // Replace stale pending payments (rows with a live Razorpay payment
+        // are kept so verify/webhook can still settle them).
         await tx.payment.deleteMany({
-          where: { orderId: existingOrder.id, status: PaymentStatus.PENDING },
+          where: {
+            orderId: existingOrder.id,
+            status: PaymentStatus.PENDING,
+            id: { notIn: keepIds },
+          },
         });
       } else {
         // ── New order (no open order on this table) ──
@@ -384,6 +434,34 @@ export async function cancelUnpaidOrder(orderId: string, tableId: string) {
       if (order.status !== OrderStatus.CONFIRMED) return;
       if (order.paymentStatus !== PaymentStatus.PENDING) return;
 
+      // The modal can be dismissed while a Razorpay capture is still in
+      // flight — deleting the order here would erase the record of money
+      // already taken. Ask Razorpay first; only delete when we're sure no
+      // payment exists (or the check fails → keep the order, fail safe).
+      const rzpRows = await tx.payment.findMany({
+        where: { orderId, method: PaymentMethod.RAZORPAY },
+        select: { transactionId: true },
+      });
+      const rzpOrderIds = rzpRows
+        .map((p) => p.transactionId)
+        .filter((id): id is string => !!id);
+      if (rzpOrderIds.length > 0) {
+        try {
+          const rzpClient = getRazorpayClient();
+          for (const rzpId of rzpOrderIds) {
+            const res = await rzpClient.orders.fetchPayments(rzpId);
+            if (res.items.some((pay) => pay.status !== "failed")) {
+              // A live payment exists (or is being captured) — leave the
+              // order alone so verify/webhook can still settle it.
+              return;
+            }
+          }
+        } catch (rzpError) {
+          console.error("cancelUnpaidOrder: Razorpay lookup failed:", rzpError);
+          return; // fail safe — keep the order rather than risk deleting paid records
+        }
+      }
+
       await tx.orderItem.deleteMany({ where: { orderId } });
       await tx.payment.deleteMany({ where: { orderId } });
       await tx.order.delete({ where: { id: orderId } });
@@ -541,11 +619,34 @@ export async function updateOrderStatus(id: string, status: OrderStatus) {
 
   try {
     const updatedOrder = await prisma.$transaction(async (tx) => {
-      const order = await tx.order.update({
-        where: { id },
+      // Atomic guard: COMPLETED and CANCELLED are terminal — once an order is
+      // there, no later transition may re-enter (double table-free, false
+      // REFUNDED, duplicate-invoice crash). updateMany is atomic, so two
+      // concurrent requests can't both pass.
+      const guarded = await tx.order.updateMany({
+        where: {
+          id,
+          status: { notIn: [OrderStatus.COMPLETED, OrderStatus.CANCELLED] },
+        },
         data: { status },
+      });
+
+      if (guarded.count === 0) {
+        const current = await tx.order.findUnique({
+          where: { id },
+          select: { status: true },
+        });
+        if (!current) throw new Error("Order not found.");
+        throw new Error(
+          `Order is already ${getOrderStatusLabel(current.status)} — its status cannot be changed.`
+        );
+      }
+
+      const order = await tx.order.findUnique({
+        where: { id },
         include: { table: true },
       });
+      if (!order) throw new Error("Order not found.");
 
       if (status === OrderStatus.READY) {
         await tx.notification.create({
