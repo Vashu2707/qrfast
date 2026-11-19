@@ -28,24 +28,35 @@ const bookingInclude = {
 } satisfies Prisma.HotelBookingInclude;
 
 async function countAvailableRooms(
+  db: Prisma.TransactionClient,
   roomTypeId: string,
   checkIn: Date,
   checkOut: Date,
   excludeBookingId?: string
 ) {
-  const [totalRooms, bookedRooms] = await Promise.all([
-    prisma.hotelRoom.count({ where: { roomTypeId } }),
-    prisma.hotelBooking.count({
-      where: {
-        roomTypeId,
-        status: { in: [...BLOCKED_BOOKING_STATUSES] },
-        checkInDate: { lt: checkOut },
-        checkOutDate: { gt: checkIn },
-        ...(excludeBookingId ? { id: { not: excludeBookingId } } : {}),
-      },
-    }),
-  ]);
+  // Sequential (not Promise.all): this runs inside interactive transactions,
+  // where queries share a single connection.
+  const totalRooms = await db.hotelRoom.count({ where: { roomTypeId } });
+  const bookedRooms = await db.hotelBooking.count({
+    where: {
+      roomTypeId,
+      status: { in: [...BLOCKED_BOOKING_STATUSES] },
+      checkInDate: { lt: checkOut },
+      checkOutDate: { gt: checkIn },
+      ...(excludeBookingId ? { id: { not: excludeBookingId } } : {}),
+    },
+  });
   return { totalRooms, bookedRooms, available: totalRooms - bookedRooms };
+}
+
+/** True when the error is a Prisma unique-constraint violation (P2002). */
+function isUniqueViolation(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: unknown }).code === "P2002"
+  );
 }
 
 export async function createHotelBooking(rawData: CreateHotelBookingInput) {
@@ -83,47 +94,58 @@ export async function createHotelBooking(rawData: CreateHotelBookingInput) {
       return { error: "Stay must be at least 1 night." };
     }
 
-    const { totalRooms, available } = await countAvailableRooms(
-      roomType.id,
-      checkInDate,
-      checkOutDate
-    );
-    if (totalRooms === 0) {
-      return { error: "This room type has no rooms available right now." };
-    }
-    if (available <= 0) {
-      return { error: "No rooms available for the selected dates." };
-    }
-
     const totalAmount = Math.round(nights * Number(roomType.basePrice) * 100) / 100;
 
-    let referenceCode = generateBookingReference();
-    // Extremely unlikely collision — retry a couple of times.
-    for (let i = 0; i < 3; i++) {
-      const exists = await prisma.hotelBooking.findUnique({
-        where: { referenceCode },
-      });
-      if (!exists) break;
-      referenceCode = generateBookingReference();
-    }
+    // Availability check and insert run in one transaction holding a lock on
+    // the room-type row: without it, two concurrent creates both see
+    // available >= 1 and overbook (check-then-insert race). A unique-code
+    // collision (P2002) retries with a freshly generated reference.
+    let booking;
+    for (let attempt = 0; ; attempt++) {
+      try {
+        booking = await prisma.$transaction(
+          async (tx) => {
+            await tx.$queryRaw`SELECT id FROM "HotelRoomType" WHERE id = ${roomType.id} FOR UPDATE`;
 
-    const booking = await prisma.hotelBooking.create({
-      data: {
-        referenceCode,
-        guestName: data.guestName,
-        guestEmail: data.guestEmail || null,
-        guestPhone: data.guestPhone,
-        guestCount: data.guestCount,
-        roomTypeId: roomType.id,
-        checkInDate,
-        checkOutDate,
-        totalAmount,
-        specialRequests: data.specialRequests || null,
-        status: BookingStatus.CONFIRMED,
-        paymentStatus: HotelPaymentStatus.PENDING,
-      },
-      include: bookingInclude,
-    });
+            const { totalRooms, available } = await countAvailableRooms(
+              tx,
+              roomType.id,
+              checkInDate,
+              checkOutDate
+            );
+            if (totalRooms === 0) {
+              throw new Error("This room type has no rooms available right now.");
+            }
+            if (available <= 0) {
+              throw new Error("No rooms available for the selected dates.");
+            }
+
+            return tx.hotelBooking.create({
+              data: {
+                referenceCode: generateBookingReference(),
+                guestName: data.guestName,
+                guestEmail: data.guestEmail || null,
+                guestPhone: data.guestPhone,
+                guestCount: data.guestCount,
+                roomTypeId: roomType.id,
+                checkInDate,
+                checkOutDate,
+                totalAmount,
+                specialRequests: data.specialRequests || null,
+                status: BookingStatus.CONFIRMED,
+                paymentStatus: HotelPaymentStatus.PENDING,
+              },
+              include: bookingInclude,
+            });
+          },
+          { timeout: 10_000 }
+        );
+        break;
+      } catch (error) {
+        if (isUniqueViolation(error) && attempt < 2) continue;
+        throw error;
+      }
+    }
 
     revalidatePath("/hotel/dashboard/bookings");
     return {
@@ -203,6 +225,7 @@ export async function updateHotelBooking(bookingId: string, rawData: HotelBookin
 
     if (datesChanged && existing.status !== BookingStatus.CANCELLED) {
       const { available } = await countAvailableRooms(
+        prisma,
         existing.roomTypeId,
         checkInDate,
         checkOutDate,
@@ -210,6 +233,28 @@ export async function updateHotelBooking(bookingId: string, rawData: HotelBookin
       );
       if (available <= 0) {
         return { error: "No rooms available for the selected dates." };
+      }
+
+      // Type-level availability isn't enough when a room is already
+      // assigned — re-check that specific room for overlaps, or editing
+      // dates can double-book the same room for the same nights.
+      if (existing.roomId) {
+        const clash = await prisma.hotelBooking.findFirst({
+          where: {
+            roomId: existing.roomId,
+            id: { not: bookingId },
+            status: { in: [...BLOCKED_BOOKING_STATUSES] },
+            checkInDate: { lt: checkOutDate },
+            checkOutDate: { gt: checkInDate },
+          },
+          select: { referenceCode: true },
+        });
+        if (clash) {
+          return {
+            error:
+              "The assigned room is already booked for the new dates. Change the room or pick different dates.",
+          };
+        }
       }
     }
 
@@ -316,25 +361,53 @@ export async function assignHotelRoom(rawData: unknown) {
       return { error: "Room is under maintenance." };
     }
 
-    const clash = await prisma.hotelBooking.findFirst({
-      where: {
-        roomId,
-        id: { not: bookingId },
-        status: { in: [...BLOCKED_BOOKING_STATUSES] },
-        checkInDate: { lt: booking.checkOutDate },
-        checkOutDate: { gt: booking.checkInDate },
-      },
-    });
-    if (clash) {
-      return { error: `Room ${room.number} is already booked for these dates.` };
-    }
+    await prisma.$transaction(
+      async (tx) => {
+        // Lock the room row so two concurrent assigns of different bookings
+        // to the same room serialize — otherwise both pass the clash check
+        // and the room ends up double-booked.
+        await tx.$queryRaw`SELECT id FROM "HotelRoom" WHERE id = ${roomId} FOR UPDATE`;
 
-    await prisma.hotelBooking.update({
-      where: { id: bookingId },
-      data: { roomId },
-    });
+        const clash = await tx.hotelBooking.findFirst({
+          where: {
+            roomId,
+            id: { not: bookingId },
+            status: { in: [...BLOCKED_BOOKING_STATUSES] },
+            checkInDate: { lt: booking.checkOutDate },
+            checkOutDate: { gt: booking.checkInDate },
+          },
+          select: { id: true },
+        });
+        if (clash) {
+          throw new Error(`Room ${room.number} is already booked for these dates.`);
+        }
+
+        await tx.hotelBooking.update({
+          where: { id: bookingId },
+          data: { roomId },
+        });
+
+        // Moving a checked-in guest: free the old room and occupy the new
+        // one, or the old room stays OCCUPIED forever and a later checkout
+        // only frees the new one (occupancy stats drift with no recovery).
+        if (booking.status === BookingStatus.CHECKED_IN) {
+          if (booking.roomId && booking.roomId !== roomId) {
+            await tx.hotelRoom.update({
+              where: { id: booking.roomId },
+              data: { status: "AVAILABLE" },
+            });
+          }
+          await tx.hotelRoom.update({
+            where: { id: roomId },
+            data: { status: "OCCUPIED" },
+          });
+        }
+      },
+      { timeout: 10_000 }
+    );
 
     revalidatePath("/hotel/dashboard/bookings");
+    revalidatePath("/hotel/dashboard/rooms");
     return { success: true };
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Assign failed.";
