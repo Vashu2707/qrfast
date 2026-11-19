@@ -467,7 +467,12 @@ export default function MenuPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this menu item? Its images will also be removed.")) return;
+    if (
+      !confirm(
+        "Delete this menu item? Its images will also be removed. Items that appear in past orders cannot be deleted (history is preserved)."
+      )
+    )
+      return;
     const result = await deleteMenuItem(id);
     if (result.error) toast.error(result.error);
     else {
@@ -501,7 +506,11 @@ export default function MenuPage() {
   };
 
   const handleDeleteCategory = async (cat: CategoryTreeNode) => {
-    if (confirm(`Delete "${cat.name}"? All items in this category and its subcategories will be deleted.`)) {
+    if (
+      confirm(
+        `Delete "${cat.name}"? All items in this category and its subcategories will be deleted — unless they appear in past orders, which are preserved.`
+      )
+    ) {
       const result = await deleteCategory(cat.id);
       if (result.error) toast.error(result.error);
       else {

@@ -80,6 +80,16 @@ export async function deleteTable(id: string) {
   if (!user) return { error: "Unauthorized" };
 
   try {
+    // Order.tableId is ON DELETE RESTRICT — refuse here with a clear message
+    // instead of a raw FK error. Deleting a table would otherwise wipe its
+    // entire order/payment/invoice history.
+    const orderCount = await prisma.order.count({ where: { tableId: id } });
+    if (orderCount > 0) {
+      return {
+        error: `Cannot delete: this table has ${orderCount} order${orderCount > 1 ? "s" : ""} in its history. Order history is preserved.`,
+      };
+    }
+
     await prisma.table.delete({ where: { id } });
     revalidatePath("/dashboard/tables");
     return { success: true };

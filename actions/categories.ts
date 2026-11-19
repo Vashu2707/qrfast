@@ -98,6 +98,33 @@ export async function deleteCategory(id: string) {
   if (!user) return { error: "Unauthorized" };
 
   try {
+    // Deleting a category cascades to its menu items (and subcategories).
+    // OrderItem.menuItemId is ON DELETE RESTRICT, so the DB would refuse if
+    // any of those items appear in past orders — check first for a clear error.
+    const allCategories = await prisma.category.findMany({
+      select: { id: true, parentId: true },
+    });
+    const idsToDelete = new Set<string>([id]);
+    let grew = true;
+    while (grew) {
+      grew = false;
+      for (const c of allCategories) {
+        if (c.parentId && idsToDelete.has(c.parentId) && !idsToDelete.has(c.id)) {
+          idsToDelete.add(c.id);
+          grew = true;
+        }
+      }
+    }
+
+    const referencedCount = await prisma.orderItem.count({
+      where: { menuItem: { categoryId: { in: [...idsToDelete] } } },
+    });
+    if (referencedCount > 0) {
+      return {
+        error: `Cannot delete: items in this category appear in ${referencedCount} past order line${referencedCount > 1 ? "s" : ""}. Order history is preserved.`,
+      };
+    }
+
     await prisma.category.delete({
       where: { id },
     });

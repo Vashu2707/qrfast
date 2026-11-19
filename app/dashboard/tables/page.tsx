@@ -35,7 +35,12 @@ export default function TablesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this table?")) return;
+    if (
+      !confirm(
+        "Delete this table? Tables with existing orders cannot be deleted — order history is preserved."
+      )
+    )
+      return;
     const result = await deleteTable(id);
     if (result.error) toast.error(result.error);
     else {

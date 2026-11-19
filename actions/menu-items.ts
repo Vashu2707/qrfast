@@ -163,6 +163,17 @@ export async function deleteMenuItem(id: string) {
       return { error: "Menu item not found." };
     }
 
+    // OrderItem.menuItemId is ON DELETE RESTRICT — refuse with a clear message
+    // so historical order lines (and itemized bills) are never erased.
+    const orderItemCount = await prisma.orderItem.count({
+      where: { menuItemId: id },
+    });
+    if (orderItemCount > 0) {
+      return {
+        error: `Cannot delete: this item appears in ${orderItemCount} past order line${orderItemCount > 1 ? "s" : ""}. Set it as unavailable instead to hide it from the menu.`,
+      };
+    }
+
     // Delete from database first
     await prisma.menuItem.delete({ where: { id } });
 
