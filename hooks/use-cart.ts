@@ -76,7 +76,15 @@ export const useCart = create<CartStore>()(
       coupon: null,
 
       setTable: (tableId, tableNumber) =>
-        set({ tableId, tableNumber }),
+        set((state) =>
+          state.tableId === tableId
+            ? { tableId, tableNumber }
+            : // Scanned a different table's QR (or returned with a cart
+              // from another table) — drop the previous table's items,
+              // notes and coupon so they can't be checked out against
+              // the new tableId.
+              { tableId, tableNumber, items: [], notes: "", coupon: null }
+        ),
 
       addItem: (newItem) => {
         const id = generateCompositeId(newItem.menuItemId, newItem.customizations);

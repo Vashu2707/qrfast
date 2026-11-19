@@ -22,6 +22,7 @@ export default async function CartPage({ params }: Props) {
   return (
     <CartClient
       tableParam={tableParam}
+      table={{ id: data.table.id, number: data.table.number }}
       gstPercentage={Number(settings?.gstPercentage ?? 5)}
       serviceChargePercentage={Number(settings?.serviceChargePercentage ?? 0)}
       primaryColor={settings?.primaryColor ?? "#E11D48"}

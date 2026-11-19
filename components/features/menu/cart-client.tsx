@@ -23,6 +23,7 @@ import {
 
 interface Props {
   tableParam: string;
+  table: { id: string; number: string };
   gstPercentage: number;
   serviceChargePercentage: number;
   primaryColor: string;
@@ -65,6 +66,7 @@ function VegIndicator({ foodType }: { foodType: "VEG" | "NON_VEG" | "VEGAN" }) {
 
 export function CartClient({
   tableParam,
+  table,
   gstPercentage,
   serviceChargePercentage,
   primaryColor,
@@ -77,6 +79,7 @@ export function CartClient({
     tableNumber,
     notes,
     coupon,
+    setTable,
     updateQuantity,
     removeItem,
     setNotes,
@@ -96,6 +99,13 @@ export function CartClient({
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.CASH);
   const [loading, setLoading] = useState(false);
   const [couponLoading, setCouponLoading] = useState(false);
+
+  // Bind this cart to the table in the URL — a deep link to another
+  // table's cart must not keep the previous table's items/coupon
+  // (setTable clears them when the tableId changes).
+  useEffect(() => {
+    setTable(table.id, table.number);
+  }, [table.id, table.number, setTable]);
 
   // Redirect to menu if cart empties (but not during active order submission)
   const isSubmitting = useRef(false);
@@ -216,6 +226,19 @@ export function CartClient({
         theme: { color: primaryColor },
         modal: {
           ondismiss: async () => {
+            if (result.appended) {
+              // The items were already appended to the open kitchen order —
+              // cancelUnpaidOrder never touches non-CONFIRMED orders, so they
+              // stay. Clear the cart (keeps isSubmitting set so the empty-cart
+              // effect can't race this navigation) and tell the customer,
+              // otherwise pressing "Pay" again re-appends and double-bills.
+              clearCart();
+              toast.info(
+                "Your items were already sent to the kitchen. You can pay at the counter."
+              );
+              router.push(`/order/${result.orderId}`);
+              return;
+            }
             isSubmitting.current = false;
             await cancelUnpaidOrder(result.orderId, tableId);
           },

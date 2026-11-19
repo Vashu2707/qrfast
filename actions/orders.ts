@@ -403,7 +403,7 @@ export async function createOrder(rawData: CreateOrderInput) {
         });
       }
 
-      return { orderId: order.id, totalAmount, razorpayOrder };
+      return { orderId: order.id, totalAmount, razorpayOrder, appended: !!existingOrder };
     });
 
     return { success: true, ...result };
