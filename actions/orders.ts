@@ -619,6 +619,15 @@ export async function updateOrderStatus(id: string, status: OrderStatus) {
 
   try {
     const updatedOrder = await prisma.$transaction(async (tx) => {
+      // Read the pre-transition status first: the guarded update below
+      // writes the new status, and "leaving CONFIRMED" must be judged
+      // against the old value.
+      const before = await tx.order.findUnique({
+        where: { id },
+        select: { status: true },
+      });
+      if (!before) throw new Error("Order not found.");
+
       // Atomic guard: COMPLETED and CANCELLED are terminal — once an order is
       // there, no later transition may re-enter (double table-free, false
       // REFUNDED, duplicate-invoice crash). updateMany is atomic, so two
@@ -647,6 +656,28 @@ export async function updateOrderStatus(id: string, status: OrderStatus) {
         include: { table: true },
       });
       if (!order) throw new Error("Order not found.");
+
+      // Manually advancing a paid order out of CONFIRMED (its verify/webhook
+      // transition never ran): occupy the table and notify, mirroring
+      // /api/payments/verify — both were previously skipped, so the table
+      // stayed AVAILABLE while food was being prepared for it.
+      if (
+        before.status === OrderStatus.CONFIRMED &&
+        status !== OrderStatus.CONFIRMED &&
+        status !== OrderStatus.CANCELLED
+      ) {
+        await tx.table.update({
+          where: { id: order.tableId },
+          data: { status: TableStatus.OCCUPIED },
+        });
+        await tx.notification.create({
+          data: {
+            title: `New Order! Table ${order.table.number}`,
+            message: `${order.customerName} placed an order for ₹${toNumber(order.totalAmount)}`,
+            type: NotificationType.NEW_ORDER,
+          },
+        });
+      }
 
       if (status === OrderStatus.READY) {
         await tx.notification.create({
@@ -755,8 +786,46 @@ export async function updateOrderPaymentStatus(
 
   try {
     await prisma.$transaction(async (tx) => {
+      const order = await tx.order.findUnique({
+        where: { id },
+        select: {
+          status: true,
+          tableId: true,
+          customerName: true,
+          totalAmount: true,
+          table: { select: { number: true } },
+        },
+      });
+      if (!order) throw new Error("Order not found.");
+
       await tx.order.update({ where: { id }, data: { paymentStatus } });
       await tx.payment.updateMany({ where: { orderId: id }, data: { status: paymentStatus } });
+
+      // Marking a paid order SUCCESS must finalize it exactly like
+      // /api/payments/verify does: without CONFIRMED → PLACED the order
+      // never reaches the kitchen board (CONFIRMED isn't shown there) and
+      // the table is never occupied.
+      if (
+        paymentStatus === PaymentStatus.SUCCESS &&
+        order.status === OrderStatus.CONFIRMED
+      ) {
+        await tx.order.update({
+          where: { id },
+          data: { status: OrderStatus.PLACED },
+        });
+        await tx.table.update({
+          where: { id: order.tableId },
+          data: { status: TableStatus.OCCUPIED },
+        });
+        await tx.notification.create({
+          data: {
+            title: `New Order! Table ${order.table.number}`,
+            message: `${order.customerName} placed an order for ₹${toNumber(order.totalAmount)}`,
+            type: NotificationType.NEW_ORDER,
+          },
+        });
+      }
+
       await tx.notification.create({
         data: {
           title: "Payment Updated",

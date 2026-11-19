@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatCurrency, getOrderStatusLabel } from "@/lib/format";
-import { OrderStatus } from "@prisma/client";
+import { OrderStatus, PaymentStatus } from "@prisma/client";
 import { toast } from "sonner";
 import { ChefHat, Clock, CheckCircle, RefreshCw, Volume2, VolumeX } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -15,6 +15,7 @@ import Link from "next/link";
 import { unlockAudio, playNewOrder } from "@/lib/sound";
 
 const KITCHEN_STATUSES = [
+  OrderStatus.CONFIRMED,
   OrderStatus.PLACED,
   OrderStatus.PREPARING,
   OrderStatus.PREPARED,
@@ -32,9 +33,19 @@ export default function KitchenPage() {
     refetchInterval: 8000,
   });
 
-  const kitchenOrders = orders.filter((o) =>
-    KITCHEN_STATUSES.includes(o.status as typeof KITCHEN_STATUSES[number])
-  );
+  const kitchenOrders = orders.filter((o) => {
+    if (!KITCHEN_STATUSES.includes(o.status as typeof KITCHEN_STATUSES[number])) {
+      return false;
+    }
+    // CONFIRMED = Razorpay order awaiting payment. Only surface the paid
+    // ones (money captured but the verify/webhook transition to PLACED
+    // failed) — unpaid orders must not reach the board or the kitchen
+    // would cook food that was never paid for.
+    if (o.status === OrderStatus.CONFIRMED) {
+      return o.paymentStatus === PaymentStatus.SUCCESS;
+    }
+    return true;
+  });
 
   const handleToggleSound = useCallback(async () => {
     if (!soundEnabled) await unlockAudio();
@@ -59,6 +70,7 @@ export default function KitchenPage() {
 
   const getNextStatus = (current: OrderStatus): OrderStatus | null => {
     const flow: Partial<Record<OrderStatus, OrderStatus>> = {
+      [OrderStatus.CONFIRMED]: OrderStatus.PLACED,
       [OrderStatus.PLACED]: OrderStatus.PREPARING,
       [OrderStatus.PREPARING]: OrderStatus.PREPARED,
       [OrderStatus.PREPARED]: OrderStatus.READY,
@@ -67,6 +79,7 @@ export default function KitchenPage() {
   };
 
   const columns = [
+    { status: OrderStatus.CONFIRMED, label: "Confirmed (Paid)", color: "border-indigo-500" },
     { status: OrderStatus.PLACED, label: "New Orders", color: "border-blue-500" },
     { status: OrderStatus.PREPARING, label: "Preparing", color: "border-amber-500" },
     { status: OrderStatus.PREPARED, label: "Prepared", color: "border-violet-500" },
@@ -95,7 +108,7 @@ export default function KitchenPage() {
       {isLoading ? (
         <p className="py-20 text-center text-muted-foreground">Loading orders...</p>
       ) : (
-        <div className="grid gap-3 p-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4 sm:p-4">
+        <div className="grid gap-3 p-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 sm:p-4">
           {columns.map(({ status, label, color }) => {
             const columnOrders = kitchenOrders.filter((o) => o.status === status);
             return (
