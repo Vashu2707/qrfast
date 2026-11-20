@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getTables, createTable, deleteTable, updateTableStatus, rotateTableToken } from "@/actions/tables";
 import { StaffHeader } from "@/components/layout/dashboard-sidebar";
@@ -23,17 +23,27 @@ export default function TablesPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [busyStatusId, setBusyStatusId] = useState<string | null>(null);
   const [busyRotateId, setBusyRotateId] = useState<string | null>(null);
+  const [creatingTable, setCreatingTable] = useState(false);
+  const creatingTableRef = useRef(false);
 
   const { data: tables = [], error } = useQuery({ queryKey: ["tables"], queryFn: () => getTables(), refetchInterval: 10000 });
 
   const handleCreate = async () => {
-    const result = await createTable({ number: tableNumber });
-    if (result.error) toast.error(result.error);
-    else {
-      toast.success("Table created with QR code");
-      setTableNumber("");
-      setDialogOpen(false);
-      queryClient.invalidateQueries({ queryKey: ["tables"] });
+    if (creatingTableRef.current) return;
+    creatingTableRef.current = true;
+    setCreatingTable(true);
+    try {
+      const result = await createTable({ number: tableNumber });
+      if (result.error) toast.error(result.error);
+      else {
+        toast.success("Table created with QR code");
+        setTableNumber("");
+        setDialogOpen(false);
+        queryClient.invalidateQueries({ queryKey: ["tables"] });
+      }
+    } finally {
+      creatingTableRef.current = false;
+      setCreatingTable(false);
     }
   };
 
@@ -112,7 +122,9 @@ export default function TablesPage() {
                 <Label>Table Number</Label>
                 <Input placeholder="e.g. 9" value={tableNumber} onChange={(e) => setTableNumber(e.target.value)} />
               </div>
-              <Button onClick={handleCreate} disabled={!tableNumber}>Create & Generate QR</Button>
+              <Button onClick={handleCreate} disabled={!tableNumber || creatingTable}>
+                {creatingTable ? "Creating…" : "Create & Generate QR"}
+              </Button>
             </div>
           </DialogContent>
         </Dialog>

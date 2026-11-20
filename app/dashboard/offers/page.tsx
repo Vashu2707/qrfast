@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getOffers, createOffer, updateOffer, deleteOffer, toggleOfferStatus } from "@/actions/offers";
 import { StaffHeader } from "@/components/layout/dashboard-sidebar";
@@ -24,31 +24,41 @@ export default function OffersPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [busyOfferId, setBusyOfferId] = useState<string | null>(null);
+  const [savingOffer, setSavingOffer] = useState(false);
+  const savingOfferRef = useRef(false);
 
   const { data: offers = [] } = useQuery({ queryKey: ["offers"], queryFn: () => getOffers(), refetchInterval: 15000 });
 
   const resetForm = () => { setForm(emptyOffer); setEditId(null); };
 
   const handleSave = async () => {
-    const data = {
-      code: form.code,
-      title: form.title,
-      discountType: form.discountType as "PERCENTAGE" | "FLAT",
-      discountValue: parseFloat(form.discountValue),
-      minOrderAmount: parseFloat(form.minOrderAmount),
-      expiryDate: form.expiryDate,
-      usageLimit: form.usageLimit ? parseInt(form.usageLimit) : null,
-      isActive: true,
-    };
-    const result = editId
-      ? await updateOffer(editId, data)
-      : await createOffer(data);
-    if (result.error) toast.error(result.error);
-    else {
-      toast.success(editId ? "Offer updated" : "Offer created");
-      resetForm();
-      setDialogOpen(false);
-      queryClient.invalidateQueries({ queryKey: ["offers"] });
+    if (savingOfferRef.current) return;
+    savingOfferRef.current = true;
+    setSavingOffer(true);
+    try {
+      const data = {
+        code: form.code,
+        title: form.title,
+        discountType: form.discountType as "PERCENTAGE" | "FLAT",
+        discountValue: parseFloat(form.discountValue),
+        minOrderAmount: parseFloat(form.minOrderAmount),
+        expiryDate: form.expiryDate,
+        usageLimit: form.usageLimit ? parseInt(form.usageLimit) : null,
+        isActive: true,
+      };
+      const result = editId
+        ? await updateOffer(editId, data)
+        : await createOffer(data);
+      if (result.error) toast.error(result.error);
+      else {
+        toast.success(editId ? "Offer updated" : "Offer created");
+        resetForm();
+        setDialogOpen(false);
+        queryClient.invalidateQueries({ queryKey: ["offers"] });
+      }
+    } finally {
+      savingOfferRef.current = false;
+      setSavingOffer(false);
     }
   };
 
@@ -127,7 +137,9 @@ export default function OffersPage() {
                 <div className="space-y-2"><Label>Expiry Date</Label><Input type="date" value={form.expiryDate} onChange={(e) => setForm({ ...form, expiryDate: e.target.value })} /></div>
                 <div className="space-y-2"><Label>Usage Limit</Label><Input type="number" value={form.usageLimit} onChange={(e) => setForm({ ...form, usageLimit: e.target.value })} placeholder="Unlimited" /></div>
               </div>
-              <Button onClick={handleSave} disabled={!form.code || !form.discountValue || !form.expiryDate}>{editId ? "Update" : "Create"}</Button>
+              <Button onClick={handleSave} disabled={!form.code || !form.discountValue || !form.expiryDate || savingOffer}>
+                {savingOffer ? "Saving…" : editId ? "Update" : "Create"}
+              </Button>
             </div>
           </DialogContent>
         </Dialog>

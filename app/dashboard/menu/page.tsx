@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getMenuItems,
@@ -237,6 +237,10 @@ export default function MenuPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [itemDialogOpen, setItemDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [creatingCategory, setCreatingCategory] = useState(false);
+  // A ref guards against Enter + button firing in the same tick, before the
+  // state update re-renders and disables the controls.
+  const creatingCategoryRef = useRef(false);
   const [catName, setCatName] = useState("");
   const [catParentId, setCatParentId] = useState<string>("__root__");
   const [catDialogOpen, setCatDialogOpen] = useState(false);
@@ -518,18 +522,26 @@ export default function MenuPage() {
   };
 
   const handleCreateCategory = async () => {
-    const result = await createCategory({
-      name: catName,
-      section: menuSection,
-      parentId: catParentId === "__root__" ? null : catParentId,
-    });
-    if (result.error) toast.error(result.error);
-    else {
-      toast.success("Category created");
-      setCatName("");
-      setCatParentId("__root__");
-      setCatDialogOpen(false);
-      queryClient.invalidateQueries({ queryKey: ["categories"] });
+    if (creatingCategoryRef.current) return;
+    creatingCategoryRef.current = true;
+    setCreatingCategory(true);
+    try {
+      const result = await createCategory({
+        name: catName,
+        section: menuSection,
+        parentId: catParentId === "__root__" ? null : catParentId,
+      });
+      if (result.error) toast.error(result.error);
+      else {
+        toast.success("Category created");
+        setCatName("");
+        setCatParentId("__root__");
+        setCatDialogOpen(false);
+        queryClient.invalidateQueries({ queryKey: ["categories"] });
+      }
+    } finally {
+      creatingCategoryRef.current = false;
+      setCreatingCategory(false);
     }
   };
 
@@ -1533,11 +1545,11 @@ export default function MenuPage() {
                 value={catName}
                 onChange={(e) => setCatName(e.target.value)}
                 className="h-9 border-gray-200 text-xs"
-                onKeyDown={(e) => { if (e.key === "Enter" && catName) handleCreateCategory(); }}
+                onKeyDown={(e) => { if (e.key === "Enter" && catName && !creatingCategory) handleCreateCategory(); }}
               />
             </div>
-            <Button onClick={handleCreateCategory} disabled={!catName} className="w-full font-bold">
-              Create Category
+            <Button onClick={handleCreateCategory} disabled={!catName || creatingCategory} className="w-full font-bold">
+              {creatingCategory ? "Creating…" : "Create Category"}
             </Button>
           </div>
         </DialogContent>
