@@ -146,15 +146,39 @@ export async function createOrder(rawData: CreateOrderInput) {
       if (data.couponCode) {
         const offerVal = await validateOffer(data.couponCode, baseSubtotal);
         if (offerVal.isValid && offerVal.discountAmount) {
-          discountAmount = offerVal.discountAmount;
-          offerCodeApplied = offerVal.offer?.code ?? null;
-          // Don't double-count usage when the same code is already applied.
-          if (offerCodeApplied && offerCodeApplied !== existingOrder?.offerCode) {
-            await tx.offer.update({
-              where: { code: offerCodeApplied },
-              data: { usageCount: { increment: 1 } },
-            });
+          const claimedCode = offerVal.offer?.code ?? null;
+          let claimed = true;
+          if (claimedCode && claimedCode !== existingOrder?.offerCode) {
+            // Atomic claim: validateOffer's usageCount read happens on a
+            // separate connection, so a plain increment let N concurrent
+            // checkouts all pass `usageCount < usageLimit` and oversell the
+            // offer. Re-check every condition AND increment in one statement —
+            // exactly one caller wins the last redemption.
+            const claimedRows = await tx.$queryRaw<Array<{ id: string }>>`
+              UPDATE "Offer"
+              SET "usageCount" = "usageCount" + 1, "updatedAt" = NOW()
+              WHERE "code" = ${claimedCode}
+                AND "isActive" = true
+                AND "expiryDate" >= NOW()
+                AND ("usageLimit" IS NULL OR "usageCount" < "usageLimit")
+              RETURNING "id"
+            `;
+            claimed = claimedRows.length > 0;
           }
+
+          if (claimed) {
+            discountAmount = offerVal.discountAmount;
+            offerCodeApplied = claimedCode;
+          } else if (existingOrder) {
+            // Lost the race for the last redemption — same fallback as an
+            // invalid code: keep the order's previous discount.
+            discountAmount = Math.min(
+              toNumber(existingOrder.discountAmount),
+              baseSubtotal
+            );
+            offerCodeApplied = existingOrder.offerCode;
+          }
+          // New order + lost race → no discount (offerCodeApplied stays null).
         } else if (existingOrder) {
           // New coupon invalid on an appended order → keep the previous discount.
           discountAmount = Math.min(
@@ -443,7 +467,7 @@ export async function cancelUnpaidOrder(orderId: string, tableId: string) {
     await prisma.$transaction(async (tx) => {
       const order = await tx.order.findUnique({
         where: { id: orderId },
-        select: { status: true, paymentStatus: true, tableId: true },
+        select: { status: true, paymentStatus: true, tableId: true, offerCode: true },
       });
 
       if (!order) return;
@@ -477,6 +501,16 @@ export async function cancelUnpaidOrder(orderId: string, tableId: string) {
           console.error("cancelUnpaidOrder: Razorpay lookup failed:", rzpError);
           return; // fail safe — keep the order rather than risk deleting paid records
         }
+      }
+
+      // The order is deleted outright (not just marked CANCELLED) — return
+      // its coupon redemption, otherwise every dismissed payment modal
+      // permanently consumes a redemption of an offer that was never used.
+      if (order.offerCode) {
+        await tx.offer.updateMany({
+          where: { code: order.offerCode, usageCount: { gt: 0 } },
+          data: { usageCount: { decrement: 1 } },
+        });
       }
 
       await tx.orderItem.deleteMany({ where: { orderId } });
@@ -778,6 +812,16 @@ export async function updateOrderStatus(id: string, status: OrderStatus) {
           }
         }
       } else if (status === OrderStatus.CANCELLED) {
+        // Return this order's coupon redemption. The guarded updateMany above
+        // guarantees at most one transition into CANCELLED per order, so this
+        // can't double-decrement (gated on usageCount > 0 regardless).
+        if (order.offerCode) {
+          await tx.offer.updateMany({
+            where: { code: order.offerCode, usageCount: { gt: 0 } },
+            data: { usageCount: { decrement: 1 } },
+          });
+        }
+
         await tx.table.update({
           where: { id: order.tableId },
           data: { status: TableStatus.AVAILABLE },
