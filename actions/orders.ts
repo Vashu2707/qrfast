@@ -22,6 +22,18 @@ import { checkRateLimit, getServerActionIp } from "@/lib/rate-limit";
 
 // ─── Public ──────────────────────────────────────────────────────────────────
 
+export type CheckoutErrorCode = "MENU_CHANGED" | "COUPON_INVALID";
+
+/** A checkout rejected before anything is written — the client offers a fix. */
+class CheckoutRejectedError extends Error {
+  constructor(
+    message: string,
+    readonly code: CheckoutErrorCode
+  ) {
+    super(message);
+  }
+}
+
 /**
  * Creates a new customer order.
  * Input is validated against a strict Zod schema — no `any` types.
@@ -65,17 +77,41 @@ export async function createOrder(rawData: CreateOrderInput) {
       });
 
       let subtotal = 0;
+      const MENU_CHANGED_MESSAGE =
+        "Menu prices or options changed since you added these items. Please refresh your cart and try again.";
+      // Prices are Decimal(10,2) snapshots — a sub-paise difference is noise.
+      const priceChanged = (a: number, b: number) => Math.abs(a - b) > 0.001;
+
       const verifiedItems = data.items.map((cartItem) => {
         const menuItem = menuItems.find((m) => m.id === cartItem.menuItemId);
-        if (!menuItem) throw new Error(`Menu item not found or unavailable.`);
+        if (!menuItem) {
+          throw new CheckoutRejectedError(
+            "An item in your cart is no longer available. Please refresh your cart.",
+            "MENU_CHANGED"
+          );
+        }
 
         let itemPrice = toNumber(menuItem.discountPrice) || toNumber(menuItem.price);
 
-        if (cartItem.customizations?.variant) {
-          const v = menuItem.variants.find(
-            (x) => x.id === cartItem.customizations!.variant!.id
-          );
-          if (v) itemPrice = toNumber(v.price);
+        const variantInput = cartItem.customizations?.variant;
+        if (variantInput) {
+          const v = menuItem.variants.find((x) => x.id === variantInput.id);
+          // A stale variant ID previously fell through to the item's base
+          // price: the cart showed the larger size's price while the order —
+          // and the Razorpay charge — used the base price. Reject instead.
+          if (!v || priceChanged(toNumber(v.price), variantInput.price)) {
+            throw new CheckoutRejectedError(MENU_CHANGED_MESSAGE, "MENU_CHANGED");
+          }
+          itemPrice = toNumber(v.price);
+        }
+
+        // The item's own price snapshot (base / discountPrice) can also go
+        // stale while its ID stays valid — same rejection before any write.
+        if (
+          cartItem.expectedUnitPrice != null &&
+          priceChanged(itemPrice, cartItem.expectedUnitPrice)
+        ) {
+          throw new CheckoutRejectedError(MENU_CHANGED_MESSAGE, "MENU_CHANGED");
         }
 
         let addonsPrice = 0;
@@ -83,10 +119,18 @@ export async function createOrder(rawData: CreateOrderInput) {
         if (cartItem.customizations?.addons) {
           for (const addonInput of cartItem.customizations.addons) {
             const add = menuItem.addons.find((a) => a.id === addonInput.id);
-            if (add) {
-              addonsPrice += toNumber(add.price);
-              addonsDetails.push({ id: add.id, name: add.name, price: toNumber(add.price) });
+            if (!add) {
+              throw new CheckoutRejectedError(MENU_CHANGED_MESSAGE, "MENU_CHANGED");
             }
+            const addonPrice = toNumber(add.price);
+            if (
+              addonInput.price != null &&
+              priceChanged(addonPrice, addonInput.price)
+            ) {
+              throw new CheckoutRejectedError(MENU_CHANGED_MESSAGE, "MENU_CHANGED");
+            }
+            addonsPrice += addonPrice;
+            addonsDetails.push({ id: add.id, name: add.name, price: addonPrice });
           }
         }
 
@@ -145,48 +189,43 @@ export async function createOrder(rawData: CreateOrderInput) {
       let offerCodeApplied: string | null = null;
       if (data.couponCode) {
         const offerVal = await validateOffer(data.couponCode, baseSubtotal);
-        if (offerVal.isValid && offerVal.discountAmount) {
-          const claimedCode = offerVal.offer?.code ?? null;
-          let claimed = true;
-          if (claimedCode && claimedCode !== existingOrder?.offerCode) {
-            // Atomic claim: validateOffer's usageCount read happens on a
-            // separate connection, so a plain increment let N concurrent
-            // checkouts all pass `usageCount < usageLimit` and oversell the
-            // offer. Re-check every condition AND increment in one statement —
-            // exactly one caller wins the last redemption.
-            const claimedRows = await tx.$queryRaw<Array<{ id: string }>>`
-              UPDATE "Offer"
-              SET "usageCount" = "usageCount" + 1, "updatedAt" = NOW()
-              WHERE "code" = ${claimedCode}
-                AND "isActive" = true
-                AND "expiryDate" >= NOW()
-                AND ("usageLimit" IS NULL OR "usageCount" < "usageLimit")
-              RETURNING "id"
-            `;
-            claimed = claimedRows.length > 0;
-          }
-
-          if (claimed) {
-            discountAmount = offerVal.discountAmount;
-            offerCodeApplied = claimedCode;
-          } else if (existingOrder) {
-            // Lost the race for the last redemption — same fallback as an
-            // invalid code: keep the order's previous discount.
-            discountAmount = Math.min(
-              toNumber(existingOrder.discountAmount),
-              baseSubtotal
-            );
-            offerCodeApplied = existingOrder.offerCode;
-          }
-          // New order + lost race → no discount (offerCodeApplied stays null).
-        } else if (existingOrder) {
-          // New coupon invalid on an appended order → keep the previous discount.
-          discountAmount = Math.min(
-            toNumber(existingOrder.discountAmount),
-            baseSubtotal
+        if (!offerVal.isValid || !offerVal.discountAmount) {
+          // The cart validates against its own subtotal, but the server
+          // validates against the combined open-order subtotal. Silently
+          // dropping a code here made the charged total exceed the Grand
+          // Total the customer saw — reject the whole checkout instead.
+          const reason =
+            "message" in offerVal && offerVal.message ? offerVal.message : undefined;
+          throw new CheckoutRejectedError(
+            `Coupon ${data.couponCode.toUpperCase().trim()} is no longer valid${reason ? `: ${reason}` : ""}. Please remove it and try again.`,
+            "COUPON_INVALID"
           );
-          offerCodeApplied = existingOrder.offerCode;
         }
+        const claimedCode = offerVal.offer?.code ?? null;
+        if (claimedCode && claimedCode !== existingOrder?.offerCode) {
+          // Atomic claim: validateOffer's usageCount read happens on a
+          // separate connection, so a plain increment let N concurrent
+          // checkouts all pass `usageCount < usageLimit` and oversell the
+          // offer. Re-check every condition AND increment in one statement —
+          // exactly one caller wins the last redemption.
+          const claimedRows = await tx.$queryRaw<Array<{ id: string }>>`
+            UPDATE "Offer"
+            SET "usageCount" = "usageCount" + 1, "updatedAt" = NOW()
+            WHERE "code" = ${claimedCode}
+              AND "isActive" = true
+              AND "expiryDate" >= NOW()
+              AND ("usageLimit" IS NULL OR "usageCount" < "usageLimit")
+            RETURNING "id"
+          `;
+          if (claimedRows.length === 0) {
+            throw new CheckoutRejectedError(
+              `Coupon ${claimedCode} just ran out of redemptions. Please remove it and try again.`,
+              "COUPON_INVALID"
+            );
+          }
+        }
+        discountAmount = offerVal.discountAmount;
+        offerCodeApplied = claimedCode;
       } else if (existingOrder) {
         // No coupon in this checkout → carry over the existing order's discount.
         discountAmount = Math.min(
@@ -449,6 +488,11 @@ export async function createOrder(rawData: CreateOrderInput) {
 
     return { success: true, ...result };
   } catch (error: unknown) {
+    if (error instanceof CheckoutRejectedError) {
+      // Nothing was written (thrown inside the tx) — the client can offer a
+      // targeted fix: refresh a stale cart or drop an invalid coupon.
+      return { error: error.message, code: error.code };
+    }
     const message = error instanceof Error ? error.message : "Checkout failed.";
     console.error("createOrder error:", error);
     return { error: message };

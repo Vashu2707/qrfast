@@ -17,6 +17,10 @@ const variantInputSchema = z.object({
 const cartItemSchema = z.object({
   menuItemId: z.string(),
   quantity: z.number().int().min(1).max(99),
+  // The unit price the cart displayed when the item was added. The server
+  // re-prices every line from the DB and rejects the checkout if it differs,
+  // so the customer can never be charged more than the cart showed.
+  expectedUnitPrice: z.number().nonnegative().optional(),
   notes: z.string().max(500).optional(),
   customizations: z
     .object({

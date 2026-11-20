@@ -153,6 +153,9 @@ export function CartClient({
       items: items.map((item) => ({
         menuItemId: item.menuItemId,
         quantity: item.quantity,
+        // The price the customer saw — createOrder rejects the whole
+        // checkout if the DB says anything else (no silent upcharge).
+        expectedUnitPrice: item.price,
         notes: item.notes,
         customizations: item.customizations ?? undefined,
       })),
@@ -161,7 +164,36 @@ export function CartClient({
     setLoading(false);
 
     if ("error" in result && result.error) {
-      toast.error(result.error);
+      const code = "code" in result ? result.code : undefined;
+      if (code === "MENU_CHANGED") {
+        // Cart holds stale price snapshots — a retry can never succeed until
+        // they're rebuilt from the live menu.
+        toast.error(result.error, {
+          duration: 10_000,
+          action: {
+            label: "Clear & refresh",
+            onClick: () => {
+              clearCart();
+              router.push(`/menu/${tableParam}`);
+            },
+          },
+        });
+      } else if (code === "COUPON_INVALID") {
+        // The coupon failed the server's combined-subtotal validation; give
+        // the customer an explicit way out instead of a silent full-price bill.
+        toast.error(result.error, {
+          duration: 10_000,
+          action: {
+            label: "Remove coupon",
+            onClick: () => {
+              removeCoupon();
+              setCouponCode("");
+            },
+          },
+        });
+      } else {
+        toast.error(result.error);
+      }
       isSubmitting.current = false;
       return;
     }
