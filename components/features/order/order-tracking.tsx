@@ -26,6 +26,9 @@ interface OrderTrackingProps {
 
 const STATUS_STEPS: OrderStatus[] = [
   OrderStatus.PLACED,
+  // Razorpay orders start here; without this step indexOf() returned -1 and
+  // the whole timeline rendered grey with no current step or description.
+  OrderStatus.CONFIRMED,
   OrderStatus.PREPARING,
   OrderStatus.PREPARED,
   OrderStatus.READY,
@@ -41,6 +44,12 @@ const STATUS_META: Record<
     icon: <Clock className="size-5" />,
     label: "Order Placed",
     desc: "Your order has been received.",
+    estimatedMin: 2,
+  },
+  CONFIRMED: {
+    icon: <CheckCircle2 className="size-5" />,
+    label: "Confirmed",
+    desc: "Payment received — your order is confirmed.",
     estimatedMin: 2,
   },
   PREPARING: {
@@ -155,6 +164,7 @@ export function OrderTrackingClient({
   // Estimated time remaining (rough based on status)
   const estimatedMinutes: Record<string, string> = {
     PLACED: "~20-25 min",
+    CONFIRMED: "~20-25 min",
     PREPARING: "~15-20 min",
     PREPARED: "~5-10 min",
     READY: "Ready now!",
