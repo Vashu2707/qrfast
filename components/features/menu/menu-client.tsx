@@ -35,6 +35,10 @@ interface MenuCategoryItem {
   isChefSpecial?: boolean;
   variants: { id: string; name: string; price: number }[];
   addons: { id: string; name: string; price: number; isVeg: boolean }[];
+  // Cocktail-only drink attributes (null on food items)
+  abv?: number | string | null;
+  baseSpirit?: string | null;
+  glass?: string | null;
 }
 
 interface MenuCategory {
@@ -592,7 +596,13 @@ export function MenuClient({ data, tableParam }: Props) {
                             {formatCurrency(item.price)}
                           </span>
                         )}
-                        <span className="text-xs text-muted-foreground">· {item.preparationTime} min</span>
+                        {isBar ? (
+                          <span className="text-xs text-muted-foreground">
+                            {[item.abv != null && `${item.abv}% ABV`, item.baseSpirit, item.glass].filter(Boolean).join(" · ")}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">· {item.preparationTime} min</span>
+                        )}
                       </div>
                     </div>
 

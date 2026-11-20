@@ -46,6 +46,10 @@ type MenuItem = {
   allergens: string[];
   variants: { id: string; name: string; price: number }[];
   addons: { id: string; name: string; price: number; isVeg: boolean }[];
+  // Cocktail-only drink attributes (null on food items)
+  abv?: number | string | null;
+  baseSpirit?: string | null;
+  glass?: string | null;
 };
 
 interface Props {
@@ -112,21 +116,36 @@ export function MenuItemDialog({ item, primaryColor, barTheme = false, onClose }
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-xl">
               {item.name}
-              {item.foodType === "VEGAN" ? (
-        <span className="inline-flex items-center gap-0.5 rounded-full border border-emerald-500 bg-emerald-50 px-1.5 py-0.5 text-[9px] font-bold leading-none text-emerald-700">🌱 Vegan</span>
-      ) : item.foodType === "VEG" ? (
-        <Leaf className="size-4 text-green-600" />
-      ) : (
-        <span className="inline-flex size-4 shrink-0 items-center justify-center rounded-sm border-2 border-red-600"><span className="size-2 rounded-full bg-red-600" /></span>
-      )}
-              {item.spicyLevel > 0 && <Flame className="size-4 text-orange-500" />}
+              {!barTheme && (
+                <>
+                  {item.foodType === "VEGAN" ? (
+                    <span className="inline-flex items-center gap-0.5 rounded-full border border-emerald-500 bg-emerald-50 px-1.5 py-0.5 text-[9px] font-bold leading-none text-emerald-700">🌱 Vegan</span>
+                  ) : item.foodType === "VEG" ? (
+                    <Leaf className="size-4 text-green-600" />
+                  ) : (
+                    <span className="inline-flex size-4 shrink-0 items-center justify-center rounded-sm border-2 border-red-600"><span className="size-2 rounded-full bg-red-600" /></span>
+                  )}
+                  {item.spicyLevel > 0 && <Flame className="size-4 text-orange-500" />}
+                </>
+              )}
+              {barTheme && (item.baseSpirit || item.glass) ? (
+                <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-600">
+                  {[item.baseSpirit, item.glass].filter(Boolean).join(" · ")}
+                </span>
+              ) : null}
             </DialogTitle>
           </DialogHeader>
 
           {item.description && <p className="text-sm text-muted-foreground">{item.description}</p>}
 
           <div className="flex items-center gap-3 text-sm text-muted-foreground">
-            <span className="flex items-center gap-1"><Clock className="size-3.5" />{item.preparationTime} min</span>
+            {barTheme ? (
+              <span className="flex items-center gap-1">
+                {item.abv != null && <span>{item.abv}% ABV</span>}
+              </span>
+            ) : (
+              <span className="flex items-center gap-1"><Clock className="size-3.5" />{item.preparationTime} min</span>
+            )}
             <span className="text-lg font-bold" style={{ color: primaryColor }}>{formatCurrency(basePrice)}</span>
           </div>
 

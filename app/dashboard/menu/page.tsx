@@ -84,6 +84,10 @@ interface ItemFormState {
   isChefSpecial: boolean;
   isBestSeller: boolean;
   calories: string;
+  // Cocktail-only drink attributes (empty for food items)
+  abv: string;
+  baseSpirit: string;
+  glass: string;
 }
 
 const emptyItem: ItemFormState = {
@@ -101,6 +105,9 @@ const emptyItem: ItemFormState = {
   isChefSpecial: false,
   isBestSeller: false,
   calories: "",
+  abv: "",
+  baseSpirit: "",
+  glass: "",
 };
 
 // ── Tree Node ────────────────────────────────────────────────────────────────
@@ -381,6 +388,12 @@ export default function MenuPage() {
     if (!itemForm.name.trim()) return toast.error("Name is required");
     if (!itemForm.price) return toast.error("Price is required");
     if (!itemForm.categoryId) return toast.error("Category is required");
+    if (itemForm.abv.trim()) {
+      const abv = parseFloat(itemForm.abv);
+      if (Number.isNaN(abv) || abv < 0 || abv > 100) {
+        return toast.error("ABV must be a number between 0 and 100");
+      }
+    }
 
     setSaving(true);
 
@@ -403,6 +416,10 @@ export default function MenuPage() {
       isChefSpecial: itemForm.isChefSpecial,
       isBestSeller: itemForm.isBestSeller,
       nutrition: itemForm.calories ? { calories: parseInt(itemForm.calories) } : undefined,
+      // Cocktail-only drink attributes — empty fields become null (food items)
+      abv: itemForm.abv.trim() ? parseFloat(itemForm.abv) : null,
+      baseSpirit: itemForm.baseSpirit.trim() || null,
+      glass: itemForm.glass.trim() || null,
       variants: [],
       addons: [],
     };
@@ -440,6 +457,9 @@ export default function MenuPage() {
       isChefSpecial: item.isChefSpecial ?? false,
       isBestSeller: item.isBestSeller ?? false,
       calories: String((item.nutrition as any)?.calories || ""),
+      abv: item.abv != null ? String(item.abv) : "",
+      baseSpirit: item.baseSpirit ?? "",
+      glass: item.glass ?? "",
     });
     setItemDialogOpen(true);
   };
@@ -460,6 +480,9 @@ export default function MenuPage() {
       isChefSpecial: item.isChefSpecial ?? false,
       isBestSeller: item.isBestSeller ?? false,
       calories: String((item.nutrition as any)?.calories || ""),
+      abv: item.abv != null ? String(item.abv) : "",
+      baseSpirit: item.baseSpirit ?? "",
+      glass: item.glass ?? "",
     });
     setEditId(null);
     setItemDialogOpen(true);
@@ -1014,7 +1037,7 @@ export default function MenuPage() {
                           </Badge>
                         ) : item.isChefSpecial ? (
                           <Badge className="bg-amber-800 hover:bg-amber-900 text-white font-black text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-lg border-0 shadow">
-                            Chef&apos;s Special
+                            {menuSection === "COCKTAIL" ? "Bartender's Special" : "Chef's Special"}
                           </Badge>
                         ) : item.discountPrice ? (
                           <Badge className="bg-rose-500 hover:bg-rose-600 text-white font-black text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-lg border-0 shadow">
@@ -1024,6 +1047,15 @@ export default function MenuPage() {
                           <span />
                         )}
 
+                        {menuSection === "COCKTAIL" ? (
+                          item.baseSpirit ? (
+                            <Badge className="bg-amber-50 text-amber-700 border border-amber-600/20 font-bold text-[9px] px-1.5 py-0.2 rounded border-0 shadow shrink-0 pointer-events-auto">
+                              {item.baseSpirit}
+                            </Badge>
+                          ) : (
+                            <span />
+                          )
+                        ) : (
                         <Badge
                           className={cn(
                             "font-bold text-[9px] px-1.5 py-0.2 rounded border-0 shadow shrink-0 pointer-events-auto",
@@ -1036,6 +1068,7 @@ export default function MenuPage() {
                           {item.foodType === "NON_VEG" && "Non-Veg"}
                           {item.foodType === "VEGAN" && "Vegan"}
                         </Badge>
+                        )}
                       </div>
                     </div>
 
@@ -1071,12 +1104,28 @@ export default function MenuPage() {
                         </div>
 
                         <div className="flex items-center gap-2 text-[10px] text-gray-400 font-semibold">
-                          <span className="flex items-center gap-0.5">
-                            <Clock className="size-3 text-gray-300" />
-                            {item.preparationTime}m
-                          </span>
-                          <span>•</span>
-                          <span>{(item.nutrition as any)?.calories || 300} cal</span>
+                          {menuSection === "COCKTAIL" ? (
+                            <>
+                              {item.abv != null && (
+                                <span className="flex items-center gap-0.5">
+                                  {toNumber(item.abv)}% ABV
+                                </span>
+                              )}
+                              {item.baseSpirit && <span>•</span>}
+                              {item.baseSpirit && <span>{item.baseSpirit}</span>}
+                              {item.glass && <span>•</span>}
+                              {item.glass && <span>{item.glass}</span>}
+                            </>
+                          ) : (
+                            <>
+                              <span className="flex items-center gap-0.5">
+                                <Clock className="size-3 text-gray-300" />
+                                {item.preparationTime}m
+                              </span>
+                              <span>•</span>
+                              <span>{(item.nutrition as any)?.calories || 300} cal</span>
+                            </>
+                          )}
                         </div>
                       </div>
 
@@ -1150,6 +1199,13 @@ export default function MenuPage() {
                         <div className="min-w-0 flex-1 space-y-1">
                           <div className="flex items-center gap-2">
                             <h3 className="font-extrabold text-sm text-gray-900 dark:text-white truncate">{item.name}</h3>
+                            {menuSection === "COCKTAIL" ? (
+                              item.baseSpirit || item.glass ? (
+                                <Badge className="bg-amber-50 text-amber-700 text-[9px] font-extrabold px-1 py-0.1 border-0 shadow-none shrink-0 pointer-events-none scale-90">
+                                  {[item.baseSpirit, item.glass].filter(Boolean).join(" · ")}
+                                </Badge>
+                              ) : null
+                            ) : (
                             <Badge
                               className={cn(
                                 "text-[9px] font-extrabold px-1 py-0.1 border-0 shadow-none shrink-0 pointer-events-none scale-90",
@@ -1160,6 +1216,7 @@ export default function MenuPage() {
                             >
                               {item.foodType}
                             </Badge>
+                            )}
                             {item.category?.name && (
                               <span className="text-[9px] font-semibold text-blue-600 bg-blue-50 dark:bg-blue-950/30 dark:text-blue-400 px-1 py-0.1 rounded shrink-0 pointer-events-none scale-90">
                                 {item.category.name}
@@ -1317,6 +1374,22 @@ export default function MenuPage() {
               />
             </div>
 
+            {menuSection === "COCKTAIL" ? (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold text-gray-700">ABV (%)</Label>
+                  <Input type="number" min="0" max="100" step="0.1" value={itemForm.abv} onChange={(e) => setItemForm({ ...itemForm, abv: e.target.value })} placeholder="e.g. 12" className="h-9 border-gray-200 text-xs" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold text-gray-700">Base Spirit</Label>
+                  <Input value={itemForm.baseSpirit} onChange={(e) => setItemForm({ ...itemForm, baseSpirit: e.target.value })} placeholder="Gin, Whiskey, Rum..." className="h-9 border-gray-200 text-xs" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold text-gray-700">Glass / Serve</Label>
+                  <Input value={itemForm.glass} onChange={(e) => setItemForm({ ...itemForm, glass: e.target.value })} placeholder="Highball, Rocks..." className="h-9 border-gray-200 text-xs" />
+                </div>
+              </div>
+            ) : (
             <div className="space-y-2">
               <Label className="text-xs font-bold text-gray-700">Food Type <span className="text-destructive">*</span></Label>
               <div className="flex gap-2">
@@ -1343,6 +1416,7 @@ export default function MenuPage() {
                 ))}
               </div>
             </div>
+            )}
 
             <div className="flex items-center gap-6 border border-gray-150 rounded-lg p-3 bg-gray-50/50">
               <div className="flex items-center gap-2">
@@ -1359,10 +1433,13 @@ export default function MenuPage() {
                   checked={itemForm.isChefSpecial}
                   onCheckedChange={(checked) => setItemForm({ ...itemForm, isChefSpecial: !!checked })}
                 />
-                <Label htmlFor="isChefSpecial" className="text-xs font-bold cursor-pointer text-gray-700">Mark Chef&apos;s Special</Label>
+                <Label htmlFor="isChefSpecial" className="text-xs font-bold cursor-pointer text-gray-700">
+                  {menuSection === "COCKTAIL" ? "Mark Bartender's Special" : "Mark Chef's Special"}
+                </Label>
               </div>
             </div>
 
+            {menuSection !== "COCKTAIL" && (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <div className="space-y-2">
                 <Label className="text-xs font-bold text-gray-700">Spicy Level</Label>
@@ -1392,16 +1469,19 @@ export default function MenuPage() {
                 <Input type="number" min="0" value={itemForm.calories} onChange={(e) => setItemForm({ ...itemForm, calories: e.target.value })} placeholder="300" className="h-9 border-gray-200 text-xs" />
               </div>
             </div>
+            )}
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className={`grid grid-cols-1 gap-4 ${menuSection === "COCKTAIL" ? "" : "sm:grid-cols-2"}`}>
               <div className="space-y-2">
                 <Label className="text-xs font-bold text-gray-700">Ingredients</Label>
-                <Input value={itemForm.ingredients} onChange={(e) => setItemForm({ ...itemForm, ingredients: e.target.value })} placeholder="Paneer, Tomato, Butter" className="h-9 border-gray-200 text-xs" />
+                <Input value={itemForm.ingredients} onChange={(e) => setItemForm({ ...itemForm, ingredients: e.target.value })} placeholder={menuSection === "COCKTAIL" ? "Gin, Lime, Tonic" : "Paneer, Tomato, Butter"} className="h-9 border-gray-200 text-xs" />
               </div>
-              <div className="space-y-2">
-                <Label className="text-xs font-bold text-gray-700">Allergens</Label>
-                <Input value={itemForm.allergens} onChange={(e) => setItemForm({ ...itemForm, allergens: e.target.value })} placeholder="Dairy, Gluten" className="h-9 border-gray-200 text-xs" />
-              </div>
+              {menuSection !== "COCKTAIL" && (
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold text-gray-700">Allergens</Label>
+                  <Input value={itemForm.allergens} onChange={(e) => setItemForm({ ...itemForm, allergens: e.target.value })} placeholder="Dairy, Gluten" className="h-9 border-gray-200 text-xs" />
+                </div>
+              )}
             </div>
 
             <Button onClick={handleSaveItem} disabled={saving || !itemForm.name || !itemForm.price || !itemForm.categoryId} className="w-full mt-2 font-bold">

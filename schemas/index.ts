@@ -79,6 +79,11 @@ export const menuItemSchema = z.object({
   categoryId: z.string(),
   isChefSpecial: z.boolean().optional().default(false),
   isBestSeller: z.boolean().optional().default(false),
+  // Cocktail-only drink attributes — hidden in the food form, null for food
+  // items. Empty values are normalized to null by the caller.
+  abv: z.coerce.number().min(0, "ABV must be ≥ 0").max(100, "ABV must be ≤ 100").nullable().optional(),
+  baseSpirit: z.string().max(100).nullable().optional(),
+  glass: z.string().max(100).nullable().optional(),
   variants: z.array(variantSchema).optional().default([]),
   addons: z.array(addonSchema).optional().default([]),
 });

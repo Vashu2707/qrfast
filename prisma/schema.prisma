@@ -137,6 +137,11 @@ model MenuItem {
   ingredients     String[]
   allergens       String[]
   nutrition       Json?
+  // Cocktail-only drink attributes (null on food items — both sections share
+  // this table; Category.section already separates the two trees)
+  abv             Decimal?   @db.Decimal(5, 2)
+  baseSpirit      String?
+  glass           String?
   categoryId      String
   category        Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   variants        Variant[]
