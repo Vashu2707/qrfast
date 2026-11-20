@@ -369,8 +369,13 @@ export default function MenuPage() {
       result = result.filter(i => i.isBestSeller);
     }
     return [...result].sort((a, b) => {
-      if (sortBy === "price-low") return toNumber(a.discountPrice) - toNumber(a.price) > toNumber(b.discountPrice) - toNumber(b.price) ? 1 : -1;
-      if (sortBy === "price-high") return toNumber(b.discountPrice) - toNumber(b.price) > toNumber(a.discountPrice) - toNumber(a.price) ? 1 : -1;
+      // Sort by the price actually charged (discountPrice when set), not by
+      // the discount amount — the old formula put every non-discounted item
+      // first regardless of its price and even mis-ordered equal values.
+      const priceA = toNumber(a.discountPrice) || toNumber(a.price);
+      const priceB = toNumber(b.discountPrice) || toNumber(b.price);
+      if (sortBy === "price-low") return priceA - priceB || a.name.localeCompare(b.name);
+      if (sortBy === "price-high") return priceB - priceA || a.name.localeCompare(b.name);
       return a.name.localeCompare(b.name);
     });
   }, [sectionItems, activeCategoryIds, activeCategoryId, globalSearch, searchQuery, filterTab, sortBy]);
