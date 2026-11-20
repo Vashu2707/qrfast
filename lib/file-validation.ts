@@ -18,6 +18,23 @@ const MAGIC_BYTES: Record<string, (number | null)[][]> = {
   ],
 };
 
+const MIME_EXTENSIONS: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/gif": "gif",
+  "image/webp": "webp",
+};
+
+/**
+ * Whitelisted extension for a MIME type that has already been verified from
+ * the file's bytes. Never derive an extension from the client filename:
+ * `a.png/../../evil` injects path segments, and arbitrary extensions can be
+ * served with a browser-interpreted content type.
+ */
+export function extensionFromMime(mime: string): string | null {
+  return MIME_EXTENSIONS[mime] ?? null;
+}
+
 /**
  * Reads the first 12 bytes of `buffer` and checks whether they match
  * the expected magic bytes for any of the `allowedMimeTypes`.

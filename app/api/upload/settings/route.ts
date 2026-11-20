@@ -3,7 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getStorageClient, MENU_IMAGES_BUCKET } from "@/lib/supabase/storage";
 import { getCurrentUser } from "@/actions/auth";
 import { Role } from "@prisma/client";
-import { validateMagicBytes } from "@/lib/file-validation";
+import { extensionFromMime, validateMagicBytes } from "@/lib/file-validation";
+import { randomUUID } from "crypto";
 
 export const dynamic = "force-dynamic";
 
@@ -58,8 +59,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: magic.error }, { status: 400 });
   }
 
-  const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
-  const safeName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  // The client filename never enters the storage key — path segments and
+  // arbitrary extensions are rejected; only the MIME type verified from the
+  // file's bytes decides the extension.
+  if (/[/\\]|\.\./.test(file.name)) {
+    return NextResponse.json({ error: "Invalid filename." }, { status: 400 });
+  }
+  const ext = extensionFromMime(magic.detectedMime);
+  if (!ext) {
+    return NextResponse.json({ error: "Unsupported image type." }, { status: 400 });
+  }
+  const safeName = `${Date.now()}-${randomUUID()}.${ext}`;
   const storagePath = `settings/${user.id}/${safeName}`;
 
   const storageClient = getStorageClient();
@@ -67,7 +77,7 @@ export async function POST(request: Request) {
   const { error: uploadError } = await storageClient.storage
     .from(MENU_IMAGES_BUCKET)
     .upload(storagePath, buffer, {
-      contentType: file.type,
+      contentType: magic.detectedMime,
       upsert: false,
     });
 
