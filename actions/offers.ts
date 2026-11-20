@@ -147,6 +147,11 @@ export async function validateOffer(code: string, subtotal: number) {
         : discountValue;
 
     discount = Math.min(discount, subtotal);
+    // Round to paise BEFORE the tax/total math and the Decimal(10,2) write:
+    // the DB rounds discountAmount independently, so an unrounded value made
+    // gst/total (computed from it) disagree with the stored discount line by
+    // ₹0.01. The client cart already rounds this way (use-cart getDiscountAmount).
+    discount = Math.round(discount * 100) / 100;
 
     return {
       isValid: true,
