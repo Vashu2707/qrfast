@@ -152,6 +152,7 @@ export async function getCurrentHotelUser(): Promise<HotelUser | null> {
       email: admin.email,
       name: admin.name,
       role: HotelRole.ADMIN,
+      tenantId: admin.tenantId,
       createdAt: admin.createdAt,
       updatedAt: admin.updatedAt,
     };

@@ -6,6 +6,46 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// ─── Tenancy ────────────────────────────────────────────────────────────────
+// One Postgres, one deployment. Each restaurant/hotel owns a Tenant row and
+// every business row carries tenantId. The two fixed IDs below are the
+// pre-existing properties; all old rows are backfilled to them so the app
+// keeps working while scoping is phased in.
+
+enum TenantKind {
+  RESTAURANT
+  HOTEL
+}
+
+model Tenant {
+  id        String     @id @default(uuid())
+  name      String
+  kind      TenantKind
+  slug      String     @unique
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  adminUsers     AdminUser[]
+  settings       Settings[]
+  tables         Table[]
+  categories     Category[]
+  menuItems      MenuItem[]
+  variants       Variant[]
+  addons         Addon[]
+  orders         Order[]
+  orderItems     OrderItem[]
+  payments       Payment[]
+  offers         Offer[]
+  reviews        Review[]
+  notifications  Notification[]
+  invoices       Invoice[]
+  hotelUsers     HotelUser[]
+  hotelSettings  HotelSettings[]
+  hotelRoomTypes HotelRoomType[]
+  hotelRooms     HotelRoom[]
+  hotelBookings  HotelBooking[]
+}
+
 enum Role {
   ADMIN
   KITCHEN
@@ -64,6 +104,8 @@ model AdminUser {
   email     String   @unique
   name      String?
   role      Role     @default(ADMIN)
+  tenantId  String   @default("11111111-1111-1111-1111-111111111111")
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -75,6 +117,8 @@ enum MenuSection {
 
 model Settings {
   id                      String   @id @default("singleton")
+  tenantId                String   @unique @default("11111111-1111-1111-1111-111111111111")
+  tenant                  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   restaurantName          String   @default("My Restaurant")
   cocktailsEnabled        Boolean  @default(false)
   logo                    String?
@@ -96,7 +140,9 @@ model Settings {
 
 model Table {
   id              String      @id @default(uuid())
-  number          String      @unique
+  number          String
+  tenantId        String      @default("11111111-1111-1111-1111-111111111111")
+  tenant          Tenant      @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   qrCodeUrl       String?
   status          TableStatus @default(AVAILABLE)
   // Bumped when staff regenerate a table's QR code. Tokens carry the
@@ -105,11 +151,15 @@ model Table {
   orders          Order[]
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
+
+  @@unique([tenantId, number])
 }
 
 model Category {
   id          String      @id @default(uuid())
   name        String
+  tenantId    String      @default("11111111-1111-1111-1111-111111111111")
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   description String?
   image       String?
   section     MenuSection @default(FOOD)
@@ -121,12 +171,14 @@ model Category {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
-  @@unique([name, parentId])
+  @@unique([tenantId, name, parentId])
 }
 
 model MenuItem {
   id              String      @id @default(uuid())
   name            String
+  tenantId        String      @default("11111111-1111-1111-1111-111111111111")
+  tenant          Tenant      @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   description     String?
   price           Decimal     @db.Decimal(10, 2)
   discountPrice   Decimal?    @db.Decimal(10, 2)
@@ -157,6 +209,8 @@ model MenuItem {
 
 model Variant {
   id         String   @id @default(uuid())
+  tenantId   String   @default("11111111-1111-1111-1111-111111111111")
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   menuItemId String
   menuItem   MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
   name       String
@@ -167,6 +221,8 @@ model Variant {
 
 model Addon {
   id         String   @id @default(uuid())
+  tenantId   String   @default("11111111-1111-1111-1111-111111111111")
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   menuItemId String
   menuItem   MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
   name       String
@@ -180,6 +236,8 @@ model Order {
   id                  String        @id @default(uuid())
   tableId             String
   table               Table         @relation(fields: [tableId], references: [id], onDelete: Restrict)
+  tenantId            String        @default("11111111-1111-1111-1111-111111111111")
+  tenant              Tenant        @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   customerName        String
   customerPhone       String
   status              OrderStatus   @default(PLACED)
@@ -202,6 +260,8 @@ model Order {
 
 model OrderItem {
   id             String   @id @default(uuid())
+  tenantId       String   @default("11111111-1111-1111-1111-111111111111")
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   orderId        String
   order          Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   menuItemId     String
@@ -215,6 +275,8 @@ model OrderItem {
 
 model Payment {
   id            String        @id @default(uuid())
+  tenantId      String        @default("11111111-1111-1111-1111-111111111111")
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   orderId       String
   order         Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
   amount        Decimal       @db.Decimal(10, 2)
@@ -229,7 +291,9 @@ model Payment {
 
 model Offer {
   id             String       @id @default(uuid())
-  code           String       @unique
+  tenantId       String       @default("11111111-1111-1111-1111-111111111111")
+  tenant         Tenant       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  code           String
   title          String?
   discountType   DiscountType @default(PERCENTAGE)
   discountValue  Decimal      @db.Decimal(10, 2)
@@ -240,10 +304,14 @@ model Offer {
   isActive       Boolean      @default(true)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
+
+  @@unique([tenantId, code])
 }
 
 model Review {
   id           String    @id @default(uuid())
+  tenantId     String    @default("11111111-1111-1111-1111-111111111111")
+  tenant       Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   orderId      String?
   order        Order?    @relation(fields: [orderId], references: [id], onDelete: SetNull)
   menuItemId   String?
@@ -258,6 +326,8 @@ model Review {
 
 model Notification {
   id        String           @id @default(uuid())
+  tenantId  String           @default("11111111-1111-1111-1111-111111111111")
+  tenant    Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   title     String
   message   String
   type      NotificationType
@@ -267,14 +337,18 @@ model Notification {
 
 model Invoice {
   id             String   @id @default(uuid())
+  tenantId       String   @default("11111111-1111-1111-1111-111111111111")
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   orderId        String   @unique
   order          Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  invoiceNumber  String   @unique
+  invoiceNumber  String
   pdfUrl         String?
   amount         Decimal  @db.Decimal(10, 2)
   taxAmount      Decimal  @db.Decimal(10, 2)
   discountAmount Decimal  @db.Decimal(10, 2)
   createdAt      DateTime @default(now())
+
+  @@unique([tenantId, invoiceNumber])
 }
 
 // ─── Hotel space (separate tables from the restaurant space) ─────────────────
@@ -311,12 +385,16 @@ model HotelUser {
   email     String    @unique
   name      String?
   role      HotelRole @default(ADMIN)
+  tenantId  String    @default("22222222-2222-2222-2222-222222222222")
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 }
 
 model HotelSettings {
   id            String   @id @default("singleton")
+  tenantId      String   @unique @default("22222222-2222-2222-2222-222222222222")
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   hotelName     String   @default("My Hotel")
   logo          String?
   banner        String?
@@ -338,7 +416,9 @@ model HotelSettings {
 
 model HotelRoomType {
   id          String         @id @default(uuid())
-  name        String         @unique
+  tenantId    String         @default("22222222-2222-2222-2222-222222222222")
+  tenant      Tenant         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  name        String
   description String?
   basePrice   Decimal        @db.Decimal(10, 2)
   maxGuests   Int            @default(2)
@@ -349,11 +429,15 @@ model HotelRoomType {
   bookings    HotelBooking[]
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
+
+  @@unique([tenantId, name])
 }
 
 model HotelRoom {
   id         String         @id @default(uuid())
-  number     String         @unique
+  tenantId   String         @default("22222222-2222-2222-2222-222222222222")
+  tenant     Tenant         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  number     String
   floor      String?
   status     RoomStatus     @default(AVAILABLE)
   roomTypeId String
@@ -361,11 +445,15 @@ model HotelRoom {
   bookings   HotelBooking[]
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
+
+  @@unique([tenantId, number])
 }
 
 model HotelBooking {
   id              String             @id @default(uuid())
-  referenceCode   String             @unique
+  tenantId        String             @default("22222222-2222-2222-2222-222222222222")
+  tenant          Tenant             @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  referenceCode   String
   guestName       String
   guestEmail      String?
   guestPhone      String
@@ -384,4 +472,6 @@ model HotelBooking {
   notes           String?
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
+
+  @@unique([tenantId, referenceCode])
 }
