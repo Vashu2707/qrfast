@@ -4,7 +4,6 @@ import { createServerClient } from "@supabase/ssr";
 const protectedPrefixes = ["/dashboard", "/kitchen", "/hotel/dashboard"];
 const authRoutes = [
   "/login",
-  "/signup",
   "/forgot-password",
   "/hotel/login",
   "/hotel/forgot-password",

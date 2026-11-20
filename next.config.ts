@@ -71,6 +71,14 @@ const nextConfig: NextConfig = {
   // Power header removal (minor security improvement)
   poweredByHeader: false,
 
+  async redirects() {
+    return [
+      // Public signup was removed — staff accounts are provisioned by
+      // administrators/backend only. Keep old /signup links working.
+      { source: "/signup", destination: "/login", permanent: false },
+    ];
+  },
+
   async headers() {
     return [
       {

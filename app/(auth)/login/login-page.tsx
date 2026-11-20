@@ -190,29 +190,6 @@ export default function LoginPage() {
             </Button>
           </motion.div>
         </form>
-
-        {/* Divider */}
-        <motion.div variants={itemVariants} className="relative flex items-center justify-center my-8">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-[#E8EDF3]" />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-white px-3 text-[11px] font-semibold tracking-widest text-slate-400 select-none">
-              OR
-            </span>
-          </div>
-        </motion.div>
-
-        {/* 6. Bottom Links */}
-        <motion.p variants={itemVariants} className="text-center text-sm text-slate-400">
-          Don&apos;t have an account?{" "}
-          <Link
-            href="/signup"
-            className="font-semibold text-[#0F172A] hover:underline transition-all duration-200 group inline-flex items-center gap-1"
-          >
-            Create Account <span className="transition-transform duration-200 group-hover:translate-x-0.5">&rarr;</span>
-          </Link>
-        </motion.p>
       </motion.div>
     </div>
   );

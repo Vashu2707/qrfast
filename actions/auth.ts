@@ -58,55 +58,6 @@ export async function signIn(data: { email: string; password: string }) {
   return { success: true, role: user.role };
 }
 
-export async function signUp(data: {
-  name: string;
-  email: string;
-  password: string;
-}) {
-  // Staff accounts must be provisioned by an existing administrator or
-  // through Supabase administration; public signup must not grant admin access.
-  return { error: "Public staff registration is disabled." };
-
-  /*
-  let supabase;
-  try {
-    supabase = await createClient();
-  } catch {
-    return { error: "Authentication service is unavailable. Please try again." };
-  }
-
-  let authData;
-  try {
-    const result = await supabase.auth.signUp({
-      email: data.email,
-      password: data.password,
-      options: { data: { name: data.name } },
-    });
-    authData = result.data;
-    if (result.error || !authData.user) {
-      return { error: result.error?.message || "Failed to create account." };
-    }
-  } catch {
-    return { error: "Authentication service is unavailable. Please try again." };
-  }
-
-  try {
-    await prisma.adminUser.create({
-      data: {
-        id: authData.user.id,
-        email: data.email,
-        name: data.name,
-        role: "ADMIN",
-      },
-    });
-  } catch {
-    return { error: "Failed to create staff record. Please try again." };
-  }
-
-  return { success: true };
-  */
-}
-
 export async function signOut() {
   try {
     const supabase = await createClient();
