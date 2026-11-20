@@ -386,7 +386,15 @@ export default function HotelBookingsPage() {
                         <KeyRound className="mr-1 size-3" />
                         {booking.room ? "Change Room" : "Assign Room"}
                       </Button>
-                      <Button size="sm" variant="outline" onClick={() => setPayBooking(booking)}>
+                      <Button size="sm" variant="outline" onClick={() => {
+                        setPayBooking(booking);
+                        // Sync the dialog to THIS booking — otherwise the
+                        // stale PAID/CASH default (or last-used values) is
+                        // written back by a single "Update Payment" click,
+                        // silently corrupting payment stats on a PENDING row.
+                        setPayStatus(booking.paymentStatus || "PENDING");
+                        setPayMethod(booking.paymentMethod || "CASH");
+                      }}>
                         Payment
                       </Button>
                       <Button size="sm" variant="outline" onClick={() => openEdit(booking)}>
