@@ -95,16 +95,16 @@ model Settings {
 }
 
 model Table {
-  id        String      @id @default(uuid())
-  number    String      @unique
-  qrCodeUrl String?
-  status    TableStatus @default(AVAILABLE)
+  id              String      @id @default(uuid())
+  number          String      @unique
+  qrCodeUrl       String?
+  status          TableStatus @default(AVAILABLE)
   // Bumped when staff regenerate a table's QR code. Tokens carry the
   // generation they were issued for; a rotated table rejects older tokens.
   tokenGeneration Int         @default(1)
-  orders    Order[]
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  orders          Order[]
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
 }
 
 model Category {
@@ -142,7 +142,7 @@ model MenuItem {
   nutrition       Json?
   // Cocktail-only drink attributes (null on food items — both sections share
   // this table; Category.section already separates the two trees)
-  abv             Decimal?   @db.Decimal(5, 2)
+  abv             Decimal?    @db.Decimal(5, 2)
   baseSpirit      String?
   glass           String?
   categoryId      String
