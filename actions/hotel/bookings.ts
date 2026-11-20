@@ -226,6 +226,13 @@ export async function updateHotelBooking(bookingId: string, rawData: HotelBookin
       include: { roomType: true },
     });
     if (!existing) return { error: "Booking not found." };
+    // Edits could raise guestCount above the room type's capacity even though
+    // createHotelBooking enforces it — keep the invariant on both paths.
+    if (data.guestCount > existing.roomType.maxGuests) {
+      return {
+        error: `This room type allows a maximum of ${existing.roomType.maxGuests} guest(s).`,
+      };
+    }
 
     const checkInDate = parseDateOnly(data.checkInDate);
     const checkOutDate = parseDateOnly(data.checkOutDate);

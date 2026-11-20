@@ -1,11 +1,18 @@
 import { z } from "zod";
+import { isValidDateKey } from "@/lib/hotel";
 
 // ─── Booking (public) ────────────────────────────────────────────────────────
 
+// A shape-only regex lets 2026-02-31 through: parseDateOnly produces Invalid
+// Date, nightsBetween returns NaN, and `nights < 1` is false — the min-stay
+// guard is bypassed and a raw Prisma "Invalid time value" reaches the user.
 const dateOnly = z
   .string()
   .min(1, "Date is required")
-  .regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date (expected YYYY-MM-DD)");
+  .refine(
+    (value) => isValidDateKey(value),
+    "Invalid date (expected a real YYYY-MM-DD calendar date)"
+  );
 
 export const createHotelBookingSchema = z
   .object({
