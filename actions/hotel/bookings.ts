@@ -18,7 +18,7 @@ import {
   parseDateOnly,
   todayInTz,
 } from "@/lib/hotel";
-import { convertDecimalsDeep } from "@/lib/decimal";
+import { convertDecimalsDeep, toNumber } from "@/lib/decimal";
 import { revalidatePath } from "next/cache";
 import { BookingStatus, HotelPaymentStatus, Prisma } from "@prisma/client";
 
@@ -36,7 +36,14 @@ async function countAvailableRooms(
 ) {
   // Sequential (not Promise.all): this runs inside interactive transactions,
   // where queries share a single connection.
-  const totalRooms = await db.hotelRoom.count({ where: { roomTypeId } });
+  // Only rooms assignHotelRoom would actually accept count toward supply:
+  // MAINTENANCE rooms are rejected at assign time, so including them let a
+  // booking be created for a type whose only room could never be assigned
+  // (check-in then blocked with no recovery). CLEANING stays counted — it is
+  // assignable once cleaned.
+  const totalRooms = await db.hotelRoom.count({
+    where: { roomTypeId, status: { not: "MAINTENANCE" } },
+  });
   const bookedRooms = await db.hotelBooking.count({
     where: {
       roomTypeId,
@@ -264,8 +271,12 @@ export async function updateHotelBooking(bookingId: string, rawData: HotelBookin
       }
     }
 
-    const totalAmount =
-      Math.round(nights * Number(existing.roomType.basePrice) * 100) / 100;
+    // Reprice ONLY when the dates change: recomputing on every edit silently
+    // rewrote already-PAID totals after any basePrice change (e.g. renaming
+    // a guest repriced the stay at tonight's rate).
+    const totalAmount = datesChanged
+      ? Math.round(nights * Number(existing.roomType.basePrice) * 100) / 100
+      : toNumber(existing.totalAmount);
 
     const booking = await prisma.hotelBooking.update({
       where: { id: bookingId },
