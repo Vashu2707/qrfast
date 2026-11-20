@@ -2,7 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { requireHotelStaff } from "@/lib/hotel-roles";
-import { BLOCKED_BOOKING_STATUSES, parseDateOnly, todayISO } from "@/lib/hotel";
+import { BLOCKED_BOOKING_STATUSES, parseDateOnly, todayInTz } from "@/lib/hotel";
 import { money } from "@/lib/decimal";
 import { BookingStatus, HotelPaymentStatus } from "@prisma/client";
 
@@ -62,7 +62,13 @@ export async function getHotelDashboardStats() {
   const user = await requireHotelStaff();
   if (!user) return { ...emptyStats };
 
-  const today = todayISO();
+  // Arrivals/departures/upcoming/month-start target the HOTEL's calendar day,
+  // not the server's (server tz may differ from the property's).
+  const hotelSettings = await prisma.hotelSettings.findUnique({
+    where: { id: "singleton" },
+    select: { timezone: true },
+  });
+  const today = todayInTz(hotelSettings?.timezone);
   const todayStart = parseDateOnly(today);
   const monthStart = new Date(
     Date.UTC(todayStart.getUTCFullYear(), todayStart.getUTCMonth(), 1)

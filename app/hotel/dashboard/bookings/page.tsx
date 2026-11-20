@@ -36,7 +36,8 @@ import {
   getBookingStatusColor,
   getBookingStatusLabel,
 } from "@/lib/format";
-import { todayISO } from "@/lib/hotel";
+import { todayInTz } from "@/lib/hotel";
+import { getHotelSettings } from "@/actions/hotel/settings";
 import { toast } from "sonner";
 import { Search, RefreshCw, Plus, Pencil, KeyRound } from "lucide-react";
 
@@ -81,16 +82,16 @@ interface EditForm {
   notes: string;
 }
 
-const emptyForm = {
+const emptyForm = (today: string) => ({
   roomTypeId: "",
   guestName: "",
   guestEmail: "",
   guestPhone: "",
   guestCount: "1",
-  checkInDate: todayISO(),
+  checkInDate: today,
   checkOutDate: "",
   specialRequests: "",
-};
+});
 
 /** Format a date-only value (Date or ISO string) as YYYY-MM-DD without TZ shifts. */
 const toDateInput = (v: Date | string) => {
@@ -101,11 +102,20 @@ const toDateInput = (v: Date | string) => {
 
 export default function HotelBookingsPage() {
   const queryClient = useQueryClient();
+
+  // Shares the cache key with the settings page. "Today" must be the
+  // hotel's calendar day, not the browser's (see todayInTz).
+  const { data: settings } = useQuery({
+    queryKey: ["hotel-settings"],
+    queryFn: () => getHotelSettings(),
+  });
+  const today = todayInTz(settings?.timezone);
+
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
   const [newOpen, setNewOpen] = useState(false);
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState(() => emptyForm(today));
 
   const [editBooking, setEditBooking] = useState<BookingRow | null>(null);
   const [editForm, setEditForm] = useState<EditForm | null>(null);
@@ -170,7 +180,7 @@ export default function HotelBookingsPage() {
       return;
     }
     toast.success(`Booking created — ${result.referenceCode}`);
-    setForm(emptyForm);
+    setForm(emptyForm(today));
     setNewOpen(false);
     invalidate();
   };
@@ -452,7 +462,7 @@ export default function HotelBookingsPage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>Check-in</Label>
-                <Input type="date" min={todayISO()} value={form.checkInDate} onChange={(e) => setForm({ ...form, checkInDate: e.target.value })} />
+                <Input type="date" min={today} value={form.checkInDate} onChange={(e) => setForm({ ...form, checkInDate: e.target.value })} />
               </div>
               <div className="space-y-2">
                 <Label>Check-out</Label>

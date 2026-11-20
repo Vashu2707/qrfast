@@ -15,6 +15,28 @@ export function todayISO(): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
+/**
+ * Today's calendar date (YYYY-MM-DD) in an IANA timezone — the hotel's
+ * calendar day, which differs from the server's (and the browser's) whenever
+ * their tz ≠ the property's. `tz` comes from HotelSettings.timezone
+ * (default Asia/Kolkata); an invalid value degrades to server-local rather
+ * than crashing.
+ */
+export function todayInTz(tz: string | null | undefined): string {
+  const timeZone = tz || "Asia/Kolkata";
+  try {
+    // en-CA formats dates as YYYY-MM-DD
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date());
+  } catch {
+    return todayISO();
+  }
+}
+
 /** Whole nights between two date-only values (check-out day not counted). */
 export function nightsBetween(checkIn: Date, checkOut: Date): number {
   return Math.round((checkOut.getTime() - checkIn.getTime()) / 86_400_000);

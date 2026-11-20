@@ -16,7 +16,7 @@ import {
   generateBookingReference,
   nightsBetween,
   parseDateOnly,
-  todayISO,
+  todayInTz,
 } from "@/lib/hotel";
 import { convertDecimalsDeep } from "@/lib/decimal";
 import { revalidatePath } from "next/cache";
@@ -72,7 +72,13 @@ export async function createHotelBooking(rawData: CreateHotelBookingInput) {
   const checkInDate = parseDateOnly(data.checkInDate);
   const checkOutDate = parseDateOnly(data.checkOutDate);
 
-  if (data.checkInDate < todayISO()) {
+  // "No past check-in" is judged against the HOTEL's calendar day — the
+  // server may be hosted in another timezone than the property.
+  const hotelSettings = await prisma.hotelSettings.findUnique({
+    where: { id: "singleton" },
+    select: { timezone: true },
+  });
+  if (data.checkInDate < todayInTz(hotelSettings?.timezone)) {
     return { error: "Check-in date cannot be in the past." };
   }
 
