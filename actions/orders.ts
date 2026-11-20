@@ -1,7 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
-import { getRazorpayClient } from "@/lib/razorpay";
+import { getRazorpayClient, refundRazorpayPayment, refundRazorpayOrderPayments } from "@/lib/razorpay";
 import { resend } from "@/lib/resend";
 import { getCurrentUser } from "./auth";
 import { requireAdmin, requireStaff } from "@/lib/roles";
@@ -690,6 +690,60 @@ export async function updateOrderStatus(id: string, status: OrderStatus) {
   if (!user) return { error: "Unauthorized" };
 
   try {
+    // Refund pass — runs BEFORE the transaction: Razorpay is a network call
+    // and must not hold a DB transaction open. Every captured RAZORPAY payment
+    // is actually returned first; only then may the tx mark anything
+    // REFUNDED. Only SUCCESS rows are attempted, so retrying after a partial
+    // failure refunds exactly the remaining ones.
+    if (status === OrderStatus.CANCELLED) {
+      const refundTargets = await prisma.order.findUnique({
+        where: { id },
+        select: {
+          paymentStatus: true,
+          payments: {
+            where: { method: PaymentMethod.RAZORPAY, status: PaymentStatus.SUCCESS },
+            select: { id: true, paymentId: true, transactionId: true },
+          },
+        },
+      });
+
+      if (
+        refundTargets?.paymentStatus === PaymentStatus.SUCCESS &&
+        refundTargets.payments.length > 0
+      ) {
+        const refundedRowIds: string[] = [];
+        const failures: string[] = [];
+
+        for (const payment of refundTargets.payments) {
+          const result = payment.paymentId
+            ? await refundRazorpayPayment(payment.paymentId)
+            : payment.transactionId
+              ? await refundRazorpayOrderPayments(payment.transactionId)
+              : { ok: false as const, message: "payment row has no Razorpay reference" };
+
+          if (result.ok) refundedRowIds.push(payment.id);
+          else failures.push(result.message);
+        }
+
+        // Persist successes even when others failed — a retry then only
+        // attempts the payments still marked SUCCESS.
+        if (refundedRowIds.length > 0) {
+          await prisma.payment.updateMany({
+            where: { id: { in: refundedRowIds } },
+            data: { status: PaymentStatus.REFUNDED },
+          });
+        }
+
+        if (failures.length > 0) {
+          return {
+            error:
+              `Refund failed for ${failures.length} payment(s), so the order was NOT cancelled. ` +
+              `Retry cancelling — only not-yet-refunded payments will be attempted. (${failures[0]})`,
+          };
+        }
+      }
+    }
+
     const updatedOrder = await prisma.$transaction(async (tx) => {
       // Read the pre-transition status first: the guarded update below
       // writes the new status, and "leaving CONFIRMED" must be judged
@@ -835,6 +889,23 @@ export async function updateOrderStatus(id: string, status: OrderStatus) {
         });
 
         if (order.paymentStatus === PaymentStatus.SUCCESS) {
+          // A RAZORPAY payment still SUCCESS here settled AFTER the pre-tx
+          // refund pass (webhook race) — marking it REFUNDED would claim money
+          // back that was never returned. Abort the cancel; the retry re-runs
+          // the refund pass. Cash rows are unaffected (bookkeeping refund).
+          const unsettledRazorpay = await tx.payment.count({
+            where: {
+              orderId: id,
+              method: PaymentMethod.RAZORPAY,
+              status: PaymentStatus.SUCCESS,
+            },
+          });
+          if (unsettledRazorpay > 0) {
+            throw new Error(
+              "A payment settled while cancelling — please retry (it will be refunded first)."
+            );
+          }
+
           await tx.payment.updateMany({
             where: { orderId: id },
             data: { status: PaymentStatus.REFUNDED },
@@ -872,6 +943,13 @@ export async function updateOrderPaymentStatus(
 ) {
   const user = await requireAdmin();
   if (!user) return { error: "Unauthorized" };
+
+  if (paymentStatus === PaymentStatus.REFUNDED) {
+    // Claiming REFUNDED here would state money was returned without ever
+    // calling the refund API — cancellations do that properly (updateOrderStatus
+    // refunds first, then marks). The orders UI never offers this value.
+    return { error: "Use the order's Cancel action to refund a paid order." };
+  }
 
   try {
     await prisma.$transaction(async (tx) => {
