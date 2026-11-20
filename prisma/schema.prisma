@@ -99,6 +99,9 @@ model Table {
   number    String      @unique
   qrCodeUrl String?
   status    TableStatus @default(AVAILABLE)
+  // Bumped when staff regenerate a table's QR code. Tokens carry the
+  // generation they were issued for; a rotated table rejects older tokens.
+  tokenGeneration Int         @default(1)
   orders    Order[]
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt

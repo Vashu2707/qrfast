@@ -1,6 +1,9 @@
 import { createHmac, timingSafeEqual } from "crypto";
+import prisma from "@/lib/prisma";
 
 const SECRET = process.env.TABLE_TOKEN_SECRET;
+/** Legacy QR codes (signed raw tableId, no payload) are generation 1. */
+const DEFAULT_GENERATION = 1;
 
 function getSecret(): string {
   if (!SECRET || SECRET.length < 16) {
@@ -25,32 +28,112 @@ function base64urlDecode(data: string): string {
   return Buffer.from(base64, "base64").toString("utf-8");
 }
 
-function sign(tableId: string): string {
-  return createHmac("sha256", getSecret()).update(tableId).digest("base64url");
+/** HMAC over an arbitrary string: the legacy raw tableId or an encoded payload. */
+function sign(data: string): string {
+  return createHmac("sha256", getSecret()).update(data).digest("base64url");
 }
 
-export function generateTableToken(tableId: string): string {
-  const sig = sign(tableId);
-  return `${base64urlEncode(tableId)}.${sig}`;
+export interface TableTokenOptions {
+  /** Table.tokenGeneration at the time the QR was printed. */
+  generation?: number;
+  /** Bill tokens are scoped to one order; table QR tokens have none. */
+  orderId?: string;
 }
 
-export function verifyTableToken(token: string): string | null {
+export interface VerifiedTableToken {
+  tableId: string;
+  generation: number;
+  orderId: string | null;
+}
+
+export function generateTableToken(
+  tableId: string,
+  options: TableTokenOptions = {}
+): string {
+  const payload = {
+    tableId,
+    generation: options.generation ?? DEFAULT_GENERATION,
+    ...(options.orderId ? { orderId: options.orderId } : {}),
+  };
+  const encoded = base64urlEncode(JSON.stringify(payload));
+  // Sign the encoded payload, not the decoded string: the signature must
+  // cover the exact bytes presented in the token.
+  return `${encoded}.${sign(encoded)}`;
+}
+
+/** Stateless verification — HMAC only, no database read. */
+export function verifyTableTokenDetails(token: string): VerifiedTableToken | null {
+  if (typeof token !== "string") return null;
   const dotIndex = token.indexOf(".");
   if (dotIndex === -1) return null;
 
-  try {
-    const tableId = base64urlDecode(token.slice(0, dotIndex));
-    const providedSig = token.slice(dotIndex + 1);
-    const expectedSig = sign(tableId);
+  const payloadPart = token.slice(0, dotIndex);
+  const providedSig = token.slice(dotIndex + 1);
 
+  try {
+    const decoded = base64urlDecode(payloadPart);
+    const isPayload = decoded.startsWith("{");
+    let payload: VerifiedTableToken;
+
+    if (isPayload) {
+      const parsed = JSON.parse(decoded) as {
+        tableId?: unknown;
+        generation?: unknown;
+        orderId?: unknown;
+      };
+      if (typeof parsed.tableId !== "string" || !parsed.tableId) return null;
+      payload = {
+        tableId: parsed.tableId,
+        generation:
+          typeof parsed.generation === "number" &&
+          Number.isInteger(parsed.generation) &&
+          parsed.generation > 0
+            ? parsed.generation
+            : DEFAULT_GENERATION,
+        orderId: typeof parsed.orderId === "string" ? parsed.orderId : null,
+      };
+    } else {
+      // Tokens printed before the payload format existed: raw tableId,
+      // signed the old way, implicitly generation 1.
+      payload = {
+        tableId: decoded,
+        generation: DEFAULT_GENERATION,
+        orderId: null,
+      };
+    }
+
+    const expectedSig = sign(isPayload ? payloadPart : decoded);
     const providedBuf = Buffer.from(providedSig, "utf-8");
     const expectedBuf = Buffer.from(expectedSig, "utf-8");
-
     if (providedBuf.length !== expectedBuf.length) return null;
     if (!timingSafeEqual(providedBuf, expectedBuf)) return null;
 
-    return tableId;
+    return payload;
   } catch {
     return null;
   }
+}
+
+/** Backwards-compatible helper: the table a token was issued for. */
+export function verifyTableToken(token: string): string | null {
+  return verifyTableTokenDetails(token)?.tableId ?? null;
+}
+
+/**
+ * Full verification: HMAC + current table generation. A QR that staff have
+ * regenerated no longer authorizes menu access, ordering, service requests
+ * or bills, even though its signature is still cryptographically valid.
+ */
+export async function verifyActiveTableToken(
+  token: string
+): Promise<VerifiedTableToken | null> {
+  const payload = verifyTableTokenDetails(token);
+  if (!payload) return null;
+
+  const table = await prisma.table.findUnique({
+    where: { id: payload.tableId },
+    select: { tokenGeneration: true },
+  });
+  if (!table || table.tokenGeneration !== payload.generation) return null;
+  return payload;
 }

@@ -1,7 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
-import { verifyTableToken } from "@/lib/table-token";
+import { verifyActiveTableToken } from "@/lib/table-token";
 import { convertDecimalsDeep } from "@/lib/decimal";
 
 const categoryInclude = {
@@ -23,11 +23,22 @@ const categoryInclude = {
 };
 
 export async function getPublicMenu(tableParam: string) {
-  const tableId = verifyTableToken(tableParam);
-  if (!tableId) return null;
+  const token = await verifyActiveTableToken(tableParam);
+  if (!token) return null;
+  const tableId = token.tableId;
 
+  // Only what the customer-facing menu renders. The full Settings row also
+  // holds the GSTIN, business phone/email and social links — a photographed
+  // QR must not expose those to an anonymous visitor.
   const settings = await prisma.settings.findUnique({
     where: { id: "singleton" },
+    select: {
+      restaurantName: true,
+      logo: true,
+      banner: true,
+      primaryColor: true,
+      cocktailsEnabled: true,
+    },
   });
 
   if (!settings) return null;
@@ -50,6 +61,7 @@ export async function getPublicMenu(tableParam: string) {
 
   const table = await prisma.table.findUnique({
     where: { id: tableId },
+    select: { id: true, number: true },
   });
 
   if (!table) return null;
@@ -82,7 +94,6 @@ export async function getPublicMenu(tableParam: string) {
     take: 10,
   });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return convertDecimalsDeep({
     restaurant: settings,
     table,
@@ -91,6 +102,7 @@ export async function getPublicMenu(tableParam: string) {
     bestsellers,
     newItems,
     reviews,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   }) as any;
 }
 

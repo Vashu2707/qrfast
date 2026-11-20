@@ -24,6 +24,30 @@ export async function getTables() {
   }
 }
 
+function getQrConfig(): { appUrl: string } | { error: string } {
+  const appUrl =
+    process.env.NEXT_PUBLIC_APP_URL ||
+    (process.env.NODE_ENV === "production" ? undefined : "http://localhost:3000");
+  if (!appUrl) return { error: "NEXT_PUBLIC_APP_URL is not configured." };
+  if (!process.env.TABLE_TOKEN_SECRET || process.env.TABLE_TOKEN_SECRET.length < 16) {
+    return {
+      error:
+        "TABLE_TOKEN_SECRET is not configured on the server. Please add it to your environment variables.",
+    };
+  }
+  return { appUrl };
+}
+
+async function buildTableQr(tableId: string, generation: number, appUrl: string) {
+  const token = generateTableToken(tableId, { generation });
+  return QRCode.toDataURL(`${appUrl}/menu/${token}`, {
+    errorCorrectionLevel: "H",
+    margin: 2,
+    width: 400,
+    color: { dark: "#000000", light: "#FFFFFF" },
+  });
+}
+
 export async function createTable(data: { number: string }) {
   const user = await requireAdmin();
   if (!user) return { error: "Unauthorized" };
@@ -33,29 +57,13 @@ export async function createTable(data: { number: string }) {
     return { error: parsed.error.issues.map((e) => e.message).join(", ") };
   }
 
-  const appUrl =
-    process.env.NEXT_PUBLIC_APP_URL ||
-    (process.env.NODE_ENV === "production" ? undefined : "http://localhost:3000");
-
-  if (!appUrl) {
-    return { error: "NEXT_PUBLIC_APP_URL is not configured." };
-  }
-
-  if (!process.env.TABLE_TOKEN_SECRET || process.env.TABLE_TOKEN_SECRET.length < 16) {
-    return { error: "TABLE_TOKEN_SECRET is not configured on the server. Please add it to your environment variables." };
-  }
+  const config = getQrConfig();
+  if ("error" in config) return { error: config.error };
 
   try {
     const tableId = randomUUID();
-    const token = generateTableToken(tableId);
-    const qrTargetUrl = `${appUrl}/menu/${token}`;
-
-    const qrCodeDataUrl = await QRCode.toDataURL(qrTargetUrl, {
-      errorCorrectionLevel: "H",
-      margin: 2,
-      width: 400,
-      color: { dark: "#000000", light: "#FFFFFF" },
-    });
+    // New tables start at generation 1 (the schema default).
+    const qrCodeDataUrl = await buildTableQr(tableId, 1, config.appUrl);
 
     const table = await prisma.table.create({
       data: {
@@ -74,6 +82,41 @@ export async function createTable(data: { number: string }) {
       return { error: "A table with this number already exists." };
     }
     return { error: `Failed to create table: ${msg}` };
+  }
+}
+
+/**
+ * Invalidate a table's printed QR (e.g. after it was photographed) without
+ * disrupting other tables. Bump the generation first, then print a token for
+ * that exact generation; old tokens fail verifyActiveTableToken immediately.
+ */
+export async function rotateTableToken(tableId: string) {
+  const user = await requireAdmin();
+  if (!user) return { error: "Unauthorized" };
+
+  // Check config before incrementing — a misconfigured server must not leave
+  // the table with an invalid QR and no replacement.
+  const config = getQrConfig();
+  if ("error" in config) return { error: config.error };
+
+  try {
+    const updated = await prisma.table.update({
+      where: { id: tableId },
+      data: { tokenGeneration: { increment: 1 } },
+      select: { tokenGeneration: true },
+    });
+    const qrCodeDataUrl = await buildTableQr(tableId, updated.tokenGeneration, config.appUrl);
+    await prisma.table.update({
+      where: { id: tableId },
+      data: { qrCodeUrl: qrCodeDataUrl },
+    });
+
+    revalidatePath("/dashboard/tables");
+    return { success: true };
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error("Table QR rotation failure:", msg);
+    return { error: `Failed to regenerate QR code: ${msg}` };
   }
 }
 

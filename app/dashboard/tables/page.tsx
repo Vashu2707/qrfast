@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getTables, createTable, deleteTable, updateTableStatus } from "@/actions/tables";
+import { getTables, createTable, deleteTable, updateTableStatus, rotateTableToken } from "@/actions/tables";
 import { StaffHeader } from "@/components/layout/dashboard-sidebar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { TableStatus } from "@prisma/client";
 import { toast } from "sonner";
-import { Plus, Trash2, Download, QrCode } from "lucide-react";
+import { Plus, Trash2, Download, QrCode, RefreshCw, Loader2 } from "lucide-react";
 import Image from "next/image";
 import { QueryError } from "@/components/features/dashboard/query-error";
 
@@ -22,6 +22,7 @@ export default function TablesPage() {
   const [tableNumber, setTableNumber] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [busyStatusId, setBusyStatusId] = useState<string | null>(null);
+  const [busyRotateId, setBusyRotateId] = useState<string | null>(null);
 
   const { data: tables = [], error } = useQuery({ queryKey: ["tables"], queryFn: () => getTables(), refetchInterval: 10000 });
 
@@ -61,6 +62,23 @@ export default function TablesPage() {
     }
     toast.success("Table status updated");
     queryClient.invalidateQueries({ queryKey: ["tables"] });
+  };
+
+  const handleRotate = async (id: string) => {
+    if (
+      !confirm(
+        "Regenerate this table's QR code? The current printed code will stop working immediately. Replace it with the new downloadable QR."
+      )
+    )
+      return;
+    setBusyRotateId(id);
+    const result = await rotateTableToken(id);
+    setBusyRotateId(null);
+    if (result.error) toast.error(result.error);
+    else {
+      toast.success("QR regenerated — the old code is now invalid");
+      queryClient.invalidateQueries({ queryKey: ["tables"] });
+    }
   };
 
   const downloadQR = (qrUrl: string | null, number: string) => {
@@ -125,6 +143,21 @@ export default function TablesPage() {
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" className="flex-1" onClick={() => downloadQR(table.qrCodeUrl, table.number)}>
                     <Download className="mr-1 size-3" />QR
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    title="Invalidate the current QR and generate a new one"
+                    disabled={busyRotateId === table.id}
+                    onClick={() => handleRotate(table.id)}
+                  >
+                    {busyRotateId === table.id ? (
+                      <Loader2 className="mr-1 size-3 animate-spin" />
+                    ) : (
+                      <RefreshCw className="mr-1 size-3" />
+                    )}
+                    New QR
                   </Button>
                   <Button variant="ghost" size="icon" onClick={() => handleDelete(table.id)}>
                     <Trash2 className="size-4 text-destructive" />

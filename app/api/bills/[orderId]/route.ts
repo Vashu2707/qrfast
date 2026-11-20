@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { generateBillHtml } from "@/lib/bill-generator";
 import { getCurrentUser } from "@/actions/auth";
 import prisma from "@/lib/prisma";
-import { verifyTableToken } from "@/lib/table-token";
+import { verifyActiveTableToken } from "@/lib/table-token";
 
 export const dynamic = "force-dynamic";
 
@@ -22,13 +22,17 @@ export async function GET(
   if (!authorized) {
     const tableToken = new URL(_request.url).searchParams.get("table");
     if (tableToken) {
-      const tableId = verifyTableToken(tableToken);
-      if (tableId) {
+      const token = await verifyActiveTableToken(tableToken);
+      if (token) {
         const order = await prisma.order.findUnique({
           where: { id: orderId },
           select: { tableId: true },
         });
-        authorized = order?.tableId === tableId;
+        // A table's QR token proves only "this table" — it must not unlock
+        // every historical bill at that table. The order-tracking page issues
+        // a token scoped to that one orderId; require the exact match here.
+        authorized =
+          order?.tableId === token.tableId && token.orderId === orderId;
       }
     }
   }

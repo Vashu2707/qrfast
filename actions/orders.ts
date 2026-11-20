@@ -18,7 +18,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { toNumber } from "@/lib/decimal";
 import { getOrderStatusLabel } from "@/lib/format";
-import { verifyTableToken } from "@/lib/table-token";
+import { verifyActiveTableToken } from "@/lib/table-token";
 import { checkRateLimit, getServerActionIp } from "@/lib/rate-limit";
 
 // ─── Public ──────────────────────────────────────────────────────────────────
@@ -51,8 +51,8 @@ export async function createOrder(rawData: CreateOrderInput) {
   // Table-token binding: the caller must present this table's HMAC-signed
   // QR token. Without it, anyone holding a leaked table UUID could append
   // unpaid items to that table's open bill or flood the kitchen.
-  const tokenTableId = verifyTableToken(data.tableToken);
-  if (!tokenTableId || tokenTableId !== data.tableId) {
+  const token = await verifyActiveTableToken(data.tableToken);
+  if (!token || token.tableId !== data.tableId) {
     return { error: "Invalid table token. Please reopen the menu from your table's QR code." };
   }
 
@@ -629,7 +629,9 @@ export async function requestService(
 
   // Same table-token binding as createOrder — a leaked table UUID can't
   // spam notifications for a table the caller never opened.
-  if (typeof tableToken !== "string" || verifyTableToken(tableToken) !== tableId) {
+  const token =
+    typeof tableToken === "string" ? await verifyActiveTableToken(tableToken) : null;
+  if (!token || token.tableId !== tableId) {
     return { error: "Invalid table token. Please reopen the menu from your table's QR code." };
   }
 
