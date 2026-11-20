@@ -6,17 +6,19 @@ import { redirect } from "next/navigation";
 import { OrderStatus, PaymentStatus } from "@prisma/client";
 import { toNumber } from "@/lib/decimal";
 import { dateKeyInTz, startOfDayInTz, todayInTz } from "@/lib/timezone";
+import { requireTenant } from "@/lib/tenant";
 
 export async function getDashboardStats() {
   const user = await requireAdmin();
   if (!user) redirect("/login");
+  const { id: tenantId } = await requireTenant("RESTAURANT");
 
   try {
     // Every "today" figure and every chart bucket must use the restaurant's
     // calendar day — not the server's local day or UTC — or the cards and
     // chart disagree for the hours around midnight.
     const settings = await prisma.settings.findUnique({
-      where: { id: "singleton" },
+      where: { tenantId },
       select: { timezone: true },
     });
     const tz = settings?.timezone;

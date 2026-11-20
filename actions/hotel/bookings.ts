@@ -11,6 +11,7 @@ import {
   type CreateHotelBookingInput,
   type HotelBookingUpdateInput,
 } from "@/schemas/hotel";
+import { requireTenant } from "@/lib/tenant";
 import {
   BLOCKED_BOOKING_STATUSES,
   generateBookingReference,
@@ -69,6 +70,7 @@ function isUniqueViolation(error: unknown): boolean {
 export async function createHotelBooking(rawData: CreateHotelBookingInput) {
   const staff = await requireHotelStaff();
   if (!staff) return { error: "Unauthorized" };
+  const { id: tenantId } = await requireTenant("HOTEL");
 
   const parsed = createHotelBookingSchema.safeParse(rawData);
   if (!parsed.success) {
@@ -82,7 +84,7 @@ export async function createHotelBooking(rawData: CreateHotelBookingInput) {
   // "No past check-in" is judged against the HOTEL's calendar day — the
   // server may be hosted in another timezone than the property.
   const hotelSettings = await prisma.hotelSettings.findUnique({
-    where: { id: "singleton" },
+    where: { tenantId },
     select: { timezone: true },
   });
   if (data.checkInDate < todayInTz(hotelSettings?.timezone)) {

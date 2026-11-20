@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getPublicMenu } from "@/actions/public-menu";
 import { CartClient } from "@/components/features/menu/cart-client";
 import prisma from "@/lib/prisma";
+import { getPublicRestaurantTenantId } from "@/lib/tenant";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,7 @@ export default async function CartPage({ params }: Props) {
   if (!data) notFound();
 
   const settings = await prisma.settings.findUnique({
-    where: { id: "singleton" },
+    where: { tenantId: await getPublicRestaurantTenantId() },
   });
 
   return (

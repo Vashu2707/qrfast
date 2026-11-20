@@ -6,22 +6,23 @@ import { hotelSettingsSchema, type HotelSettingsInput } from "@/schemas/hotel";
 import { convertDecimalsDeep } from "@/lib/decimal";
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
-
-const DEFAULT_SETTINGS = { id: "singleton" as const };
+import { randomUUID } from "crypto";
+import { requireTenant } from "@/lib/tenant";
 
 export async function getHotelSettings() {
   const user = await requireHotelStaff();
   if (!user) return null;
+  const { id: tenantId } = await requireTenant("HOTEL");
 
   try {
     let settings = await prisma.hotelSettings.findUnique({
-      where: { id: "singleton" },
+      where: { tenantId },
     });
     if (!settings) {
       settings = await prisma.hotelSettings.upsert({
-        where: { id: "singleton" },
+        where: { tenantId },
         update: {},
-        create: DEFAULT_SETTINGS,
+        create: { id: randomUUID(), tenantId },
       });
     }
     return convertDecimalsDeep(settings);
@@ -33,6 +34,7 @@ export async function getHotelSettings() {
 export async function updateHotelSettings(rawData: HotelSettingsInput) {
   const user = await requireHotelAdmin();
   if (!user) return { error: "Unauthorized" };
+  const { id: tenantId } = await requireTenant("HOTEL");
 
   const parsed = hotelSettingsSchema.safeParse(rawData);
   if (!parsed.success) {
@@ -51,9 +53,9 @@ export async function updateHotelSettings(rawData: HotelSettingsInput) {
           : Prisma.JsonNull,
     };
     const settings = await prisma.hotelSettings.upsert({
-      where: { id: "singleton" },
+      where: { tenantId },
       update: { ...parsed.data, ...jsonFields },
-      create: { ...DEFAULT_SETTINGS, ...parsed.data, ...jsonFields },
+      create: { id: randomUUID(), tenantId, ...parsed.data, ...jsonFields },
     });
     revalidatePath("/hotel/dashboard/settings");
     return { success: true, settings: convertDecimalsDeep(settings) };

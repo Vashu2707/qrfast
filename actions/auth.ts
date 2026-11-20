@@ -9,6 +9,7 @@ import { getDefaultRouteForRole } from "@/lib/roles";
 import { checkRateLimit, getServerActionIp } from "@/lib/rate-limit";
 import { touchSession, clearSession, isSessionFresh } from "@/lib/session";
 import { setSpace, clearSpace } from "@/lib/space";
+import { setTenantCookie, clearTenantCookie } from "@/lib/tenant";
 
 export async function signIn(data: { email: string; password: string }) {
   const ip = await getServerActionIp();
@@ -55,6 +56,7 @@ export async function signIn(data: { email: string; password: string }) {
 
   await touchSession();
   await setSpace("restaurant");
+  await setTenantCookie({ id: user.tenantId, kind: "RESTAURANT" });
   return { success: true, role: user.role };
 }
 
@@ -68,6 +70,7 @@ export async function signOut() {
   }
   await clearSession();
   await clearSpace();
+  await clearTenantCookie();
   revalidatePath("/");
   return { success: true };
 }

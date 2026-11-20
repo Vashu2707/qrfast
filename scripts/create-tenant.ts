@@ -13,6 +13,7 @@
 import { PrismaClient, TenantKind, Role, HotelRole } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { createClient } from "@supabase/supabase-js";
+import { randomUUID } from "crypto";
 
 const [kindArg, name, slug, email, password] = process.argv.slice(2);
 
@@ -83,7 +84,7 @@ async function main() {
 
       if (kind === "restaurant") {
         await tx.settings.create({
-          data: { tenantId: created.id, restaurantName: name },
+          data: { id: randomUUID(), tenantId: created.id, restaurantName: name },
         });
         await tx.adminUser.create({
           data: {
@@ -96,7 +97,7 @@ async function main() {
         });
       } else {
         await tx.hotelSettings.create({
-          data: { tenantId: created.id, hotelName: name },
+          data: { id: randomUUID(), tenantId: created.id, hotelName: name },
         });
         await tx.hotelUser.create({
           data: {

@@ -3,21 +3,24 @@
 import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { requireAdmin } from "@/lib/roles";
+import { requireTenant } from "@/lib/tenant";
 import { settingsSchema, type SettingsInput } from "@/schemas";
 import { revalidatePath } from "next/cache";
 
 export async function getSettings() {
   const user = await requireAdmin();
   if (!user) throw new Error("Unauthorized");
+  const { id: tenantId } = await requireTenant("RESTAURANT");
 
   return prisma.settings.findUnique({
-    where: { id: "singleton" },
+    where: { tenantId },
   });
 }
 
 export async function updateRestaurantSettings(rawData: SettingsInput) {
   const user = await requireAdmin();
   if (!user) return { error: "Unauthorized" };
+  const { id: tenantId } = await requireTenant("RESTAURANT");
 
   const parsed = settingsSchema.safeParse(rawData);
   if (!parsed.success) {
@@ -27,7 +30,7 @@ export async function updateRestaurantSettings(rawData: SettingsInput) {
 
   try {
     const settings = await prisma.settings.update({
-      where: { id: "singleton" },
+      where: { tenantId },
       data: {
         restaurantName: data.restaurantName,
         cocktailsEnabled: data.cocktailsEnabled ?? false,

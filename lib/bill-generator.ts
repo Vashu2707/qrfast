@@ -49,7 +49,7 @@ export async function generateBillHtml(orderId: string): Promise<string | null> 
   if (!order) return null;
 
   const settings = await prisma.settings.findUnique({
-    where: { id: "singleton" },
+    where: { tenantId: order.tenantId },
   });
 
   const restaurant = settings ?? {

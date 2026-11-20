@@ -5,6 +5,7 @@ import { requireHotelStaff } from "@/lib/hotel-roles";
 import { BLOCKED_BOOKING_STATUSES, parseDateOnly, todayInTz } from "@/lib/hotel";
 import { money } from "@/lib/decimal";
 import { BookingStatus, HotelPaymentStatus } from "@prisma/client";
+import { requireTenant } from "@/lib/tenant";
 
 export interface HotelUpcomingBooking {
   id: string;
@@ -61,11 +62,12 @@ const emptyStats: HotelStats = {
 export async function getHotelDashboardStats() {
   const user = await requireHotelStaff();
   if (!user) return { ...emptyStats };
+  const { id: tenantId } = await requireTenant("HOTEL");
 
   // Arrivals/departures/upcoming/month-start target the HOTEL's calendar day,
   // not the server's (server tz may differ from the property's).
   const hotelSettings = await prisma.hotelSettings.findUnique({
-    where: { id: "singleton" },
+    where: { tenantId },
     select: { timezone: true },
   });
   const today = todayInTz(hotelSettings?.timezone);

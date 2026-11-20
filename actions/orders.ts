@@ -68,7 +68,7 @@ export async function createOrder(rawData: CreateOrderInput) {
       const table = await tx.table.findUnique({ where: { id: data.tableId } });
       if (!table) throw new Error("Table not found.");
 
-      const settings = await tx.settings.findUnique({ where: { id: "singleton" } });
+      const settings = await tx.settings.findUnique({ where: { tenantId: table.tenantId } });
       if (!settings) throw new Error("Restaurant settings not initialized.");
 
       const itemIds = data.items.map((i) => i.menuItemId);

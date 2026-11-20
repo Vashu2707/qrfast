@@ -1,6 +1,7 @@
 import { OrderTrackingClient } from "@/components/features/order/order-tracking";
 import prisma from "@/lib/prisma";
 import { generateTableToken } from "@/lib/table-token";
+import { PRIMARY_RESTAURANT_TENANT_ID } from "@/lib/tenant";
 
 export const dynamic = "force-dynamic";
 
@@ -13,11 +14,11 @@ export default async function OrderPage({ params }: Props) {
 
   const order = await prisma.order.findUnique({
     where: { id },
-    select: { table: { select: { id: true, tokenGeneration: true } } },
+    select: { table: { select: { id: true, tokenGeneration: true, tenantId: true } } },
   });
 
   const settings = await prisma.settings.findUnique({
-    where: { id: "singleton" },
+    where: { tenantId: order?.table.tenantId ?? PRIMARY_RESTAURANT_TENANT_ID },
     select: { primaryColor: true },
   });
 
