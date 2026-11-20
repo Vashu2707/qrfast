@@ -8,6 +8,8 @@
  */
 import { cookies } from "next/headers";
 import { signValue, signaturesMatch } from "@/lib/signing-key";
+import { createClient } from "@/lib/supabase/server";
+import prisma from "@/lib/prisma";
 
 export type TenantKind = "RESTAURANT" | "HOTEL";
 
@@ -65,8 +67,41 @@ export async function getTenant(): Promise<TenantContext | null> {
   return { id, kind };
 }
 
+/**
+ * Sessions created before the signed tenant cookie existed have no cookie.
+ * Derive the tenant from the authenticated user in that case instead of
+ * throwing during a Server Component render.
+ */
+async function tenantFromSession(kind?: TenantKind): Promise<TenantContext | null> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    if (kind !== "HOTEL") {
+      const admin = await prisma.adminUser.findUnique({
+        where: { id: user.id },
+        select: { tenantId: true },
+      });
+      if (admin) return { id: admin.tenantId, kind: "RESTAURANT" };
+    }
+    if (kind !== "RESTAURANT") {
+      const hotelUser = await prisma.hotelUser.findUnique({
+        where: { id: user.id },
+        select: { tenantId: true },
+      });
+      if (hotelUser) return { id: hotelUser.tenantId, kind: "HOTEL" };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export async function requireTenant(kind?: TenantKind): Promise<TenantContext> {
-  const tenant = await getTenant();
+  const tenant = (await getTenant()) ?? (await tenantFromSession(kind));
   if (!tenant) {
     throw new Error("No active tenant. Please sign in again.");
   }
