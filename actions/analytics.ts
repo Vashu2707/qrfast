@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { requireAdmin } from "@/lib/roles";
 import { OrderStatus, PaymentStatus } from "@prisma/client";
 import { toNumber } from "@/lib/decimal";
+import { dateKeyInTz, startOfDayInTz, todayInTz } from "@/lib/timezone";
 
 const emptyStats = { todayOrders: 0, pendingOrders: 0, completedToday: 0, todayRevenue: 0, totalTables: 0, occupiedTables: 0, topItems: [] as { item: any; quantity: number }[], chartData: [] as { date: string; revenue: number }[], totalRevenue: 0, avgOrderValue: 0 };
 
@@ -11,15 +12,23 @@ export async function getDashboardStats() {
   const user = await requireAdmin();
   if (!user) return { ...emptyStats };
 
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-
   try {
+    // Every "today" figure and every chart bucket must use the restaurant's
+    // calendar day — not the server's local day or UTC — or the cards and
+    // chart disagree for the hours around midnight.
+    const settings = await prisma.settings.findUnique({
+      where: { id: "singleton" },
+      select: { timezone: true },
+    });
+    const tz = settings?.timezone;
+    const todayStart = startOfDayInTz(todayInTz(tz), tz);
+
     const [
       todayOrders,
       pendingOrders,
       completedToday,
       todayRevenue,
+      paidOrdersToday,
       totalTables,
       occupiedTables,
       allOrders,
@@ -41,6 +50,14 @@ export async function getDashboardStats() {
           createdAt: { gte: todayStart },
         },
         _sum: { totalAmount: true },
+      }),
+      // Average order value must use the same paid population as the revenue
+      // above — including unpaid/cancelled orders deflated it.
+      prisma.order.count({
+        where: {
+          paymentStatus: PaymentStatus.SUCCESS,
+          createdAt: { gte: todayStart },
+        },
       }),
       prisma.table.count(),
       prisma.table.count({ where: { status: "OCCUPIED" } }),
@@ -67,31 +84,42 @@ export async function getDashboardStats() {
       quantity: p._sum.quantity || 0,
     }));
 
-    const salesByDay: Record<string, number> = {};
+    const salesByDay: Record<string, { label: string; revenue: number }> = {};
     for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      salesByDay[d.toISOString().split("T")[0]] = 0;
+      const dayStart = new Date(todayStart.getTime() - i * 86_400_000);
+      const key = dateKeyInTz(dayStart, tz);
+      salesByDay[key] = {
+        label: dayStart.toLocaleDateString("en-IN", {
+          weekday: "short",
+          timeZone: tz || undefined,
+        }),
+        revenue: 0,
+      };
     }
     allOrders
       .filter((o) => o.paymentStatus === PaymentStatus.SUCCESS)
       .forEach((o) => {
-        const key = o.createdAt.toISOString().split("T")[0];
+        const key = dateKeyInTz(o.createdAt, tz);
         if (salesByDay[key] !== undefined) {
-          salesByDay[key] += toNumber(o.totalAmount);
+          salesByDay[key].revenue += toNumber(o.totalAmount);
         }
       });
 
-    const chartData = Object.entries(salesByDay).map(([date, revenue]) => ({
-      date: new Date(date).toLocaleDateString("en-IN", { weekday: "short" }),
-      revenue,
+    const chartData = Object.entries(salesByDay).map(([, day]) => ({
+      date: day.label,
+      revenue: day.revenue,
     }));
 
     const totalRevenue = allOrders
       .filter((o) => o.paymentStatus === PaymentStatus.SUCCESS)
       .reduce((s, o) => s + toNumber(o.totalAmount), 0);
 
-    const avgOrderValue = todayOrders > 0 ? toNumber(todayRevenue._sum.totalAmount) / todayOrders : 0;
+    // Paid revenue / paid orders — dividing by all orders (unpaid, cancelled)
+    // made "average order value" meaningless.
+    const avgOrderValue =
+      paidOrdersToday > 0
+        ? toNumber(todayRevenue._sum.totalAmount) / paidOrdersToday
+        : 0;
 
     return {
       todayOrders,

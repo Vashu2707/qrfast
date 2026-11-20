@@ -1,4 +1,9 @@
 import { randomBytes } from "crypto";
+import { dateKeyInTz, todayInTz } from "@/lib/timezone";
+
+// Re-exported for the hotel call sites — the shared implementation now also
+// serves restaurant analytics, which must use the same calendar-day semantics.
+export { todayInTz };
 
 /** Booking statuses that occupy inventory (block overlapping bookings). */
 export const BLOCKED_BOOKING_STATUSES = ["PENDING", "CONFIRMED", "CHECKED_IN"] as const;
@@ -8,33 +13,11 @@ export function parseDateOnly(value: string): Date {
   return new Date(`${value}T00:00:00.000Z`);
 }
 
-/** Today's calendar date as YYYY-MM-DD in the server's local timezone. */
-export function todayISO(): string {
-  const d = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
-
-/**
- * Today's calendar date (YYYY-MM-DD) in an IANA timezone — the hotel's
- * calendar day, which differs from the server's (and the browser's) whenever
- * their tz ≠ the property's. `tz` comes from HotelSettings.timezone
- * (default Asia/Kolkata); an invalid value degrades to server-local rather
- * than crashing.
- */
-export function todayInTz(tz: string | null | undefined): string {
-  const timeZone = tz || "Asia/Kolkata";
-  try {
-    // en-CA formats dates as YYYY-MM-DD
-    return new Intl.DateTimeFormat("en-CA", {
-      timeZone,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).format(new Date());
-  } catch {
-    return todayISO();
-  }
+/** True when a YYYY-MM-DD value is a real calendar date (not e.g. 2026-02-31). */
+export function isValidDateKey(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = parseDateOnly(value);
+  return !Number.isNaN(parsed.getTime()) && dateKeyInTz(parsed, "UTC") === value;
 }
 
 /** Whole nights between two date-only values (check-out day not counted). */
