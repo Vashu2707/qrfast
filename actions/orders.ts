@@ -765,8 +765,15 @@ export async function updateOrderStatus(id: string, status: OrderStatus) {
           data: { status: TableStatus.AVAILABLE },
         });
 
-        const invoiceCount = await tx.invoice.count();
-        const invoiceNumber = `INV-${String(invoiceCount + 1).padStart(4, "0")}`;
+        // Collision-free invoice numbering: count()+1 let two concurrent
+        // completions derive the same number, and the loser's insert aborted
+        // the ENTIRE completion tx (table-free + cash-SUCCESS + status rolled
+        // back too) on invoiceNumber @unique. nextval is atomic — no lock
+        // held for the rest of the tx, no retry loop needed.
+        const invoiceSeq = await tx.$queryRaw<Array<{ nextval: unknown }>>`
+          SELECT nextval('"InvoiceInvoiceNumberSeq"') AS nextval
+        `;
+        const invoiceNumber = `INV-${String(invoiceSeq[0]?.nextval ?? 1).padStart(4, "0")}`;
 
         await tx.invoice.create({
           data: {
