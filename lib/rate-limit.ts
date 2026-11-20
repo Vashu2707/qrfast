@@ -1,6 +1,5 @@
 import { headers } from "next/headers";
-import { Ratelimit, type Duration } from "@upstash/ratelimit";
-import { Redis } from "@upstash/redis";
+import Redis from "ioredis";
 
 interface RateLimitEntry {
   count: number;
@@ -9,7 +8,7 @@ interface RateLimitEntry {
 
 // ── Fallback store (development only) ────────────────────────────────────────
 // Process-local Map: counters reset on every restart/deploy and are not shared
-// between instances. Used only when Upstash is unconfigured AND we're not in
+// between instances. Used only when Redis is unconfigured AND we're not in
 // production — production fails closed (see checkRateLimit).
 const store = new Map<string, RateLimitEntry>();
 
@@ -32,40 +31,69 @@ export interface RateLimitResult {
   retryAfterMs: number;
 }
 
-// ── Shared store (Upstash Redis) ─────────────────────────────────────────────
+// ── Shared store (Redis) ─────────────────────────────────────────────────────
 // Counters live in Redis: they survive deploys/restarts and are shared across
-// instances. Configure via UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN
-// (see .env.example — create a free Redis database at upstash.com).
-const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;
-const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
-
-// One Ratelimit instance per (max, window) combination — each call site uses a
-// different budget, and instances are cheap wrappers over the shared Redis.
-const limiterCache = new Map<string, Ratelimit>();
-
-function getLimiter(maxRequests: number, windowMs: number): Ratelimit {
-  const cacheKey = `${maxRequests}/${windowMs}`;
-  let limiter = limiterCache.get(cacheKey);
-  if (!limiter) {
-    limiter = new Ratelimit({
-      redis: Redis.fromEnv(),
-      limiter: Ratelimit.slidingWindow(maxRequests, `${windowMs} ms` as Duration),
-      analytics: false,
-      prefix: "qrfast:ratelimit",
-    });
-    limiterCache.set(cacheKey, limiter);
-  }
-  return limiter;
-}
-
+// instances. Configure via REDIS_URL (see .env.example — any Redis server that
+// supports EVAL works, e.g. Redis Cloud, ElastiCache or a self-hosted instance).
+const REDIS_URL = process.env.REDIS_URL;
+const KEY_PREFIX = "qrfast:ratelimit:";
 let warnedMissingConfig = false;
+
+// Atomic sliding-window log: drop old hits, count the rest, and either record
+// this hit or report when the oldest hit expires. One EVAL keeps concurrent
+// requests from racing past the limit.
+const SLIDING_WINDOW_SCRIPT = `
+local key = KEYS[1]
+local now = tonumber(ARGV[1])
+local window = tonumber(ARGV[2])
+local max = tonumber(ARGV[3])
+local member = ARGV[4]
+
+redis.call('ZREMRANGEBYSCORE', key, 0, now - window)
+local count = redis.call('ZCARD', key)
+
+if count < max then
+  redis.call('ZADD', key, now, member)
+  redis.call('PEXPIRE', key, window)
+  return {1, max - count - 1, 0}
+end
+
+local oldest = redis.call('ZRANGE', key, 0, 0, 'WITHSCORES')
+local retry = 0
+if oldest[2] then
+  retry = math.max(tonumber(oldest[2]) + window - now, 0)
+end
+return {0, 0, math.ceil(retry)}
+`;
+
+// Reuse one connection across warm serverless invocations and HMR reloads.
+// Reconnecting on every request would exhaust the server's connection limit.
+const globalForRedis = globalThis as typeof globalThis & {
+  __qrfastRedis?: Redis;
+};
+
+function getRedis(): Redis {
+  if (!globalForRedis.__qrfastRedis) {
+    const client = new Redis(REDIS_URL!, {
+      maxRetriesPerRequest: 2,
+      connectTimeout: 5_000,
+      retryStrategy: (times) => Math.min(times * 200, 2_000),
+    });
+    // Without a listener ioredis emits an unhandled 'error' event.
+    client.on("error", (error) => {
+      console.error("rate-limit: Redis connection error:", error);
+    });
+    globalForRedis.__qrfastRedis = client;
+  }
+  return globalForRedis.__qrfastRedis;
+}
 
 /**
  * Sliding-window rate limit. Async — always `await` it.
  *
- * Production: requires Upstash (fails closed if unconfigured so brute-force
+ * Production: requires Redis (fails closed if unconfigured so brute-force
  * limits can't silently be off). Transient Redis errors fail OPEN with a loud
- * log — an Upstream outage must not lock staff out of sign-in; the window is
+ * log — a Redis outage must not lock staff out of sign-in; the window is
  * short-lived, so exposure is bounded.
  * Development: falls back to the in-process Map (per-restart counters).
  */
@@ -74,13 +102,27 @@ export async function checkRateLimit(
   maxRequests: number,
   windowMs: number
 ): Promise<RateLimitResult> {
-  if (UPSTASH_URL && UPSTASH_TOKEN) {
+  if (REDIS_URL) {
     try {
-      const result = await getLimiter(maxRequests, windowMs).limit(key);
+      const now = Date.now();
+      // Unique member: two hits in the same millisecond must not overwrite
+      // each other in the sorted set.
+      const member = `${now}-${Math.random().toString(36).slice(2)}`;
+      const result = (await getRedis().eval(
+        SLIDING_WINDOW_SCRIPT,
+        1,
+        `${KEY_PREFIX}${key}`,
+        now,
+        windowMs,
+        maxRequests,
+        member
+      )) as [string | number, string | number, string | number];
+      const [allowed, remaining, retryAfterMs] = result;
+
       return {
-        allowed: result.success,
-        remaining: result.remaining,
-        retryAfterMs: result.success ? 0 : Math.max(result.reset - Date.now(), 0),
+        allowed: Number(allowed) === 1,
+        remaining: Number(remaining),
+        retryAfterMs: Number(retryAfterMs),
       };
     } catch (error) {
       console.error("rate-limit: Redis unavailable — failing open for this request:", error);
@@ -92,15 +134,15 @@ export async function checkRateLimit(
     // Fail closed, same posture as SESSION_SECRET in lib/session.ts: an
     // unconfigured limiter is indistinguishable from no limiter at all.
     throw new Error(
-      "Rate limiting requires UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN. " +
-        "Create a Redis database at https://upstash.com and set both (see .env.example)."
+      "Rate limiting requires REDIS_URL. Set it to a Redis connection string " +
+        "(e.g. rediss://user:password@host:port) — see .env.example."
     );
   }
 
   if (!warnedMissingConfig) {
     warnedMissingConfig = true;
     console.warn(
-      "rate-limit: UPSTASH_REDIS_REST_URL/UPSTASH_REDIS_REST_TOKEN not set — using in-process fallback (resets each restart)."
+      "rate-limit: REDIS_URL not set — using in-process fallback (resets each restart)."
     );
   }
 
