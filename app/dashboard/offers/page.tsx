@@ -23,6 +23,7 @@ export default function OffersPage() {
   const [form, setForm] = useState(emptyOffer);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
+  const [busyOfferId, setBusyOfferId] = useState<string | null>(null);
 
   const { data: offers = [] } = useQuery({ queryKey: ["offers"], queryFn: () => getOffers(), refetchInterval: 15000 });
 
@@ -49,6 +50,31 @@ export default function OffersPage() {
       setDialogOpen(false);
       queryClient.invalidateQueries({ queryKey: ["offers"] });
     }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Delete this offer? This cannot be undone.")) return;
+    setBusyOfferId(id);
+    const result = await deleteOffer(id);
+    setBusyOfferId(null);
+    if (result.error) {
+      toast.error(result.error);
+      return;
+    }
+    toast.success("Offer deleted");
+    queryClient.invalidateQueries({ queryKey: ["offers"] });
+  };
+
+  const handleToggle = async (id: string) => {
+    setBusyOfferId(id);
+    const result = await toggleOfferStatus(id);
+    setBusyOfferId(null);
+    if (result.error) {
+      toast.error(result.error);
+      return;
+    }
+    toast.success("Offer status updated");
+    queryClient.invalidateQueries({ queryKey: ["offers"] });
   };
 
   const handleEdit = (offer: typeof offers[0]) => {
@@ -116,7 +142,7 @@ export default function OffersPage() {
                     <Button variant="ghost" size="icon" onClick={() => handleEdit(offer)}>
                       <Pencil className="size-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={async () => { if (confirm("Delete?")) { await deleteOffer(offer.id); queryClient.invalidateQueries({ queryKey: ["offers"] }); } }}>
+                    <Button variant="ghost" size="icon" disabled={busyOfferId === offer.id} onClick={() => handleDelete(offer.id)}>
                       <Trash2 className="size-4 text-destructive" />
                     </Button>
                   </div>
@@ -129,7 +155,7 @@ export default function OffersPage() {
                 <p className="text-xs text-muted-foreground">Expires: {formatDate(offer.expiryDate)}</p>
                 <p className="text-xs text-muted-foreground">Used: {offer.usageCount}{offer.usageLimit ? `/${offer.usageLimit}` : ""}</p>
                 <div className="mt-3 flex items-center gap-2">
-                  <Switch checked={offer.isActive} onCheckedChange={async () => { await toggleOfferStatus(offer.id); queryClient.invalidateQueries({ queryKey: ["offers"] }); }} />
+                  <Switch disabled={busyOfferId === offer.id} checked={offer.isActive} onCheckedChange={() => handleToggle(offer.id)} />
                   <span className="text-xs">{offer.isActive ? "Active" : "Inactive"}</span>
                 </div>
               </CardContent>

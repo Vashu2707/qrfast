@@ -21,6 +21,7 @@ export default function TablesPage() {
   const queryClient = useQueryClient();
   const [tableNumber, setTableNumber] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [busyStatusId, setBusyStatusId] = useState<string | null>(null);
 
   const { data: tables = [], error } = useQuery({ queryKey: ["tables"], queryFn: () => getTables(), refetchInterval: 10000 });
 
@@ -51,7 +52,14 @@ export default function TablesPage() {
   };
 
   const handleStatusChange = async (id: string, status: TableStatus) => {
-    await updateTableStatus(id, status);
+    setBusyStatusId(id);
+    const result = await updateTableStatus(id, status);
+    setBusyStatusId(null);
+    if (result.error) {
+      toast.error(result.error);
+      return;
+    }
+    toast.success("Table status updated");
     queryClient.invalidateQueries({ queryKey: ["tables"] });
   };
 
@@ -108,7 +116,7 @@ export default function TablesPage() {
                     <QrCode className="size-12 text-muted-foreground" />
                   </div>
                 )}
-                <Select value={table.status} onValueChange={(v) => v && handleStatusChange(table.id, v as TableStatus)}>
+                <Select disabled={busyStatusId === table.id} value={table.status} onValueChange={(v) => v && handleStatusChange(table.id, v as TableStatus)}>
                   <SelectTrigger className="mb-3"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {Object.values(TableStatus).map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
