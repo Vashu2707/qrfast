@@ -29,6 +29,9 @@ const cartItemSchema = z.object({
 
 export const createOrderSchema = z.object({
   tableId: z.string(),
+  // HMAC-signed QR token for the table — proves the caller opened this
+  // table's menu; a leaked table UUID alone is rejected by createOrder.
+  tableToken: z.string().min(1, "Table token is required"),
   customerName: z
     .string()
     .min(1, "Name is required")

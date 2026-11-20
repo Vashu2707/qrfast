@@ -144,6 +144,7 @@ export function CartClient({
 
     const result = await createOrder({
       tableId,
+      tableToken: tableParam,
       customerName: customerName.trim(),
       customerPhone: customerPhone.trim(),
       paymentMethod,

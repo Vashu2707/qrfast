@@ -251,7 +251,7 @@ export function MenuClient({ data, tableParam }: Props) {
   const cartTotal = getSubtotal();
 
   const handleService = async (type: "CALL_WAITER" | "REQUEST_BILL") => {
-    const result = await requestService(table.id, type);
+    const result = await requestService(table.id, type, tableParam);
     if (result.error) toast.error(result.error);
     else toast.success(type === "CALL_WAITER" ? "Waiter has been notified!" : "Bill request sent!");
   };

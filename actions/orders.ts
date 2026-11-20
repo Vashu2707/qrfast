@@ -17,6 +17,8 @@ import {
 import { revalidatePath } from "next/cache";
 import { toNumber } from "@/lib/decimal";
 import { getOrderStatusLabel } from "@/lib/format";
+import { verifyTableToken } from "@/lib/table-token";
+import { checkRateLimit, getServerActionIp } from "@/lib/rate-limit";
 
 // ─── Public ──────────────────────────────────────────────────────────────────
 
@@ -32,6 +34,21 @@ export async function createOrder(rawData: CreateOrderInput) {
     return { error: `Invalid order data: ${message}` };
   }
   const data = parsed.data;
+
+  // Table-token binding: the caller must present this table's HMAC-signed
+  // QR token. Without it, anyone holding a leaked table UUID could append
+  // unpaid items to that table's open bill or flood the kitchen.
+  const tokenTableId = verifyTableToken(data.tableToken);
+  if (!tokenTableId || tokenTableId !== data.tableId) {
+    return { error: "Invalid table token. Please reopen the menu from your table's QR code." };
+  }
+
+  // Bound orders per table (token-verified scope, not client-spoofable IP)
+  // so one party cannot flood kitchen notifications or occupy the table.
+  const { allowed, retryAfterMs } = checkRateLimit(`order:${data.tableId}`, 20, 5 * 60_000);
+  if (!allowed) {
+    return { error: `Too many order attempts. Please wait ${Math.ceil(retryAfterMs / 1000)} seconds.` };
+  }
 
   try {
     const result = await prisma.$transaction(async (tx) => {
@@ -526,9 +543,22 @@ export async function getCustomerOrder(id: string) {
  */
 export async function requestService(
   tableId: string,
-  type: "CALL_WAITER" | "REQUEST_BILL"
+  type: "CALL_WAITER" | "REQUEST_BILL",
+  tableToken: string
 ) {
   if (!tableId || typeof tableId !== "string") return { error: "Invalid table." };
+
+  // Same table-token binding as createOrder — a leaked table UUID can't
+  // spam notifications for a table the caller never opened.
+  if (typeof tableToken !== "string" || verifyTableToken(tableToken) !== tableId) {
+    return { error: "Invalid table token. Please reopen the menu from your table's QR code." };
+  }
+
+  // Bound per table so a single party can't flood the waiter/board.
+  const { allowed } = checkRateLimit(`service:${tableId}`, 10, 5 * 60_000);
+  if (!allowed) {
+    return { error: "Please wait a moment before making another request." };
+  }
 
   try {
     const table = await prisma.table.findUnique({ where: { id: tableId } });
@@ -573,6 +603,14 @@ export async function submitReview(data: {
   const customerName = String(data.customerName ?? "").trim().slice(0, 100);
   const rating = Math.max(1, Math.min(5, Math.round(Number(data.rating))));
   const comment = data.comment ? String(data.comment).slice(0, 2000) : null;
+
+  // Public endpoint with no auth and no table context — cap per client IP
+  // so it can't be used to flood the review list with junk.
+  const ip = await getServerActionIp();
+  const { allowed } = checkRateLimit(`review:${ip}`, 10, 60 * 60_000);
+  if (!allowed) {
+    return { error: "Too many reviews. Please try again later." };
+  }
 
   try {
     const review = await prisma.review.create({
