@@ -12,7 +12,7 @@ import { HotelRole, Role, type HotelUser } from "@prisma/client";
 
 export async function hotelSignIn(data: { email: string; password: string }) {
   const ip = await getServerActionIp();
-  const { allowed } = checkRateLimit(`hotel-signin:${ip}`, 5, 60_000);
+  const { allowed } = await checkRateLimit(`hotel-signin:${ip}`, 5, 60_000);
   if (!allowed) {
     return { error: "Too many login attempts. Please try again later." };
   }
@@ -84,7 +84,7 @@ export async function hotelSignOut() {
 
 export async function hotelForgotPassword(email: string) {
   const ip = await getServerActionIp();
-  const { allowed } = checkRateLimit(`hotel-forgot:${ip}`, 3, 60 * 60_000);
+  const { allowed } = await checkRateLimit(`hotel-forgot:${ip}`, 3, 60 * 60_000);
   if (!allowed) {
     return { error: "Too many reset requests. Please try again later." };
   }

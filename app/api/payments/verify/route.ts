@@ -18,7 +18,7 @@ export async function POST(request: Request) {
 
   // Rate limit: 10 requests per minute per IP
   const ip = getClientIp(request);
-  const { allowed, retryAfterMs } = checkRateLimit(`verify:${ip}`, 10, 60_000);
+  const { allowed, retryAfterMs } = await checkRateLimit(`verify:${ip}`, 10, 60_000);
   if (!allowed) {
     console.warn(`[verify] Rate limited IP: ${ip}`);
     return NextResponse.json(

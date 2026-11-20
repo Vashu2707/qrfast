@@ -45,7 +45,7 @@ export async function createOrder(rawData: CreateOrderInput) {
 
   // Bound orders per table (token-verified scope, not client-spoofable IP)
   // so one party cannot flood kitchen notifications or occupy the table.
-  const { allowed, retryAfterMs } = checkRateLimit(`order:${data.tableId}`, 20, 5 * 60_000);
+  const { allowed, retryAfterMs } = await checkRateLimit(`order:${data.tableId}`, 20, 5 * 60_000);
   if (!allowed) {
     return { error: `Too many order attempts. Please wait ${Math.ceil(retryAfterMs / 1000)} seconds.` };
   }
@@ -555,7 +555,7 @@ export async function requestService(
   }
 
   // Bound per table so a single party can't flood the waiter/board.
-  const { allowed } = checkRateLimit(`service:${tableId}`, 10, 5 * 60_000);
+  const { allowed } = await checkRateLimit(`service:${tableId}`, 10, 5 * 60_000);
   if (!allowed) {
     return { error: "Please wait a moment before making another request." };
   }
@@ -607,7 +607,7 @@ export async function submitReview(data: {
   // Public endpoint with no auth and no table context — cap per client IP
   // so it can't be used to flood the review list with junk.
   const ip = await getServerActionIp();
-  const { allowed } = checkRateLimit(`review:${ip}`, 10, 60 * 60_000);
+  const { allowed } = await checkRateLimit(`review:${ip}`, 10, 60 * 60_000);
   if (!allowed) {
     return { error: "Too many reviews. Please try again later." };
   }

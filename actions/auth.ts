@@ -12,7 +12,7 @@ import { setSpace, clearSpace } from "@/lib/space";
 
 export async function signIn(data: { email: string; password: string }) {
   const ip = await getServerActionIp();
-  const { allowed, retryAfterMs } = checkRateLimit(`signin:${ip}`, 5, 60_000);
+  const { allowed, retryAfterMs } = await checkRateLimit(`signin:${ip}`, 5, 60_000);
   if (!allowed) {
     return { error: "Too many login attempts. Please try again later." };
   }
@@ -74,7 +74,7 @@ export async function signOut() {
 
 export async function forgotPassword(email: string) {
   const ip = await getServerActionIp();
-  const { allowed, retryAfterMs } = checkRateLimit(`forgot:${ip}`, 3, 60 * 60_000);
+  const { allowed, retryAfterMs } = await checkRateLimit(`forgot:${ip}`, 3, 60 * 60_000);
   if (!allowed) {
     return { error: "Too many reset requests. Please try again later." };
   }
@@ -113,7 +113,7 @@ export async function forgotPassword(email: string) {
 
 export async function resetPassword(password: string, code?: string) {
   const ip = await getServerActionIp();
-  const { allowed } = checkRateLimit(`reset:${ip}`, 3, 60 * 60_000);
+  const { allowed } = await checkRateLimit(`reset:${ip}`, 3, 60 * 60_000);
   if (!allowed) {
     return { error: "Too many reset attempts. Please try again later." };
   }
