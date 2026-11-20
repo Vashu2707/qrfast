@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { useCart } from "@/hooks/use-cart";
+import { MAX_CART_QUANTITY, useCart } from "@/hooks/use-cart";
 import { createOrder, cancelUnpaidOrder } from "@/actions/orders";
 import { validateOffer } from "@/actions/offers";
 import { formatCurrency } from "@/lib/format";
@@ -411,6 +411,7 @@ export function CartClient({
                           variant="outline"
                           size="icon"
                           className="size-9"
+                          disabled={item.quantity >= MAX_CART_QUANTITY}
                           onClick={() => updateQuantity(item.id, item.quantity + 1)}
                         >
                           <Plus className="size-4" />

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { useCart } from "@/hooks/use-cart";
+import { MAX_CART_QUANTITY, useCart } from "@/hooks/use-cart";
 import { formatCurrency } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -206,11 +206,11 @@ export function MenuItemDialog({ item, primaryColor, barTheme = false, onClose }
 
           <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center justify-center gap-3 sm:justify-start">
-              <Button variant="outline" size="icon" className="size-11" onClick={() => setQuantity(Math.max(1, quantity - 1))}>
+              <Button variant="outline" size="icon" className="size-11" disabled={quantity <= 1} onClick={() => setQuantity((q) => Math.max(1, q - 1))}>
                 <Minus className="size-5" />
               </Button>
               <span className="w-8 text-center font-semibold text-lg">{quantity}</span>
-              <Button variant="outline" size="icon" className="size-11" onClick={() => setQuantity(quantity + 1)}>
+              <Button variant="outline" size="icon" className="size-11" disabled={quantity >= MAX_CART_QUANTITY} onClick={() => setQuantity((q) => Math.min(MAX_CART_QUANTITY, q + 1))}>
                 <Plus className="size-5" />
               </Button>
             </div>

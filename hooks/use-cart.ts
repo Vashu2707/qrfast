@@ -1,6 +1,11 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+/** Matches createOrderSchema's max(99) — the client must cap too, or a merge
+ *  like 60+60 produces a cart that only fails at checkout, after the customer
+ *  has filled in name/phone. */
+export const MAX_CART_QUANTITY = 99;
+
 export interface CartItem {
   id: string;
   menuItemId: string;
@@ -66,6 +71,23 @@ const generateCompositeId = (
   return `${menuItemId}-${variantPart}-${addonsPart}`;
 };
 
+const clampQuantity = (quantity: number): number =>
+  Math.min(MAX_CART_QUANTITY, Math.max(1, Math.floor(quantity)));
+
+/** Re-adding an identical variant/addon combination should keep the customer's
+ *  allergy/prep instructions, not silently drop them just because quantity
+ *  is the only field that merges. Deduplicate an identical note so repeated
+ *  adds don't grow the same instruction. */
+const mergeItemNotes = (existing?: string, incoming?: string): string | undefined => {
+  const prev = existing?.trim();
+  const next = incoming?.trim();
+  if (!prev) return next || undefined;
+  if (!next || next === prev) return prev;
+  const parts = prev.split(/\s*[;|]\s+/).map((p) => p.trim()).filter(Boolean);
+  if (parts.includes(next)) return prev;
+  return `${prev}; ${next}`;
+};
+
 export const useCart = create<CartStore>()(
   persist(
     (set, get) => ({
@@ -93,10 +115,20 @@ export const useCart = create<CartStore>()(
 
         if (existingItemIndex > -1) {
           const updatedItems = [...items];
-          updatedItems[existingItemIndex].quantity += newItem.quantity;
+          const existing = updatedItems[existingItemIndex];
+          updatedItems[existingItemIndex] = {
+            ...existing,
+            quantity: clampQuantity(existing.quantity + newItem.quantity),
+            notes: mergeItemNotes(existing.notes, newItem.notes),
+          };
           set({ items: updatedItems });
         } else {
-          set({ items: [...items, { ...newItem, id }] });
+          set({
+            items: [
+              ...items,
+              { ...newItem, quantity: clampQuantity(newItem.quantity), id },
+            ],
+          });
         }
       },
 
@@ -108,9 +140,12 @@ export const useCart = create<CartStore>()(
           get().removeItem(id);
           return;
         }
+        // Also guards against a corrupted persisted cart (e.g. from an older
+        // release) exceeding the schema's max(99).
+        const capped = clampQuantity(quantity);
         set({
           items: get().items.map((item) =>
-            item.id === id ? { ...item, quantity } : item
+            item.id === id ? { ...item, quantity: capped } : item
           ),
         });
       },
