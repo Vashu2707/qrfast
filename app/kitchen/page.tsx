@@ -13,6 +13,7 @@ import { ChefHat, Clock, CheckCircle, RefreshCw, Volume2, VolumeX } from "lucide
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { unlockAudio, playNewOrder } from "@/lib/sound";
+import { QueryError } from "@/components/features/dashboard/query-error";
 
 const KITCHEN_STATUSES = [
   OrderStatus.CONFIRMED,
@@ -27,7 +28,7 @@ export default function KitchenPage() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const prevOrderCount = useRef(0);
 
-  const { data: orders = [], refetch, isLoading } = useQuery({
+  const { data: orders = [], refetch, isLoading, error } = useQuery({
     queryKey: ["kitchen-orders"],
     queryFn: () => getOrders(),
     refetchInterval: 8000,
@@ -89,6 +90,9 @@ export default function KitchenPage() {
   return (
     <div className="min-h-dvh bg-background">
       <StaffHeader title="Kitchen Display" subtitle="Live order board" />
+      <div className="px-4 pt-3 sm:px-6">
+        <QueryError error={error} />
+      </div>
       <div className="flex flex-wrap items-center gap-2 border-b border-border/60 px-4 py-3 sm:px-6">
         <Button variant="outline" size="sm" onClick={() => refetch()}>
           <RefreshCw className="mr-2 size-4" />Refresh

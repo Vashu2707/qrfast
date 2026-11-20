@@ -15,13 +15,14 @@ import { TableStatus } from "@prisma/client";
 import { toast } from "sonner";
 import { Plus, Trash2, Download, QrCode } from "lucide-react";
 import Image from "next/image";
+import { QueryError } from "@/components/features/dashboard/query-error";
 
 export default function TablesPage() {
   const queryClient = useQueryClient();
   const [tableNumber, setTableNumber] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  const { data: tables = [] } = useQuery({ queryKey: ["tables"], queryFn: () => getTables(), refetchInterval: 10000 });
+  const { data: tables = [], error } = useQuery({ queryKey: ["tables"], queryFn: () => getTables(), refetchInterval: 10000 });
 
   const handleCreate = async () => {
     const result = await createTable({ number: tableNumber });
@@ -75,6 +76,7 @@ export default function TablesPage() {
     <div>
       <StaffHeader title="Tables" subtitle="Manage tables and QR codes" />
       <div className="space-y-4 p-4 sm:space-y-6 sm:p-6">
+        <QueryError error={error} />
         <Button onClick={() => setDialogOpen(true)}><Plus className="mr-2 size-4" />Add Table</Button>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogContent>

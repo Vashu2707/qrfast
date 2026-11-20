@@ -13,13 +13,14 @@ import { OrderStatus, PaymentStatus } from "@prisma/client";
 import { toast } from "sonner";
 import { Search, RefreshCw, FileText } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { QueryError } from "@/components/features/dashboard/query-error";
 
 export default function OrdersPage() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  const { data: orders = [], isLoading, refetch } = useQuery({
+  const { data: orders = [], isLoading, refetch, error } = useQuery({
     queryKey: ["orders"],
     queryFn: () => getOrders(),
     refetchInterval: 10000,
@@ -66,6 +67,7 @@ export default function OrdersPage() {
     <div>
       <StaffHeader title="Orders" subtitle="Manage and track all orders" />
       <div className="space-y-4 p-4 sm:p-6">
+        <QueryError error={error} />
         <div className="flex flex-col gap-3 sm:flex-row">
           <div className="relative min-w-0 flex-1">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />

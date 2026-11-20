@@ -15,6 +15,7 @@ import {
   TableStatus,
 } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { toNumber } from "@/lib/decimal";
 import { getOrderStatusLabel } from "@/lib/format";
 import { verifyTableToken } from "@/lib/table-token";
@@ -712,7 +713,9 @@ export async function submitReview(data: {
 
 export async function getOrders() {
   const user = await requireStaff();
-  if (!user) return [];
+  // An expired session is not "no orders" — send the operator to sign in
+  // instead of showing a silently empty dashboard.
+  if (!user) redirect("/login");
 
   try {
     return prisma.order.findMany({
@@ -724,8 +727,11 @@ export async function getOrders() {
       },
       orderBy: { createdAt: "desc" },
     });
-  } catch {
-    return [];
+  } catch (error) {
+    console.error("getOrders failed:", error);
+    // Let React Query surface a real error rather than rendering ₹0 / "no
+    // orders found" as if the database were simply empty.
+    throw new Error("Could not load orders. Please try again.");
   }
 }
 

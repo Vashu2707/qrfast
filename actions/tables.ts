@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import prisma from "@/lib/prisma";
 import { requireAdmin } from "@/lib/roles";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { createTableSchema } from "@/schemas";
 import QRCode from "qrcode";
 import { generateTableToken } from "@/lib/table-token";
@@ -11,14 +12,15 @@ import { TableStatus } from "@prisma/client";
 
 export async function getTables() {
   const user = await requireAdmin();
-  if (!user) return [];
+  if (!user) redirect("/login");
 
   try {
     return prisma.table.findMany({
       orderBy: { number: "asc" },
     });
-  } catch {
-    return [];
+  } catch (error) {
+    console.error("getTables failed:", error);
+    throw new Error("Could not load tables. Please try again.");
   }
 }
 

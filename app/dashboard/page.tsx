@@ -9,16 +9,17 @@ import { DashboardStats } from "@/components/features/dashboard/dashboard-stats"
 import { RecentOrdersTable } from "@/components/features/dashboard/recent-orders";
 import { NotificationsPanel } from "@/components/features/dashboard/notifications-panel";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryError } from "@/components/features/dashboard/query-error";
 import { SalesChartWrapper } from "@/components/features/dashboard/sales-chart-wrapper";
 
 export default function DashboardPage() {
-  const { data: stats, isLoading: statsLoading } = useQuery({
+  const { data: stats, isLoading: statsLoading, error: statsError } = useQuery({
     queryKey: ["dashboard-stats"],
     queryFn: () => getDashboardStats(),
     refetchInterval: 10000,
   });
 
-  const { data: orders = [], isLoading: ordersLoading } = useQuery({
+  const { data: orders = [], isLoading: ordersLoading, error: ordersError } = useQuery({
     queryKey: ["orders"],
     queryFn: () => getOrders(),
     refetchInterval: 10000,
@@ -36,6 +37,7 @@ export default function DashboardPage() {
     <div>
       <StaffHeader title="Dashboard" subtitle="Overview of your restaurant today" />
       <div className="space-y-4 p-4 sm:space-y-6 sm:p-6">
+        <QueryError error={statsError ?? ordersError} />
         {statsLoading ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             {Array.from({ length: 5 }).map((_, i) => (

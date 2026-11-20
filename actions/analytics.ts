@@ -2,15 +2,14 @@
 
 import prisma from "@/lib/prisma";
 import { requireAdmin } from "@/lib/roles";
+import { redirect } from "next/navigation";
 import { OrderStatus, PaymentStatus } from "@prisma/client";
 import { toNumber } from "@/lib/decimal";
 import { dateKeyInTz, startOfDayInTz, todayInTz } from "@/lib/timezone";
 
-const emptyStats = { todayOrders: 0, pendingOrders: 0, completedToday: 0, todayRevenue: 0, totalTables: 0, occupiedTables: 0, topItems: [] as { item: any; quantity: number }[], chartData: [] as { date: string; revenue: number }[], totalRevenue: 0, avgOrderValue: 0 };
-
 export async function getDashboardStats() {
   const user = await requireAdmin();
-  if (!user) return { ...emptyStats };
+  if (!user) redirect("/login");
 
   try {
     // Every "today" figure and every chart bucket must use the restaurant's
@@ -133,8 +132,11 @@ export async function getDashboardStats() {
       totalRevenue,
       avgOrderValue,
     };
-  } catch {
-    return { ...emptyStats };
+  } catch (error) {
+    console.error("getDashboardStats failed:", error);
+    // Never report ₹0 stats for a failed query — that reads as "no business
+    // today" and hides a database outage.
+    throw new Error("Could not load dashboard statistics. Please try again.");
   }
 }
 
