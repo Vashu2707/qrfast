@@ -26,15 +26,18 @@ const KITCHEN_STATUSES = [
 export default function KitchenPage() {
   const queryClient = useQueryClient();
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const prevOrderCount = useRef(0);
+  // null = no snapshot yet. Starting at 0 made a 0→N increase (the first
+  // order after the board was empty, or the first fetch with orders on it)
+  // fail the `prevOrderCount > 0` guard, so the chime stayed silent.
+  const prevOrderCount = useRef<number | null>(null);
 
-  const { data: orders = [], refetch, isLoading, error } = useQuery({
+  const { data: orders, refetch, isLoading, error } = useQuery({
     queryKey: ["kitchen-orders"],
     queryFn: () => getOrders(),
     refetchInterval: 8000,
   });
 
-  const kitchenOrders = orders.filter((o) => {
+  const kitchenOrders = (orders ?? []).filter((o) => {
     if (!KITCHEN_STATUSES.includes(o.status as typeof KITCHEN_STATUSES[number])) {
       return false;
     }
@@ -54,11 +57,15 @@ export default function KitchenPage() {
   }, [soundEnabled]);
 
   useEffect(() => {
-    if (soundEnabled && kitchenOrders.length > prevOrderCount.current && prevOrderCount.current > 0) {
+    // Only take a baseline once real data has arrived — the pre-fetch render
+    // (and a failed fetch) has no orders and must not count as an empty board.
+    if (!orders) return;
+    const previous = prevOrderCount.current;
+    if (previous !== null && soundEnabled && kitchenOrders.length > previous) {
       playNewOrder();
     }
     prevOrderCount.current = kitchenOrders.length;
-  }, [kitchenOrders.length, soundEnabled]);
+  }, [orders, kitchenOrders.length, soundEnabled]);
 
   const handleStatusUpdate = async (id: string, status: OrderStatus) => {
     const result = await updateOrderStatus(id, status);
