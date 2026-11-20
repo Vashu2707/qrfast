@@ -155,11 +155,27 @@ export async function POST(request: Request) {
             where: { id: payment.id },
             data: { status: PaymentStatus.FAILED },
           });
+
+          // Recompute the order's aggregate from ALL payment rows: a failed
+          // retry on an appended order must not overwrite SUCCESS — money on a
+          // sibling payment was actually captured (and must not claim no money
+          // was taken). A still-PENDING sibling keeps the order PENDING so an
+          // in-flight capture can still finalize it.
+          const rows = await tx.payment.findMany({
+            where: { orderId: payment.orderId },
+            select: { status: true },
+          });
+          const aggregate = rows.some((r) => r.status === PaymentStatus.SUCCESS)
+            ? PaymentStatus.SUCCESS
+            : rows.some((r) => r.status === PaymentStatus.PENDING)
+              ? PaymentStatus.PENDING
+              : PaymentStatus.FAILED;
+
           await tx.order.update({
             where: { id: payment.orderId },
-            data: { paymentStatus: PaymentStatus.FAILED },
+            data: { paymentStatus: aggregate },
           });
-          console.log("[webhook] Payment and order marked as FAILED");
+          console.log("[webhook] Payment marked FAILED; order paymentStatus =", aggregate);
         }
       });
     }
