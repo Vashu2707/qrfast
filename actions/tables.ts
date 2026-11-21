@@ -3,6 +3,7 @@
 import { randomUUID } from "crypto";
 import prisma from "@/lib/prisma";
 import { requireAdmin } from "@/lib/roles";
+import { requireTenant } from "@/lib/tenant";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createTableSchema } from "@/schemas";
@@ -38,8 +39,13 @@ function getQrConfig(): { appUrl: string } | { error: string } {
   return { appUrl };
 }
 
-async function buildTableQr(tableId: string, generation: number, appUrl: string) {
-  const token = generateTableToken(tableId, { generation });
+async function buildTableQr(
+  tableId: string,
+  generation: number,
+  appUrl: string,
+  tenantId: string
+) {
+  const token = generateTableToken(tableId, { generation, tenantId });
   return QRCode.toDataURL(`${appUrl}/menu/${token}`, {
     errorCorrectionLevel: "H",
     margin: 2,
@@ -51,6 +57,7 @@ async function buildTableQr(tableId: string, generation: number, appUrl: string)
 export async function createTable(data: { number: string }) {
   const user = await requireAdmin();
   if (!user) return { error: "Unauthorized" };
+  const { id: tenantId } = await requireTenant("RESTAURANT");
 
   const parsed = createTableSchema.safeParse(data);
   if (!parsed.success) {
@@ -63,7 +70,7 @@ export async function createTable(data: { number: string }) {
   try {
     const tableId = randomUUID();
     // New tables start at generation 1 (the schema default).
-    const qrCodeDataUrl = await buildTableQr(tableId, 1, config.appUrl);
+    const qrCodeDataUrl = await buildTableQr(tableId, 1, config.appUrl, tenantId);
 
     const table = await prisma.table.create({
       data: {
@@ -93,6 +100,7 @@ export async function createTable(data: { number: string }) {
 export async function rotateTableToken(tableId: string) {
   const user = await requireAdmin();
   if (!user) return { error: "Unauthorized" };
+  const { id: tenantId } = await requireTenant("RESTAURANT");
 
   // Check config before incrementing — a misconfigured server must not leave
   // the table with an invalid QR and no replacement.
@@ -105,7 +113,12 @@ export async function rotateTableToken(tableId: string) {
       data: { tokenGeneration: { increment: 1 } },
       select: { tokenGeneration: true },
     });
-    const qrCodeDataUrl = await buildTableQr(tableId, updated.tokenGeneration, config.appUrl);
+    const qrCodeDataUrl = await buildTableQr(
+      tableId,
+      updated.tokenGeneration,
+      config.appUrl,
+      tenantId
+    );
     await prisma.table.update({
       where: { id: tableId },
       data: { qrCodeUrl: qrCodeDataUrl },

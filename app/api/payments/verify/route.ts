@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { PaymentStatus, OrderStatus, TableStatus, NotificationType } from "@prisma/client";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { toNumber } from "@/lib/decimal";
+import { scopeToTenant } from "@/lib/tenant";
 
 export const dynamic = "force-dynamic";
 
@@ -90,6 +91,7 @@ export async function POST(request: Request) {
         console.error("[verify] Payment record not found for orderId:", razorpay_order_id);
         throw new Error("Local payment record not found.");
       }
+      scopeToTenant({ id: payment.tenantId, kind: "RESTAURANT" });
 
       // Idempotent: if already SUCCESS, skip all updates
       if (payment.status === PaymentStatus.SUCCESS) {

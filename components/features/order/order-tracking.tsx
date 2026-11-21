@@ -113,12 +113,15 @@ export function OrderTrackingClient({
       return;
     }
     setReviewLoading(true);
-    const result = await submitReview({
-      orderId,
-      customerName: order!.customerName,
-      rating,
-      comment: comment || undefined,
-    });
+    const result = await submitReview(
+      {
+        orderId,
+        customerName: order!.customerName,
+        rating,
+        comment: comment || undefined,
+      },
+      tableParam
+    );
     setReviewLoading(false);
     if (result.error) toast.error(result.error);
     else {

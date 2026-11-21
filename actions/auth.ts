@@ -10,6 +10,7 @@ import { checkRateLimit, getServerActionIp } from "@/lib/rate-limit";
 import { touchSession, clearSession, isSessionFresh } from "@/lib/session";
 import { setSpace, clearSpace } from "@/lib/space";
 import { setTenantCookie, clearTenantCookie } from "@/lib/tenant";
+import { setTenantScope } from "@/lib/tenant-context";
 
 export async function signIn(data: { email: string; password: string }) {
   const ip = await getServerActionIp();
@@ -200,6 +201,9 @@ export async function getCurrentUser() {
     if (!authUser) return null;
 
     const dbUser = await getDbUser(authUser.id);
+    if (dbUser) {
+      setTenantScope({ id: dbUser.tenantId, kind: "RESTAURANT" });
+    }
     return dbUser;
   } catch (err) {
     unstable_rethrow(err);

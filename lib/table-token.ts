@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from "crypto";
 import prisma from "@/lib/prisma";
+import { scopeToTenant } from "@/lib/tenant";
 
 const SECRET = process.env.TABLE_TOKEN_SECRET;
 /** Legacy QR codes (signed raw tableId, no payload) are generation 1. */
@@ -38,12 +39,16 @@ export interface TableTokenOptions {
   generation?: number;
   /** Bill tokens are scoped to one order; table QR tokens have none. */
   orderId?: string;
+  /** Tenant that owns the table; new QR codes carry it explicitly. */
+  tenantId?: string;
 }
 
 export interface VerifiedTableToken {
   tableId: string;
   generation: number;
   orderId: string | null;
+  /** Missing on legacy tokens; verifyActiveTableToken fills it from the table. */
+  tenantId?: string;
 }
 
 export function generateTableToken(
@@ -54,6 +59,7 @@ export function generateTableToken(
     tableId,
     generation: options.generation ?? DEFAULT_GENERATION,
     ...(options.orderId ? { orderId: options.orderId } : {}),
+    ...(options.tenantId ? { tenantId: options.tenantId } : {}),
   };
   const encoded = base64urlEncode(JSON.stringify(payload));
   // Sign the encoded payload, not the decoded string: the signature must
@@ -80,6 +86,7 @@ export function verifyTableTokenDetails(token: string): VerifiedTableToken | nul
         tableId?: unknown;
         generation?: unknown;
         orderId?: unknown;
+        tenantId?: unknown;
       };
       if (typeof parsed.tableId !== "string" || !parsed.tableId) return null;
       payload = {
@@ -91,6 +98,9 @@ export function verifyTableTokenDetails(token: string): VerifiedTableToken | nul
             ? parsed.generation
             : DEFAULT_GENERATION,
         orderId: typeof parsed.orderId === "string" ? parsed.orderId : null,
+        ...(typeof parsed.tenantId === "string" && parsed.tenantId
+          ? { tenantId: parsed.tenantId }
+          : {}),
       };
     } else {
       // Tokens printed before the payload format existed: raw tableId,
@@ -132,8 +142,10 @@ export async function verifyActiveTableToken(
 
   const table = await prisma.table.findUnique({
     where: { id: payload.tableId },
-    select: { tokenGeneration: true },
+    select: { tokenGeneration: true, tenantId: true },
   });
   if (!table || table.tokenGeneration !== payload.generation) return null;
-  return payload;
+  const verified = { ...payload, tenantId: payload.tenantId ?? table.tenantId };
+  scopeToTenant({ id: verified.tenantId!, kind: "RESTAURANT" });
+  return verified;
 }

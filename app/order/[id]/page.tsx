@@ -1,7 +1,7 @@
 import { OrderTrackingClient } from "@/components/features/order/order-tracking";
 import prisma from "@/lib/prisma";
 import { generateTableToken } from "@/lib/table-token";
-import { PRIMARY_RESTAURANT_TENANT_ID } from "@/lib/tenant";
+import { PRIMARY_RESTAURANT_TENANT_ID, scopeToTenant } from "@/lib/tenant";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +17,10 @@ export default async function OrderPage({ params }: Props) {
     select: { table: { select: { id: true, tokenGeneration: true, tenantId: true } } },
   });
 
+  if (order) {
+    scopeToTenant({ id: order.table.tenantId, kind: "RESTAURANT" });
+  }
+
   const settings = await prisma.settings.findUnique({
     where: { tenantId: order?.table.tenantId ?? PRIMARY_RESTAURANT_TENANT_ID },
     select: { primaryColor: true },
@@ -29,6 +33,7 @@ export default async function OrderPage({ params }: Props) {
     ? generateTableToken(order.table.id, {
         generation: order.table.tokenGeneration,
         orderId: id,
+        tenantId: order.table.tenantId,
       })
     : undefined;
   const primaryColor = settings?.primaryColor ?? "#E11D48";

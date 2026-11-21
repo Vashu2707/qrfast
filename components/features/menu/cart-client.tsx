@@ -118,7 +118,7 @@ export function CartClient({
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) return;
     setCouponLoading(true);
-    const result = await validateOffer(couponCode, getSubtotal());
+    const result = await validateOffer(couponCode, getSubtotal(), tableParam);
     setCouponLoading(false);
     if (!result.isValid) {
       toast.error(result.message || "Invalid offer");

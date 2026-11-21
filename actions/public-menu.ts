@@ -3,7 +3,6 @@
 import prisma from "@/lib/prisma";
 import { verifyActiveTableToken } from "@/lib/table-token";
 import { convertDecimalsDeep } from "@/lib/decimal";
-import { getPublicRestaurantTenantId } from "@/lib/tenant";
 
 const categoryInclude = {
   menuItems: {
@@ -32,7 +31,7 @@ export async function getPublicMenu(tableParam: string) {
   // holds the GSTIN, business phone/email and social links — a photographed
   // QR must not expose those to an anonymous visitor.
   const settings = await prisma.settings.findUnique({
-    where: { tenantId: await getPublicRestaurantTenantId() },
+    where: { tenantId: token.tenantId! },
     select: {
       restaurantName: true,
       logo: true,
@@ -62,7 +61,7 @@ export async function getPublicMenu(tableParam: string) {
 
   const table = await prisma.table.findUnique({
     where: { id: tableId },
-    select: { id: true, number: true },
+    select: { id: true, number: true, tenantId: true },
   });
 
   if (!table) return null;

@@ -9,6 +9,7 @@ import { checkRateLimit, getServerActionIp } from "@/lib/rate-limit";
 import { touchSession, clearSession } from "@/lib/session";
 import { setSpace, clearSpace } from "@/lib/space";
 import { setTenantCookie, clearTenantCookie } from "@/lib/tenant";
+import { setTenantScope } from "@/lib/tenant-context";
 import { HotelRole, type HotelUser } from "@prisma/client";
 
 export async function hotelSignIn(data: { email: string; password: string }) {
@@ -131,7 +132,11 @@ export async function getCurrentHotelUser(): Promise<HotelUser | null> {
 
     // Only a HotelUser is authorized in the hotel space. A restaurant
     // credential must never inherit a hotel tenant.
-    return getHotelDbUser(authUser.id);
+    const dbUser = await getHotelDbUser(authUser.id);
+    if (dbUser) {
+      setTenantScope({ id: dbUser.tenantId, kind: "HOTEL" });
+    }
+    return dbUser;
   } catch (err) {
     unstable_rethrow(err);
     console.error("getCurrentHotelUser error:", err);

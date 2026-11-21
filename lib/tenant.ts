@@ -10,6 +10,7 @@ import { cookies } from "next/headers";
 import { signValue, signaturesMatch } from "@/lib/signing-key";
 import { createClient } from "@/lib/supabase/server";
 import prisma from "@/lib/prisma";
+import { setTenantScope } from "@/lib/tenant-context";
 
 export type TenantKind = "RESTAURANT" | "HOTEL";
 
@@ -108,6 +109,7 @@ export async function requireTenant(kind?: TenantKind): Promise<TenantContext> {
   if (kind && tenant.kind !== kind) {
     throw new Error(`This action is only available in the ${kind.toLowerCase()} space.`);
   }
+  setTenantScope(tenant);
   return tenant;
 }
 
@@ -118,10 +120,19 @@ export async function requireTenant(kind?: TenantKind): Promise<TenantContext> {
  */
 export async function getPublicRestaurantTenantId(): Promise<string> {
   const tenant = await getTenant();
-  return tenant?.kind === "RESTAURANT" ? tenant.id : PRIMARY_RESTAURANT_TENANT_ID;
+  const id = tenant?.kind === "RESTAURANT" ? tenant.id : PRIMARY_RESTAURANT_TENANT_ID;
+  setTenantScope({ id, kind: "RESTAURANT" });
+  return id;
 }
 
 export async function getPublicHotelTenantId(): Promise<string> {
   const tenant = await getTenant();
-  return tenant?.kind === "HOTEL" ? tenant.id : PRIMARY_HOTEL_TENANT_ID;
+  const id = tenant?.kind === "HOTEL" ? tenant.id : PRIMARY_HOTEL_TENANT_ID;
+  setTenantScope({ id, kind: "HOTEL" });
+  return id;
+}
+
+/** Explicit scope for public flows that already resolved a tenant from a token. */
+export function scopeToTenant(tenant: TenantContext): void {
+  setTenantScope(tenant);
 }

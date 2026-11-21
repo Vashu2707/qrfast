@@ -120,7 +120,7 @@ export async function createHotelBooking(rawData: CreateHotelBookingInput) {
       try {
         booking = await prisma.$transaction(
           async (tx) => {
-            await tx.$queryRaw`SELECT id FROM "HotelRoomType" WHERE id = ${roomType.id} FOR UPDATE`;
+            await tx.$queryRaw`SELECT id FROM "HotelRoomType" WHERE "tenantId" = ${tenantId} AND id = ${roomType.id} FOR UPDATE`;
 
             const { totalRooms, available } = await countAvailableRooms(
               tx,
@@ -366,6 +366,7 @@ export async function updateHotelBookingStatus(rawData: unknown) {
 export async function assignHotelRoom(rawData: unknown) {
   const user = await requireHotelStaff();
   if (!user) return { error: "Unauthorized" };
+  const tenantId = user.tenantId;
 
   const parsed = hotelAssignRoomSchema.safeParse(rawData);
   if (!parsed.success) {
@@ -392,7 +393,7 @@ export async function assignHotelRoom(rawData: unknown) {
         // Lock the room row so two concurrent assigns of different bookings
         // to the same room serialize — otherwise both pass the clash check
         // and the room ends up double-booked.
-        await tx.$queryRaw`SELECT id FROM "HotelRoom" WHERE id = ${roomId} FOR UPDATE`;
+        await tx.$queryRaw`SELECT id FROM "HotelRoom" WHERE "tenantId" = ${tenantId} AND id = ${roomId} FOR UPDATE`;
 
         const clash = await tx.hotelBooking.findFirst({
           where: {

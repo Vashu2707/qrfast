@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/roles";
 import { offerSchema, type OfferInput } from "@/schemas";
 import { revalidatePath } from "next/cache";
 import { toNumber } from "@/lib/decimal";
+import { verifyActiveTableToken } from "@/lib/table-token";
 
 export async function getOffers() {
   const user = await requireAdmin();
@@ -106,9 +107,16 @@ export async function toggleOfferStatus(id: string) {
   return { success: true };
 }
 
-export async function validateOffer(code: string, subtotal: number) {
+export async function validateOffer(code: string, subtotal: number, tableToken?: string) {
   if (!code || typeof code !== "string") {
     return { isValid: false, message: "Invalid offer code." };
+  }
+
+  // Cart validation comes from an anonymous client. The signed QR token is
+  // the only trustworthy tenant source; verifyActiveTableToken sets it.
+  if (tableToken) {
+    const token = await verifyActiveTableToken(tableToken);
+    if (!token) return { isValid: false, message: "Invalid table token." };
   }
 
   try {

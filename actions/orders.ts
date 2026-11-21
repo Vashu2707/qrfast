@@ -19,6 +19,7 @@ import { redirect } from "next/navigation";
 import { toNumber } from "@/lib/decimal";
 import { getOrderStatusLabel } from "@/lib/format";
 import { verifyActiveTableToken } from "@/lib/table-token";
+import { scopeToTenant } from "@/lib/tenant";
 import { checkRateLimit, getServerActionIp } from "@/lib/rate-limit";
 
 // ─── Public ──────────────────────────────────────────────────────────────────
@@ -212,7 +213,8 @@ export async function createOrder(rawData: CreateOrderInput) {
           const claimedRows = await tx.$queryRaw<Array<{ id: string }>>`
             UPDATE "Offer"
             SET "usageCount" = "usageCount" + 1, "updatedAt" = NOW()
-            WHERE "code" = ${claimedCode}
+            WHERE "tenantId" = ${table.tenantId}
+              AND "code" = ${claimedCode}
               AND "isActive" = true
               AND "expiryDate" >= NOW()
               AND ("usageLimit" IS NULL OR "usageCount" < "usageLimit")
@@ -512,10 +514,11 @@ export async function cancelUnpaidOrder(orderId: string, tableId: string) {
     await prisma.$transaction(async (tx) => {
       const order = await tx.order.findUnique({
         where: { id: orderId },
-        select: { status: true, paymentStatus: true, tableId: true, offerCode: true },
+        select: { status: true, paymentStatus: true, tableId: true, offerCode: true, tenantId: true },
       });
 
       if (!order) return;
+      scopeToTenant({ id: order.tenantId, kind: "RESTAURANT" });
       if (order.tableId !== tableId) return;
       if (order.status !== OrderStatus.CONFIRMED) return;
       if (order.paymentStatus !== PaymentStatus.PENDING) return;
@@ -575,10 +578,11 @@ export async function cancelUnpaidOrder(orderId: string, tableId: string) {
 export async function getCustomerOrder(id: string) {
   if (!id || typeof id !== "string") return null;
   try {
-    return prisma.order.findUnique({
+    const order = await prisma.order.findUnique({
       where: { id },
       select: {
         id: true,
+        tenantId: true,
         status: true,
         paymentStatus: true,
         paymentMethod: true,
@@ -610,6 +614,8 @@ export async function getCustomerOrder(id: string) {
         },
       },
     });
+    if (order) scopeToTenant({ id: order.tenantId, kind: "RESTAURANT" });
+    return order;
   } catch {
     return null;
   }
@@ -673,14 +679,27 @@ export async function requestService(
  * Public action — no auth required (customer-facing).
  * Input is sanitized — customerName is trimmed, rating is clamped.
  */
-export async function submitReview(data: {
-  orderId?: string;
-  menuItemId?: string;
-  customerName: string;
-  rating: number;
-  comment?: string;
-  images?: string[];
-}) {
+export async function submitReview(
+  data: {
+    orderId?: string;
+    menuItemId?: string;
+    customerName: string;
+    rating: number;
+    comment?: string;
+    images?: string[];
+  },
+  tableToken?: string
+) {
+  // Scope reviews to the tenant of the QR the customer scanned. Legacy tokens
+  // still resolve their tenant from the table row in verifyActiveTableToken.
+  if (!tableToken) {
+    return { error: "Invalid table token. Please reopen the menu from your table's QR code." };
+  }
+  const token = await verifyActiveTableToken(tableToken);
+  if (!token) {
+    return { error: "Invalid table token. Please reopen the menu from your table's QR code." };
+  }
+
   const customerName = String(data.customerName ?? "").trim().slice(0, 100);
   const rating = Math.max(1, Math.min(5, Math.round(Number(data.rating))));
   const comment = data.comment ? String(data.comment).slice(0, 2000) : null;

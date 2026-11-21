@@ -3,6 +3,7 @@ import crypto from "crypto";
 import prisma from "@/lib/prisma";
 import { PaymentStatus, OrderStatus, TableStatus, NotificationType } from "@prisma/client";
 import { toNumber } from "@/lib/decimal";
+import { scopeToTenant } from "@/lib/tenant";
 
 export const dynamic = "force-dynamic";
 
@@ -86,6 +87,7 @@ export async function POST(request: Request) {
           console.warn("[webhook] Payment record not found for orderId:", razorpayOrderId);
           return;
         }
+        scopeToTenant({ id: payment.tenantId, kind: "RESTAURANT" });
 
         // Idempotent: if already SUCCESS, skip
         if (payment.status === PaymentStatus.SUCCESS) {
@@ -151,6 +153,7 @@ export async function POST(request: Request) {
         });
 
         if (payment && payment.status !== PaymentStatus.SUCCESS) {
+          scopeToTenant({ id: payment.tenantId, kind: "RESTAURANT" });
           await tx.payment.update({
             where: { id: payment.id },
             data: { status: PaymentStatus.FAILED },
@@ -195,6 +198,7 @@ export async function POST(request: Request) {
         });
 
         if (payment && payment.status !== PaymentStatus.SUCCESS) {
+          scopeToTenant({ id: payment.tenantId, kind: "RESTAURANT" });
           await tx.payment.update({
             where: { id: payment.id },
             data: { status: PaymentStatus.SUCCESS },
