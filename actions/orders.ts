@@ -518,7 +518,7 @@ export async function cancelUnpaidOrder(orderId: string, tableId: string) {
       });
 
       if (!order) return;
-      scopeToTenant({ id: order.tenantId, kind: "RESTAURANT" });
+      await scopeToTenant({ id: order.tenantId, kind: "RESTAURANT" });
       if (order.tableId !== tableId) return;
       if (order.status !== OrderStatus.CONFIRMED) return;
       if (order.paymentStatus !== PaymentStatus.PENDING) return;
@@ -614,7 +614,7 @@ export async function getCustomerOrder(id: string) {
         },
       },
     });
-    if (order) scopeToTenant({ id: order.tenantId, kind: "RESTAURANT" });
+    if (order) await scopeToTenant({ id: order.tenantId, kind: "RESTAURANT" });
     return order;
   } catch {
     return null;

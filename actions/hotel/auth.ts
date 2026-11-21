@@ -9,7 +9,7 @@ import { checkRateLimit, getServerActionIp } from "@/lib/rate-limit";
 import { touchSession, clearSession } from "@/lib/session";
 import { setSpace, clearSpace } from "@/lib/space";
 import { setTenantCookie, clearTenantCookie } from "@/lib/tenant";
-import { setTenantScope } from "@/lib/tenant-context";
+import { setActiveTenant } from "@/lib/request-tenant";
 import { HotelRole, type HotelUser } from "@prisma/client";
 
 export async function hotelSignIn(data: { email: string; password: string }) {
@@ -134,7 +134,7 @@ export async function getCurrentHotelUser(): Promise<HotelUser | null> {
     // credential must never inherit a hotel tenant.
     const dbUser = await getHotelDbUser(authUser.id);
     if (dbUser) {
-      setTenantScope({ id: dbUser.tenantId, kind: "HOTEL" });
+      await setActiveTenant({ id: dbUser.tenantId, kind: "HOTEL" });
     }
     return dbUser;
   } catch (err) {

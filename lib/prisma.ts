@@ -2,7 +2,8 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
-import { getTenantScope } from "@/lib/tenant-context";
+import { getTenantScope, type TenantScope } from "@/lib/tenant-context";
+import { resolveRequestTenant } from "@/lib/request-tenant";
 
 type DriverError = {
   message?: string;
@@ -75,8 +76,9 @@ export function prismaWithRetry<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 /** Delegates whose rows carry a tenantId column. */
+// Identity lookups are keyed by a globally unique Supabase user id. Scoping
+// them would make sign-in/bootstrap depend on an already-resolved tenant.
 const TENANT_DELEGATES = new Set([
-  "adminUser",
   "settings",
   "table",
   "category",
@@ -90,7 +92,6 @@ const TENANT_DELEGATES = new Set([
   "review",
   "notification",
   "invoice",
-  "hotelUser",
   "hotelSettings",
   "hotelRoomType",
   "hotelRoom",
@@ -215,17 +216,13 @@ function injectTenantIntoRelation(value: any, delegateKey: string, tenantId: str
   return result;
 }
 
-function callScoped(
+function applyScope(
   target: any,
   method: string,
   args: any[],
-  delegateKey: string
+  delegateKey: string,
+  scope: TenantScope
 ): any {
-  const scope = getTenantScope();
-  if (!scope || !TENANT_DELEGATES.has(delegateKey)) {
-    return target[method](...args);
-  }
-
   // findUnique cannot be filtered by a non-unique tenantId on every model;
   // findFirst has identical nullable semantics and accepts the extra filter.
   if (method === "findUnique" || method === "findUniqueOrThrow") {
@@ -258,6 +255,30 @@ function callScoped(
     scoped.create = injectTenantIntoCreate(scoped.create, delegateKey, scope.id);
   }
   return target[method](scoped, ...args.slice(1));
+}
+
+function callScoped(
+  target: any,
+  method: string,
+  args: any[],
+  delegateKey: string
+): any {
+  if (!TENANT_DELEGATES.has(delegateKey)) {
+    return target[method](...args);
+  }
+
+  // An explicit scope from runWithTenantScope (scripts/token flows) wins.
+  const explicit = getTenantScope();
+  if (explicit) return applyScope(target, method, args, delegateKey, explicit);
+
+  // Otherwise resolve from Next's request-local cookie store at query time.
+  // This works even when the scope was set by an async helper the caller is
+  // awaiting, which enterWith/AsyncLocalStorage cannot do.
+  return resolveRequestTenant().then((scope) =>
+    scope
+      ? applyScope(target, method, args, delegateKey, scope)
+      : target[method](...args)
+  );
 }
 
 function wrapDelegate(delegate: any, delegateKey: string): any {

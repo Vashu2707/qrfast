@@ -91,7 +91,7 @@ export async function POST(request: Request) {
         console.error("[verify] Payment record not found for orderId:", razorpay_order_id);
         throw new Error("Local payment record not found.");
       }
-      scopeToTenant({ id: payment.tenantId, kind: "RESTAURANT" });
+      await scopeToTenant({ id: payment.tenantId, kind: "RESTAURANT" });
 
       // Idempotent: if already SUCCESS, skip all updates
       if (payment.status === PaymentStatus.SUCCESS) {

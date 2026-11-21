@@ -146,6 +146,6 @@ export async function verifyActiveTableToken(
   });
   if (!table || table.tokenGeneration !== payload.generation) return null;
   const verified = { ...payload, tenantId: payload.tenantId ?? table.tenantId };
-  scopeToTenant({ id: verified.tenantId!, kind: "RESTAURANT" });
+  await scopeToTenant({ id: verified.tenantId!, kind: "RESTAURANT" });
   return verified;
 }

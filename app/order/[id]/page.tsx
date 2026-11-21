@@ -18,7 +18,7 @@ export default async function OrderPage({ params }: Props) {
   });
 
   if (order) {
-    scopeToTenant({ id: order.table.tenantId, kind: "RESTAURANT" });
+    await scopeToTenant({ id: order.table.tenantId, kind: "RESTAURANT" });
   }
 
   const settings = await prisma.settings.findUnique({
